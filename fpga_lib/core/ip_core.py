@@ -1,33 +1,51 @@
 # fpga_lib/core/ip_core.py
-from dataclasses import dataclass
-from typing import List, Dict, Any
+from dataclasses import dataclass, field
+from typing import List, Dict, Any, Union
+from .interface import Interface, AXILiteInterface, AXIStreamInterface, AvalonMMInterface, AvalonSTInterface
 
 @dataclass
 class IPCore:
-    vendor: str = ""           # Vendor des IP Cores
-    library: str = ""          # Bibliothek, zu der der IP Core gehört
-    name: str = ""
+    """
+    Base class for IP cores.
+    """
+    vendor: str = ""
+    library: str = ""
+    name: str = "generic_ip_core"  # Default IP core name
     version: str = "1.0"
     description: str = ""
-    ports: List[Dict[str, Any]] = None
-    parameters: Dict[str, Any] = None
+    ports: List[Dict[str, Any]] = field(default_factory=list)
+    parameters: Dict[str, Any] = field(default_factory=dict)
+    interfaces: List[Interface] = field(default_factory=list)
 
     def __post_init__(self):
-        if self.ports is None:
-            self.ports = []
-        if self.parameters is None:
-            self.parameters = {}
+        pass
 
     def add_port(self, name: str, direction: str, data_type: str, width: int = 1):
+        """
+        Adds a port to the IP core.
+        """
         self.ports.append({"name": name, "direction": direction, "type": data_type, "width": width})
 
     def add_parameter(self, name: str, value: Any, data_type: str = None):
+        """
+        Adds a parameter to the IP core.
+        """
         self.parameters[name] = {"value": value, "type": data_type}
 
+    def add_interface(self, interface: Interface):
+        """
+        Adds an interface to the IP core.
+        """
+        self.interfaces.append(interface)
+
+# Examples of IP cores with interfaces
 @dataclass
 class RAM(IPCore):
-    depth: int = 0
-    width: int = 0
+    """
+    RAM IP core.
+    """
+    depth: int = 1024   # Default depth
+    width: int = 32     # Default width
     technology: str = "Generic"
     vendor: str = "my_company"
     library: str = "memory_blocks"
@@ -36,20 +54,24 @@ class RAM(IPCore):
 
     def __post_init__(self):
         super().__post_init__()
-        # Spezifische Initialisierung für RAM, z.B. Hinzufügen von Standard-Ports
+        address_width = (self.depth - 1).bit_length() if self.depth > 1 else 1
         if not any(port['name'] == 'clk' for port in self.ports):
-            self.add_port("clk", "input", "logic")
+            self.add_port("clk", "in", "std_logic")
         if not any(port['name'] == 'addr' for port in self.ports):
-            self.add_port("addr", "input", "logic", width=(self.depth-1).bit_length() if self.depth > 1 else 1)
+            self.add_port("addr", "in", "std_logic", width=address_width)
         if not any(port['name'] == 'din' for port in self.ports):
-            self.add_port("din", "input", "logic", width=self.width)
+            self.add_port("din", "in", "std_logic_vector", width=self.width)
         if not any(port['name'] == 'dout' for port in self.ports):
-            self.add_port("dout", "output", "logic", width=self.width)
+            self.add_port("dout", "out", "std_logic_vector", width=self.width)
+        self.add_interface(AXILiteInterface(name="s_axi"))
 
 @dataclass
 class FIFO(IPCore):
-    depth: int = 0
-    width: int = 0
+    """
+    FIFO IP core.
+    """
+    depth: int = 64     # Default depth
+    width: int = 8      # Default width
     almost_full_threshold: int = 0
     vendor: str = "my_company"
     library: str = "fifo_blocks"
@@ -58,18 +80,19 @@ class FIFO(IPCore):
 
     def __post_init__(self):
         super().__post_init__()
-        # Spezifische Initialisierung für FIFO
         if not any(port['name'] == 'clk' for port in self.ports):
-            self.add_port("clk", "input", "logic")
+            self.add_port("clk", "in", "std_logic")
         if not any(port['name'] == 'wr_en' for port in self.ports):
-            self.add_port("wr_en", "input", "logic")
+            self.add_port("wr_en", "in", "std_logic")
         if not any(port['name'] == 'rd_en' for port in self.ports):
-            self.add_port("rd_en", "input", "logic")
+            self.add_port("rd_en", "in", "std_logic")
         if not any(port['name'] == 'din' for port in self.ports):
-            self.add_port("din", "input", "logic", width=self.width)
+            self.add_port("din", "in", "std_logic_vector", width=self.width)
         if not any(port['name'] == 'dout' for port in self.ports):
-            self.add_port("dout", "output", "logic", width=self.width)
+            self.add_port("dout", "out", "std_logic_vector", width=self.width)
         if not any(port['name'] == 'full' for port in self.ports):
-            self.add_port("full", "output", "logic")
+            self.add_port("full", "out", "std_logic")
         if not any(port['name'] == 'empty' for port in self.ports):
-            self.add_port("empty", "output", "logic")
+            self.add_port("empty", "out", "std_logic")
+        self.add_interface(AXIStreamInterface(name="s_axis"))
+        self.add_interface(AXIStreamInterface(name="m_axis"))
