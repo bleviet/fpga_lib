@@ -1,7 +1,6 @@
 # fpga_lib/generator/hdl/vhdl_generator.py
 from jinja2 import Environment, FileSystemLoader
 from fpga_lib.core.ip_core import IPCore
-from fpga_lib.core.interface import AXILiteInterface, AXIStreamInterface, AvalonMMInterface, AvalonSTInterface
 import os
 
 def generate_vhdl(ip_core: IPCore) -> str:
@@ -17,56 +16,13 @@ def generate_vhdl(ip_core: IPCore) -> str:
     """
     # Get the directory of the current file
     template_dir = os.path.join(os.path.dirname(__file__), "templates")
-
+    
     # Initialize the Jinja2 environment with the template directory
     env = Environment(loader=FileSystemLoader(template_dir))
 
-    entity_ports = list(ip_core.ports)
-
-    # Add interface signals to the entity ports
-    for interface in ip_core.interfaces:
-        if isinstance(interface, AXILiteInterface):
-            entity_ports.extend([
-                {"name": f"{interface.name}_aclk", "direction": "in", "type": "std_logic"},
-                {"name": f"{interface.name}_aresetn", "direction": "in", "type": "std_logic"},
-                {"name": f"{interface.name}_awaddr", "direction": "in", "type": "std_logic_vector", "width": interface.address_width},
-                {"name": f"{interface.name}_awvalid", "direction": "in", "type": "std_logic"},
-                {"name": f"{interface.name}_awready", "direction": "out", "type": "std_logic"},
-                {"name": f"{interface.name}_wdata", "direction": "in", "type": "std_logic_vector", "width": interface.data_width},
-                {"name": f"{interface.name}_wstrb", "direction": "in", "type": "std_logic_vector", "width": interface.data_width // 8},
-                {"name": f"{interface.name}_wvalid", "direction": "in", "type": "std_logic"},
-                {"name": f"{interface.name}_wready", "direction": "out", "type": "std_logic"},
-                {"name": f"{interface.name}_bresp", "direction": "out", "type": "std_logic_vector", "width": 2},
-                {"name": f"{interface.name}_bvalid", "direction": "out", "type": "std_logic"},
-                {"name": f"{interface.name}_bready", "direction": "in", "type": "std_logic"},
-                {"name": f"{interface.name}_araddr", "direction": "in", "type": "std_logic_vector", "width": interface.address_width},
-                {"name": f"{interface.name}_arvalid", "direction": "in", "type": "std_logic"},
-                {"name": f"{interface.name}_arready", "direction": "out", "type": "std_logic"},
-                {"name": f"{interface.name}_rdata", "direction": "out", "type": "std_logic_vector", "width": interface.data_width},
-                {"name": f"{interface.name}_rresp", "direction": "out", "type": "std_logic_vector", "width": 2},
-                {"name": f"{interface.name}_rvalid", "direction": "out", "type": "std_logic"},
-                {"name": f"{interface.name}_rready", "direction": "in", "type": "std_logic"},
-            ])
-        elif isinstance(interface, AXIStreamInterface):
-            entity_ports.extend([
-                {"name": f"{interface.name}_aclk", "direction": "in", "type": "std_logic"},
-                {"name": f"{interface.name}_aresetn", "direction": "in", "type": "std_logic"},
-                {"name": f"{interface.name}_tdata", "direction": "in", "type": "std_logic_vector", "width": interface.data_width},
-                {"name": f"{interface.name}_tvalid", "direction": "in", "type": "std_logic"},
-                {"name": f"{interface.name}_tready", "direction": "out", "type": "std_logic"},
-                {"name": f"{interface.name}_tlast", "direction": "in", "type": "std_logic"},
-                {"name": f"{interface.name}_tuser", "direction": "in", "type": "std_logic_vector", "width": interface.user_width},
-                {"name": f"{interface.name}_tstrb", "direction": "in", "type": "std_logic_vector", "width": interface.data_width // 8},
-                {"name": f"{interface.name}_tkeep", "direction": "in", "type": "std_logic_vector", "width": interface.data_width // 8},
-                {"name": f"{interface.name}_tid", "direction": "in", "type": "std_logic_vector", "width": interface.tid_width},
-                {"name": f"{interface.name}_tdest", "direction": "in", "type": "std_logic_vector", "width": interface.tdest_width},
-            ])
-        elif isinstance(interface, AvalonMMInterface):
-            # ... (Avalon MM signals)
-            pass
-        elif isinstance(interface, AvalonSTInterface):
-            # ... (Avalon ST signals)
-            pass
+    # We can now directly use the ip_core.ports list, as it contains both user-defined
+    # ports and interface signals.
+    entity_ports = ip_core.ports
 
     entity_template = env.get_template("entity.vhdl.j2")
     entity_data = {

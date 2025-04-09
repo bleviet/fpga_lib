@@ -1,7 +1,7 @@
 # fpga_lib/core/ip_core.py
 from dataclasses import dataclass, field
 from typing import List, Dict, Any, Union
-from .interface import Interface, AXILiteInterface, AXIStreamInterface, AvalonMMInterface, AvalonSTInterface
+from .interface import Interface, AXILiteInterface, AXIStreamInterface
 
 @dataclass
 class IPCore:
@@ -34,8 +34,14 @@ class IPCore:
 
     def add_interface(self, interface: Interface):
         """
-        Adds an interface to the IP core.
+        Adds an interface to the IP core and merges its signals with the IP core's ports.
         """
+        # interface._create_default_signals()  # Ensure default signals are created - REMOVE THIS LINE
+        for signal in interface.signals:
+            # Check for duplicate port names and handle them (e.g., raise an error or rename the signal)
+            if any(port["name"] == signal["name"] for port in self.ports):
+                raise ValueError(f"Duplicate port name: {signal['name']}")  # Raise an error for now
+            self.ports.append(signal)
         self.interfaces.append(interface)
 
 # Examples of IP cores with interfaces
