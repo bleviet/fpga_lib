@@ -1,0 +1,42 @@
+# Python-specific files
+__pycache__/
+*.pyc
+*.pyd
+.python-version
+env/
+venv/
+ENV/
+.venv
+Lib/
+Scripts/
+*.egg-info
+
+# Development tools and IDE-specific files
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Build and distribution related files
+build/
+dist/
+sdist/
+*.egg
+
+# Log files
+*.log
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Dependencies (can vary based on setup)
+# requirements.txt # Usually you track this file
+# Dependency folders if you store them locally
+# vendor/
+# deps/
+
+# Operating system specific temporary files
+._*
