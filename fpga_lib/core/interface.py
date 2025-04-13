@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 from typing import List, Dict, Any, Literal
 from enum import Enum
 from fpga_lib.core.data_types import DataType, BitType, VectorType, IntegerType
-from fpga_lib.utils.port_utils import invert_port_direction, PortDirection
+from fpga_lib.core.port import PortDirection, Port
 
 
 @dataclass
@@ -34,8 +34,6 @@ class AXIBaseInterface(Interface):
     cache_supported: bool = False
 
     def __post_init__(self):
-        # The parent class doesn't expect any parameters
-        # Fix incorrect super().__post_init__(name=self.name, interface_type="axi")
         super().__post_init__()
         # Override interface_type after calling super()
         self.interface_type = "axi"
@@ -45,7 +43,6 @@ class AXIBaseInterface(Interface):
                 {"name": f"{self.name}_aresetn", "direction": PortDirection.IN, "type": BitType()},
             ]
         )
-
 
 @dataclass
 class AXILiteInterface(AXIBaseInterface):
@@ -58,72 +55,35 @@ class AXILiteInterface(AXIBaseInterface):
     interface_mode: Literal["master", "slave"] = "slave"  # Default to slave
 
     def __post_init__(self):
-        # Call the parent's __post_init__ without parameters
-        super().__post_init__()
         # Directly set the interface_type
         self.interface_type = "axi_lite"
 
         # Define AXI Lite signals with direction specified for slave mode
         axi_lite_signals = [
-            {
-                "name": f"{self.name}_awaddr",
-                "direction": PortDirection.IN,
-                "type": VectorType(width=self.address_width),
-            },
-            {"name": f"{self.name}_awvalid", "direction": PortDirection.IN, "type": BitType()},
-            {
-                "name": f"{self.name}_awready",
-                "direction": PortDirection.OUT,
-                "type": BitType(),
-            },
-            {
-                "name": f"{self.name}_wdata",
-                "direction": PortDirection.IN,
-                "type": VectorType(width=self.data_width),
-            },
-            {
-                "name": f"{self.name}_wstrb",
-                "direction": PortDirection.IN,
-                "type": VectorType(width=self.data_width // 8),
-            },
-            {"name": f"{self.name}_wvalid", "direction": PortDirection.IN, "type": BitType()},
-            {
-                "name": f"{self.name}_wready",
-                "direction": PortDirection.OUT,
-                "type": BitType(),
-            },
-            {"name": f"{self.name}_bresp", "direction": PortDirection.OUT, "type": VectorType(width=2)},
-            {"name": f"{self.name}_bvalid", "direction": PortDirection.OUT, "type": BitType()},
-            {"name": f"{self.name}_bready", "direction": PortDirection.IN, "type": BitType()},
-            {
-                "name": f"{self.name}_araddr",
-                "direction": PortDirection.IN,
-                "type": VectorType(width=self.address_width),
-            },
-            {"name": f"{self.name}_arvalid", "direction": PortDirection.IN, "type": BitType()},
-            {
-                "name": f"{self.name}_arready",
-                "direction": PortDirection.OUT,
-                "type": BitType(),
-            },
-            {
-                "name": f"{self.name}_rdata",
-                "direction": PortDirection.OUT,
-                "type": VectorType(width=self.data_width),
-            },
-            {"name": f"{self.name}_rresp", "direction": PortDirection.OUT, "type": VectorType(width=2)},
-            {"name": f"{self.name}_rvalid", "direction": PortDirection.OUT, "type": BitType()},
-            {
-                "name": f"{self.name}_rready",
-                "direction": PortDirection.IN,
-                "type": BitType(),
-            },
+            {"name": f"{self.name}_awaddr", "direction": PortDirection.IN, "type": VectorType(width=self.address_width), "width": self.address_width},
+            {"name": f"{self.name}_awvalid", "direction": PortDirection.IN, "type": BitType(), "width": 1},
+            {"name": f"{self.name}_awready", "direction": PortDirection.OUT, "type": BitType(), "width": 1},
+            {"name": f"{self.name}_wdata", "direction": PortDirection.IN, "type": VectorType(width=self.data_width), "width": self.data_width},
+            {"name": f"{self.name}_wstrb", "direction": PortDirection.IN, "type": VectorType(width=self.data_width // 8), "width": self.data_width // 8},
+            {"name": f"{self.name}_wvalid", "direction": PortDirection.IN, "type": BitType(), "width": 1},
+            {"name": f"{self.name}_wready", "direction": PortDirection.OUT, "type": BitType(), "width": 1},
+            {"name": f"{self.name}_bresp", "direction": PortDirection.OUT, "type": VectorType(width=2), "width": 2},
+            {"name": f"{self.name}_bvalid", "direction": PortDirection.OUT, "type": BitType(), "width": 1},
+            {"name": f"{self.name}_bready", "direction": PortDirection.IN, "type": BitType(), "width": 1},
+            {"name": f"{self.name}_araddr", "direction": PortDirection.IN, "type": VectorType(width=self.address_width), "width": self.address_width},
+            {"name": f"{self.name}_arvalid", "direction": PortDirection.IN, "type": BitType(), "width": 1},
+            {"name": f"{self.name}_arready", "direction": PortDirection.OUT, "type": BitType(), "width": 1},
+            {"name": f"{self.name}_rdata", "direction": PortDirection.OUT, "type": VectorType(width=self.data_width), "width": self.data_width},
+            {"name": f"{self.name}_rresp", "direction": PortDirection.OUT, "type": VectorType(width=2), "width": 2},
+            {"name": f"{self.name}_rvalid", "direction": PortDirection.OUT, "type": BitType(), "width": 1},
+            {"name": f"{self.name}_rready", "direction": PortDirection.IN, "type": BitType(), "width": 1},
         ]
         self.ports.extend(axi_lite_signals)
 
         # Invert directions if interface_mode is master
         if self.interface_mode == "master":
-            invert_port_direction(self.ports)
+            for port in self.ports:
+                port.invert_direction()
 
 
 @dataclass
@@ -144,8 +104,6 @@ class AXIStreamInterface(AXIBaseInterface):
     interface_mode: Literal["master", "slave"] = "slave"  # Default to slave
 
     def __post_init__(self):
-        # Call the parent's __post_init__ without parameters
-        super().__post_init__()
         # Directly set the interface_type
         self.interface_type = "axi_stream"
 
@@ -155,38 +113,45 @@ class AXIStreamInterface(AXIBaseInterface):
                 "name": f"{self.name}_tdata",
                 "direction": PortDirection.IN,
                 "type": VectorType(width=self.data_width),
+                "width": self.data_width,
             },
-            {"name": f"{self.name}_tvalid", "direction": PortDirection.IN, "type": BitType()},
+            {"name": f"{self.name}_tvalid", "direction": PortDirection.IN, "type": BitType(), "width": 1},
             {
                 "name": f"{self.name}_tready",
                 "direction": PortDirection.OUT,
                 "type": BitType(),
+                "width": 1,
             },
-            {"name": f"{self.name}_tlast", "direction": PortDirection.IN, "type": BitType()},
+            {"name": f"{self.name}_tlast", "direction": PortDirection.IN, "type": BitType(), "width": 1},
             {
                 "name": f"{self.name}_tuser",
                 "direction": PortDirection.IN,
                 "type": VectorType(width=self.user_width),
+                "width": self.user_width,
             },
             {
                 "name": f"{self.name}_tstrb",
                 "direction": PortDirection.IN,
                 "type": VectorType(width=self.data_width // 8),
+                "width": self.data_width // 8,
             },
             {
                 "name": f"{self.name}_tkeep",
                 "direction": PortDirection.IN,
                 "type": VectorType(width=self.data_width // 8),
+                "width": self.data_width // 8,
             },
-            {"name": f"{self.name}_tid", "direction": PortDirection.IN, "type": VectorType(width=self.tid_width)},
+            {"name": f"{self.name}_tid", "direction": PortDirection.IN, "type": VectorType(width=self.tid_width), "width": self.tid_width},
             {
                 "name": f"{self.name}_tdest",
                 "direction": PortDirection.IN,
                 "type": VectorType(width=self.tdest_width),
+                "width": self.tdest_width,
             },
         ]
         self.ports.extend(axi_stream_signals)
 
         # Invert directions if interface_mode is master
         if self.interface_mode == "master":
-            invert_port_direction(self.ports)
+            for port in self.ports:
+                port.invert_direction()

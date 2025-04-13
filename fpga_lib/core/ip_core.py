@@ -2,8 +2,8 @@
 from dataclasses import dataclass, field
 from typing import List, Dict, Any, Union
 from .interface import Interface, AXILiteInterface, AXIStreamInterface
-from .data_types import DataType
-from fpga_lib.utils.port_utils import PortDirection
+from .data_types import DataType, VectorType
+from fpga_lib.core.port import Port, PortDirection
 
 @dataclass
 class IPCore:
@@ -15,7 +15,7 @@ class IPCore:
     name: str = "generic_ip_core"  # Default IP core name
     version: str = "1.0"
     description: str = ""
-    ports: List[Dict[str, Any]] = field(default_factory=list)
+    ports: List[Port] = field(default_factory=list)
     parameters: Dict[str, Any] = field(default_factory=dict)
     interfaces: List[Interface] = field(default_factory=list)
 
@@ -36,14 +36,18 @@ class IPCore:
             ValueError: If the port direction is invalid or the port name already exists
         """
         # Validate direction
-        if direction.lower() not in [PortDirection.IN.lower(), PortDirection.OUT.lower()]:
+        if direction.lower() not in [PortDirection.IN.value, PortDirection.OUT.value]:
             raise ValueError(f"Invalid port direction: {direction}. Must be 'in' or 'out'.")
-            
+        
         # Check for duplicate port names
-        if any(port["name"] == name for port in self.ports):
+        if any(port.name == name for port in self.ports):
             raise ValueError(f"Duplicate port name: {name}")
-            
-        self.ports.append({"name": name, "direction": direction, "type": data_type, "width": width})
+        
+        # If the data_type is a VectorType, use its width
+        if isinstance(data_type, VectorType):
+            width = data_type.width
+
+        self.ports.append(Port(name=name, direction=PortDirection(direction.lower()), type=data_type, width=width if width else 1))
 
     def add_parameter(self, name: str, value: Any, data_type: str = None):
         """
@@ -74,9 +78,9 @@ class IPCore:
         """
         for signal in interface.ports:
             # Check for duplicate port names and handle them
-            if any(port["name"] == signal["name"] for port in self.ports):
+            if any(port.name == signal["name"] for port in self.ports):
                 raise ValueError(f"Duplicate port name: {signal['name']}")
-            self.ports.append(signal)
+            self.ports.append(Port(name=signal["name"], direction=PortDirection(signal["direction"].lower()), type=signal["type"], width=signal["width"]))
         self.interfaces.append(interface)
         
     def remove_port(self, name: str) -> bool:
@@ -90,7 +94,7 @@ class IPCore:
             bool: True if the port was removed, False if it wasn't found
         """
         for i, port in enumerate(self.ports):
-            if port["name"] == name:
+            if port.name == name:
                 self.ports.pop(i)
                 return True
         return False
@@ -112,19 +116,19 @@ class IPCore:
             ValueError: If the port direction is invalid
         """
         for port in self.ports:
-            if port["name"] == name:
+            if port.name == name:
                 if direction is not None:
-                    if direction.lower() not in [PortDirection.IN.lower(), PortDirection.OUT.lower()]:
+                    if direction.lower() not in [PortDirection.IN.value, PortDirection.OUT.value]:
                         raise ValueError(f"Invalid port direction: {direction}. Must be 'in' or 'out'.")
-                    port["direction"] = direction
+                    port.direction = PortDirection(direction.lower())
                 if data_type is not None:
-                    port["type"] = data_type
+                    port.type = data_type
                 if width is not None:
-                    port["width"] = width
+                    port.width = width
                 return True
         return False
 
-    def get_port(self, name: str) -> Dict[str, Any]:
+    def get_port(self, name: str) -> Union[Port, None]:
         """
         Gets a port from the IP core by name.
         
@@ -132,10 +136,10 @@ class IPCore:
             name (str): The name of the port to get
             
         Returns:
-            Dict[str, Any]: The port dictionary, or None if not found
+            Port: The port object, or None if not found
         """
         for port in self.ports:
-            if port["name"] == name:
+            if port.name == name:
                 return port
         return None
 
@@ -156,13 +160,13 @@ class RAM(IPCore):
     def __post_init__(self):
         super().__post_init__()
         address_width = (self.depth - 1).bit_length() if self.depth > 1 else 1
-        if not any(port['name'] == 'clk' for port in self.ports):
+        if not any(port.name == 'clk' for port in self.ports):
             self.add_port("clk", "in", "std_logic")
-        if not any(port['name'] == 'addr' for port in self.ports):
+        if not any(port.name == 'addr' for port in self.ports):
             self.add_port("addr", "in", "std_logic", width=address_width)
-        if not any(port['name'] == 'din' for port in self.ports):
+        if not any(port.name == 'din' for port in self.ports):
             self.add_port("din", "in", "std_logic_vector", width=self.width)
-        if not any(port['name'] == 'dout' for port in self.ports):
+        if not any(port.name == 'dout' for port in self.ports):
             self.add_port("dout", "out", "std_logic_vector", width=self.width)
         self.add_interface(AXILiteInterface(name="s_axi"))
 
@@ -181,19 +185,19 @@ class FIFO(IPCore):
 
     def __post_init__(self):
         super().__post_init__()
-        if not any(port['name'] == 'clk' for port in self.ports):
+        if not any(port.name == 'clk' for port in self.ports):
             self.add_port("clk", "in", "std_logic")
-        if not any(port['name'] == 'wr_en' for port in self.ports):
+        if not any(port.name == 'wr_en' for port in self.ports):
             self.add_port("wr_en", "in", "std_logic")
-        if not any(port['name'] == 'rd_en' for port in self.ports):
+        if not any(port.name == 'rd_en' for port in self.ports):
             self.add_port("rd_en", "in", "std_logic")
-        if not any(port['name'] == 'din' for port in self.ports):
+        if not any(port.name == 'din' for port in self.ports):
             self.add_port("din", "in", "std_logic_vector", width=self.width)
-        if not any(port['name'] == 'dout' for port in self.ports):
+        if not any(port.name == 'dout' for port in self.ports):
             self.add_port("dout", "out", "std_logic_vector", width=self.width)
-        if not any(port['name'] == 'full' for port in self.ports):
+        if not any(port.name == 'full' for port in self.ports):
             self.add_port("full", "out", "std_logic")
-        if not any(port['name'] == 'empty' for port in self.ports):
+        if not any(port.name == 'empty' for port in self.ports):
             self.add_port("empty", "out", "std_logic")
         self.add_interface(AXIStreamInterface(name="s_axis"))
         self.add_interface(AXIStreamInterface(name="m_axis"))

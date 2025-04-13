@@ -56,6 +56,10 @@ end architecture complex_ip_arch;
         """.strip()
 
         generated_vhdl = generate_vhdl(complex_core)
+        print("Generated VHDL:")
+        print(generated_vhdl)
+        for port in complex_core.ports:
+            print(f"Port: {port.name}, Width: {port.width}, Type: {port.type}")
         self.assertEqual(generated_vhdl, expected_vhdl)
 
 if __name__ == '__main__':

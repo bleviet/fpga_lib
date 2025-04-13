@@ -7,7 +7,7 @@ use ieee.numeric_std.all;
 entity {{ entity_name }} is
     port (
 {%- for port in ports %}
-        {{ port.name }} : {{ port.direction }} {{ port.type }}{%- if port.width > 1 %}({{ port.width - 1 }} downto 0){%- endif %}{%- if not loop.last %};{% endif %}
+        {{ port.name }} : {{ port.direction }} {{ port.type }}{%- if port.type.startswith('std_logic_vector') and '(' not in port.type %}({{ port.width - 1 }} downto 0){%- endif %}{%- if not loop.last %};{% endif %}
 {%- endfor %}
     );
 end entity {{ entity_name }};

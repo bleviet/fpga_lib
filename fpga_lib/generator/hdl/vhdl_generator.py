@@ -26,33 +26,18 @@ def generate_vhdl(ip_core: IPCore) -> str:
 
     # Process ports to extract the correct type information based on whether the type
     # is a string or a DataType object
-    processed_ports = []
-    
-    for port in entity_ports:
-        port_data = {
-            "name": port['name'].lower(),
-            "direction": port['direction'].lower(),
-            "width": port.get('width', 1)
+    processed_ports = [
+        {
+            "name": port.name.lower(),
+            "direction": port.direction.value.lower(),
+            "type": "std_logic_vector({} downto 0)".format(port.width - 1) if isinstance(port.type, VectorType) else "std_logic" if isinstance(port.type, BitType) else port.type.lower(),
+            "width": port.width
         }
-        
-        # Handle different types of port['type'] (string or DataType)
-        if isinstance(port['type'], str):
-            port_data["type"] = port['type'].lower()
-        else:  # DataType object
-            # Handle VectorType specifically
-            if isinstance(port['type'], VectorType):
-                port_data["type"] = "std_logic_vector"
-                port_data["width"] = port['type'].width
-            # Handle BitType specifically
-            elif isinstance(port['type'], BitType):
-                port_data["type"] = "std_logic"
-            else:
-                port_data["type"] = port['type'].name.lower()
-                
-        processed_ports.append(port_data)
+        for port in entity_ports
+    ]
 
     # Correctly set has_std_logic_vector based on vector types
-    has_std_logic_vector = any(port["type"] == "std_logic_vector" for port in processed_ports)
+    has_std_logic_vector = any(isinstance(port.type, VectorType) for port in entity_ports)
 
     entity_template = env.get_template("entity.vhdl.j2")
     entity_data = {
