@@ -1,6 +1,7 @@
 # fpga_lib/generator/hdl/vhdl_generator.py
 from jinja2 import Environment, FileSystemLoader
 from fpga_lib.core.ip_core import IPCore
+from fpga_lib.core.data_types import DataType, BitType, VectorType, IntegerType
 import os
 
 def generate_vhdl(ip_core: IPCore) -> str:
@@ -16,7 +17,6 @@ def generate_vhdl(ip_core: IPCore) -> str:
     """
     # Get the directory of the current file
     template_dir = os.path.join(os.path.dirname(__file__), "templates")
-    
     # Initialize the Jinja2 environment with the template directory
     env = Environment(loader=FileSystemLoader(template_dir))
 
@@ -24,11 +24,41 @@ def generate_vhdl(ip_core: IPCore) -> str:
     # ports and interface signals.
     entity_ports = ip_core.ports
 
+    # Process ports to extract the correct type information based on whether the type
+    # is a string or a DataType object
+    processed_ports = []
+    
+    for port in entity_ports:
+        port_data = {
+            "name": port['name'].lower(),
+            "direction": port['direction'].lower(),
+            "width": port.get('width', 1)
+        }
+        
+        # Handle different types of port['type'] (string or DataType)
+        if isinstance(port['type'], str):
+            port_data["type"] = port['type'].lower()
+        else:  # DataType object
+            # Handle VectorType specifically
+            if isinstance(port['type'], VectorType):
+                port_data["type"] = "std_logic_vector"
+                port_data["width"] = port['type'].width
+            # Handle BitType specifically
+            elif isinstance(port['type'], BitType):
+                port_data["type"] = "std_logic"
+            else:
+                port_data["type"] = port['type'].name.lower()
+                
+        processed_ports.append(port_data)
+
+    # Correctly set has_std_logic_vector based on vector types
+    has_std_logic_vector = any(port["type"] == "std_logic_vector" for port in processed_ports)
+
     entity_template = env.get_template("entity.vhdl.j2")
     entity_data = {
         "entity_name": ip_core.name.lower(),
-        "ports": [{"name": port['name'].lower(), "direction": port['direction'].lower(), "type": port['type'].lower(), "width": port.get('width', 1)} for port in entity_ports],
-        "has_std_logic_vector": any(port['type'].lower() == 'std_logic_vector' for port in entity_ports)
+        "ports": processed_ports,
+        "has_std_logic_vector": has_std_logic_vector
     }
     entity_code = entity_template.render(**entity_data)
 

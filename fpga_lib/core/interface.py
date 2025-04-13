@@ -1,96 +1,137 @@
 # fpga_lib/core/interface.py
 from dataclasses import dataclass, field
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Literal
+from enum import Enum
+from fpga_lib.core.data_types import DataType, BitType, VectorType, IntegerType
+from fpga_lib.utils.port_utils import invert_port_direction, PortDirection
+
 
 @dataclass
 class Interface:
     """
     Base class for all bus interfaces.
     """
+
     name: str
     interface_type: str
-    signals: List[Dict[str, Any]] = field(default_factory=list)  # Add signals attribute
-
-    def __init__(self, name: str, interface_type: str):
-        self.name = name
-        self.interface_type = interface_type
-        self.signals = []  # Initialize signals here
+    ports: List[Dict[str, Any]] = field(default_factory=list)
 
 @dataclass
 class AXIBaseInterface(Interface):
     """
     Base class for AXI interfaces.
     """
+
     interface_type: str = "axi"
     address_width: int = 32
     data_width: int = 32
     id_width: int = 1
     user_width: int = 0
     burst_types: List[str] = field(default_factory=lambda: ["FIXED", "INCR"])
-    prot_supported: List[str] = field(default_factory=lambda: ["PRIVILEGED", "SECURE", "NONSECURE"])
-    cache_supported: List[str] = field(default_factory=lambda: ["BUFFERABLE", "CACHEABLE"])
-    qos_supported: bool = False
+    prot_supported: List[str] = field(
+        default_factory=lambda: ["PRIVILEGED", "SECURE", "NONSECURE"]
+    )
+    cache_supported: bool = False
 
-    def __init__(self, name: str, address_width: int = 32, data_width: int = 32, id_width: int = 1, user_width: int = 0,
-                 burst_types: List[str] = field(default_factory=lambda: ["FIXED", "INCR"]),
-                 prot_supported: List[str] = field(default_factory=lambda: ["PRIVILEGED", "SECURE", "NONSECURE"]),
-                 cache_supported: List[str] = field(default_factory=lambda: ["BUFFERABLE", "CACHEABLE"]),
-                 qos_supported: bool = False):
-        super().__init__(name, "axi")
-        self.address_width = address_width
-        self.data_width = data_width
-        self.id_width = id_width
-        self.user_width = user_width
-        self.burst_types = burst_types
-        self.prot_supported = prot_supported
-        self.cache_supported = cache_supported
-        self.qos_supported = qos_supported
-        self.signals = []  # Initialize signals here
-        self.signals.extend([
-            {"name": f"{name}_aclk", "direction": "in", "type": "std_logic"},
-            {"name": f"{name}_aresetn", "direction": "in", "type": "std_logic"},
-        ])
+    def __post_init__(self):
+        # The parent class doesn't expect any parameters
+        # Fix incorrect super().__post_init__(name=self.name, interface_type="axi")
+        super().__post_init__()
+        # Override interface_type after calling super()
+        self.interface_type = "axi"
+        self.ports.extend(
+            [
+                {"name": f"{self.name}_aclk", "direction": PortDirection.IN, "type": BitType()},
+                {"name": f"{self.name}_aresetn", "direction": PortDirection.IN, "type": BitType()},
+            ]
+        )
+
 
 @dataclass
 class AXILiteInterface(AXIBaseInterface):
     """
     AXI Lite interface.
     """
+
     interface_type: str = "axi_lite"
     burst_types: List[str] = field(default_factory=lambda: [])
+    interface_mode: Literal["master", "slave"] = "slave"  # Default to slave
 
-    def __init__(self, name: str, address_width: int = 32, data_width: int = 32, id_width: int = 1, user_width: int = 0,
-                 burst_types: List[str] = field(default_factory=lambda: []),
-                 prot_supported: List[str] = field(default_factory=lambda: ["PRIVILEGED", "SECURE", "NONSECURE"]),
-                 cache_supported: List[str] = field(default_factory=lambda: ["BUFFERABLE", "CACHEABLE"]),
-                 qos_supported: bool = False):
-        super().__init__(name, address_width, data_width, id_width, user_width, burst_types, prot_supported, cache_supported, qos_supported)
-        self.signals = [] # Initialize signals here
-        self.signals.extend([
-            {"name": f"{name}_awaddr", "direction": "in", "type": "std_logic_vector", "width": address_width},
-            {"name": f"{name}_awvalid", "direction": "in", "type": "std_logic"},
-            {"name": f"{name}_awready", "direction": "out", "type": "std_logic"},
-            {"name": f"{name}_wdata", "direction": "in", "type": "std_logic_vector", "width": data_width},
-            {"name": f"{name}_wstrb", "direction": "in", "type": "std_logic_vector", "width": data_width // 8},
-            {"name": f"{name}_wvalid", "direction": "in", "type": "std_logic"},
-            {"name": f"{name}_wready", "direction": "out", "type": "std_logic"},
-            {"name": f"{name}_bresp", "direction": "out", "type": "std_logic_vector", "width": 2},
-            {"name": f"{name}_bvalid", "direction": "out", "type": "std_logic"},
-            {"name": f"{name}_bready", "direction": "in", "type": "std_logic"},
-            {"name": f"{name}_araddr", "direction": "in", "type": "std_logic_vector", "width": address_width},
-            {"name": f"{name}_arvalid", "direction": "in", "type": "std_logic"},
-            {"name": f"{name}_arready", "direction": "out", "type": "std_logic"},
-            {"name": f"{name}_rdata", "direction": "out", "type": "std_logic_vector", "width": data_width},
-            {"name": f"{name}_rresp", "direction": "out", "type": "std_logic_vector", "width": 2},
-            {"name": f"{name}_rvalid", "direction": "out", "type": "std_logic"},
-            {"name": f"{name}_rready", "direction": "in", "type": "std_logic"},
-        ])
+    def __post_init__(self):
+        # Call the parent's __post_init__ without parameters
+        super().__post_init__()
+        # Directly set the interface_type
+        self.interface_type = "axi_lite"
+
+        # Define AXI Lite signals with direction specified for slave mode
+        axi_lite_signals = [
+            {
+                "name": f"{self.name}_awaddr",
+                "direction": PortDirection.IN,
+                "type": VectorType(width=self.address_width),
+            },
+            {"name": f"{self.name}_awvalid", "direction": PortDirection.IN, "type": BitType()},
+            {
+                "name": f"{self.name}_awready",
+                "direction": PortDirection.OUT,
+                "type": BitType(),
+            },
+            {
+                "name": f"{self.name}_wdata",
+                "direction": PortDirection.IN,
+                "type": VectorType(width=self.data_width),
+            },
+            {
+                "name": f"{self.name}_wstrb",
+                "direction": PortDirection.IN,
+                "type": VectorType(width=self.data_width // 8),
+            },
+            {"name": f"{self.name}_wvalid", "direction": PortDirection.IN, "type": BitType()},
+            {
+                "name": f"{self.name}_wready",
+                "direction": PortDirection.OUT,
+                "type": BitType(),
+            },
+            {"name": f"{self.name}_bresp", "direction": PortDirection.OUT, "type": VectorType(width=2)},
+            {"name": f"{self.name}_bvalid", "direction": PortDirection.OUT, "type": BitType()},
+            {"name": f"{self.name}_bready", "direction": PortDirection.IN, "type": BitType()},
+            {
+                "name": f"{self.name}_araddr",
+                "direction": PortDirection.IN,
+                "type": VectorType(width=self.address_width),
+            },
+            {"name": f"{self.name}_arvalid", "direction": PortDirection.IN, "type": BitType()},
+            {
+                "name": f"{self.name}_arready",
+                "direction": PortDirection.OUT,
+                "type": BitType(),
+            },
+            {
+                "name": f"{self.name}_rdata",
+                "direction": PortDirection.OUT,
+                "type": VectorType(width=self.data_width),
+            },
+            {"name": f"{self.name}_rresp", "direction": PortDirection.OUT, "type": VectorType(width=2)},
+            {"name": f"{self.name}_rvalid", "direction": PortDirection.OUT, "type": BitType()},
+            {
+                "name": f"{self.name}_rready",
+                "direction": PortDirection.IN,
+                "type": BitType(),
+            },
+        ]
+        self.ports.extend(axi_lite_signals)
+
+        # Invert directions if interface_mode is master
+        if self.interface_mode == "master":
+            invert_port_direction(self.ports)
+
 
 @dataclass
 class AXIStreamInterface(AXIBaseInterface):
     """
     AXI Stream interface.
     """
+
     interface_type: str = "axi_stream"
     data_width: int = 8
     user_width: int = 1
@@ -100,32 +141,52 @@ class AXIStreamInterface(AXIBaseInterface):
     tlast_enable: bool = False
     tstrb_enable: bool = False
     tuser_enable: bool = False
+    interface_mode: Literal["master", "slave"] = "slave"  # Default to slave
 
-    def __init__(self, name: str, address_width: int = 32, data_width: int = 8, id_width: int = 1, user_width: int = 1,
-                 burst_types: List[str] = field(default_factory=lambda: ["FIXED", "INCR"]),
-                 prot_supported: List[str] = field(default_factory=lambda: ["PRIVILEGED", "SECURE", "NONSECURE"]),
-                 cache_supported: List[str] = field(default_factory=lambda: ["BUFFERABLE", "CACHEABLE"]),
-                 qos_supported: bool = False,
-                 tdest_width: int = 1, tid_width: int = 1, tkeep_enable: bool = False,
-                 tlast_enable: bool = False, tstrb_enable: bool = False, tuser_enable: bool = False):
-        super().__init__(name, address_width, data_width, id_width, user_width, burst_types, prot_supported, cache_supported, qos_supported)
-        self.data_width = data_width
-        self.user_width = user_width
-        self.tdest_width = tdest_width
-        self.tid_width = tid_width
-        self.tkeep_enable = tkeep_enable
-        self.tlast_enable = tlast_enable
-        self.tstrb_enable = tstrb_enable
-        self.tuser_enable = tuser_enable
-        self.signals = []  # Initialize signals here
-        self.signals.extend([
-            {"name": f"{name}_tdata", "direction": "in", "type": "std_logic_vector", "width": data_width},
-            {"name": f"{name}_tvalid", "direction": "in", "type": "std_logic"},
-            {"name": f"{name}_tready", "direction": "out", "type": "std_logic"},
-            {"name": f"{name}_tlast", "direction": "in", "type": "std_logic"},
-            {"name": f"{name}_tuser", "direction": "in", "type": "std_logic_vector", "width": user_width},
-            {"name": f"{name}_tstrb", "direction": "in", "type": "std_logic_vector", "width": data_width // 8},
-            {"name": f"{name}_tkeep", "direction": "in", "type": "std_logic_vector", "width": data_width // 8},
-            {"name": f"{name}_tid", "direction": "in", "type": "std_logic_vector", "width": tid_width},
-            {"name": f"{name}_tdest", "direction": "in", "type": "std_logic_vector", "width": tdest_width},
-        ])
+    def __post_init__(self):
+        # Call the parent's __post_init__ without parameters
+        super().__post_init__()
+        # Directly set the interface_type
+        self.interface_type = "axi_stream"
+
+        # Define AXI Stream signals with direction specified for slave mode
+        axi_stream_signals = [
+            {
+                "name": f"{self.name}_tdata",
+                "direction": PortDirection.IN,
+                "type": VectorType(width=self.data_width),
+            },
+            {"name": f"{self.name}_tvalid", "direction": PortDirection.IN, "type": BitType()},
+            {
+                "name": f"{self.name}_tready",
+                "direction": PortDirection.OUT,
+                "type": BitType(),
+            },
+            {"name": f"{self.name}_tlast", "direction": PortDirection.IN, "type": BitType()},
+            {
+                "name": f"{self.name}_tuser",
+                "direction": PortDirection.IN,
+                "type": VectorType(width=self.user_width),
+            },
+            {
+                "name": f"{self.name}_tstrb",
+                "direction": PortDirection.IN,
+                "type": VectorType(width=self.data_width // 8),
+            },
+            {
+                "name": f"{self.name}_tkeep",
+                "direction": PortDirection.IN,
+                "type": VectorType(width=self.data_width // 8),
+            },
+            {"name": f"{self.name}_tid", "direction": PortDirection.IN, "type": VectorType(width=self.tid_width)},
+            {
+                "name": f"{self.name}_tdest",
+                "direction": PortDirection.IN,
+                "type": VectorType(width=self.tdest_width),
+            },
+        ]
+        self.ports.extend(axi_stream_signals)
+
+        # Invert directions if interface_mode is master
+        if self.interface_mode == "master":
+            invert_port_direction(self.ports)
