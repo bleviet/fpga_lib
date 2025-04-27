@@ -1,1 +1,3 @@
 dataclasses
+mypy>=0.910
+pytest>=6.0

@@ -22,7 +22,7 @@ class Port:
     type: Union[str, "DataType"]  # Forward reference to DataType
     width: int = 1
 
-    def invert_direction(self):
+    def invert_direction(self) -> None:
         """
         Inverts the direction of the port.
         """

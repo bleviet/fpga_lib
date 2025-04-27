@@ -9,8 +9,15 @@ setup(
     url="",
     packages=find_packages(),
     install_requires=[
-        "dataclasses"
+        "dataclasses",
+        "jinja2"
     ],
+    extras_require={
+        "dev": [
+            "mypy>=0.910",
+            "pytest>=6.0"
+        ]
+    },
     python_requires=">=3.7",
     include_package_data=True,
     classifiers=[

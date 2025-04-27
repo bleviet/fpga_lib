@@ -1,5 +1,6 @@
 # fpga_lib/core/data_types.py
 from dataclasses import dataclass
+from typing import Optional, Any
 
 @dataclass
 class DataType:

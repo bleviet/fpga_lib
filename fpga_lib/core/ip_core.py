@@ -34,7 +34,7 @@ class IPCore:
     def __post_init__(self):
         pass
 
-    def add_port(self, name: str, direction: str, data_type: Union[str, DataType], width: int = 1, default: Any = None):
+    def add_port(self, name: str, direction: str, data_type: Union[str, DataType], width: int = 1, default: Any = None) -> None:
         """
         Adds a port to the IP core. Supports all VHDL directions and default values.
         Args:
@@ -61,7 +61,7 @@ class IPCore:
         port.default = PortDefault(default) if default is not None else None
         self.ports.append(port)
 
-    def add_parameter(self, name: str, value: Any, data_type: str = None):
+    def add_parameter(self, name: str, value: Any, data_type: str = None) -> None:
         """
         Adds a parameter to the IP core using a dataclass for type safety.
         Args:
@@ -77,7 +77,7 @@ class IPCore:
             raise ValueError(f"Parameter {name} already exists")
         self.parameters[name] = Parameter(name=name, value=value, type=data_type)
 
-    def add_interface(self, interface: Interface):
+    def add_interface(self, interface: Interface) -> None:
         """
         Adds an interface to the IP core and merges its signals with the IP core's ports.
         Args:
@@ -170,7 +170,7 @@ class IPCore:
             return True
         return False
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> Dict[str, Any]:
         """
         Serializes the IP core to a dictionary.
         Returns:

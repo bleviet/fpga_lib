@@ -1,6 +1,6 @@
 # fpga_lib/core/interface.py
 from dataclasses import dataclass, field
-from typing import List, Dict, Any, Literal
+from typing import List, Dict, Any, Literal, Optional
 from enum import Enum
 from fpga_lib.core.data_types import DataType, BitType, VectorType, IntegerType
 from fpga_lib.core.port import PortDirection, Port
@@ -33,7 +33,7 @@ class AXIBaseInterface(Interface):
     )
     cache_supported: bool = False
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         # Override interface_type after calling super()
         self.interface_type = "axi"
         self.ports.extend([
@@ -51,7 +51,7 @@ class AXILiteInterface(AXIBaseInterface):
     burst_types: List[str] = field(default_factory=lambda: [])
     interface_mode: Literal["master", "slave"] = "slave"  # Default to slave
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         # Directly set the interface_type
         self.interface_type = "axi_lite"
 
@@ -100,7 +100,7 @@ class AXIStreamInterface(AXIBaseInterface):
     tuser_enable: bool = False
     interface_mode: Literal["master", "slave"] = "slave"  # Default to slave
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         # Directly set the interface_type
         self.interface_type = "axi_stream"
 
