@@ -1,6 +1,9 @@
 from dataclasses import dataclass
-from typing import Union
+from typing import Union, TYPE_CHECKING
 from enum import Enum
+
+if TYPE_CHECKING:
+    from .data_types import DataType
 
 class PortDirection(str, Enum):
     """
@@ -16,7 +19,7 @@ class Port:
     """
     name: str
     direction: PortDirection
-    type: Union[str, "DataType"]  # Assuming DataType is defined elsewhere
+    type: Union[str, "DataType"]  # Forward reference to DataType
     width: int = 1
 
     def invert_direction(self):

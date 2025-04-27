@@ -95,7 +95,9 @@ class TestIPCore(unittest.TestCase):
 
     def test_ipcore_remove_interface_and_ports(self):
         ip_core = IPCore(name="test_core")
-        iface = Interface(name="bus", interface_type="custom", ports=[{"name": "bus_clk", "direction": "in", "type": "std_logic", "width": 1}])
+        iface = Interface(name="bus", interface_type="custom", ports=[
+            Port(name="bus_clk", direction=PortDirection.IN, type="std_logic", width=1)
+        ])
         ip_core.add_interface(iface)
         self.assertTrue(any(p.name == "bus_clk" for p in ip_core.ports))
         ip_core.remove_interface(iface)

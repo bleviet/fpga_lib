@@ -85,12 +85,12 @@ class IPCore:
         Raises:
             ValueError: If there are duplicate port names
         """
-        for signal in interface.ports:
-            norm_name = signal["name"].lower()
-            if any(port.name.lower() == norm_name for port in self.ports):
-                self.errors.append(f"Duplicate port name: {signal['name']}")
-                raise ValueError(f"Duplicate port name: {signal['name']}")
-            self.ports.append(Port(name=signal["name"], direction=PortDirection(signal["direction"].lower()) if signal["direction"].lower() in [d.value for d in PortDirection] else signal["direction"].lower(), type=signal["type"], width=signal["width"]))
+        for port in interface.ports:
+            norm_name = port.name.lower()
+            if any(p.name.lower() == norm_name for p in self.ports):
+                self.errors.append(f"Duplicate port name: {port.name}")
+                raise ValueError(f"Duplicate port name: {port.name}")
+            self.ports.append(port)
         self.interfaces.append(interface)
 
     def remove_port(self, name: str) -> bool:
@@ -164,7 +164,7 @@ class IPCore:
         """
         if interface in self.interfaces:
             # Remove ports associated with this interface
-            interface_port_names = {signal["name"].lower() for signal in interface.ports}
+            interface_port_names = {port.name.lower() for port in interface.ports}
             self.ports = [port for port in self.ports if port.name.lower() not in interface_port_names]
             self.interfaces.remove(interface)
             return True
