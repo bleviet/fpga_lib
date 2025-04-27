@@ -1,3 +1,5 @@
 dataclasses
 mypy>=0.910
 pytest>=6.0
+pyparsing>=3.0.0
+jinja2

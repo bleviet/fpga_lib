@@ -4,6 +4,140 @@ from fpga_lib.core.ip_core import IPCore
 from fpga_lib.core.data_types import DataType, BitType, VectorType, IntegerType
 import os
 
+
+class VHDLGenerator:
+    """
+    VHDL code generator class for generating VHDL entities and architectures.
+    """
+    
+    def __init__(self):
+        """Initialize the VHDL generator."""
+        # Get the directory of the current file
+        self.template_dir = os.path.join(os.path.dirname(__file__), "templates")
+        # Initialize the Jinja2 environment with the template directory
+        self.env = Environment(loader=FileSystemLoader(self.template_dir))
+    
+    def generate_entity(self, ip_core: IPCore) -> str:
+        """
+        Generate VHDL entity declaration for the given IP core.
+        
+        Args:
+            ip_core: IPCore object to generate VHDL for
+            
+        Returns:
+            String containing the VHDL entity declaration
+        """
+        # Check if the IPCore has interfaces and get the default interface
+        ports = []
+        if hasattr(ip_core, 'interfaces') and ip_core.interfaces:
+            # Use the first interface by default
+            interface = ip_core.interfaces[0]
+            ports = interface.ports
+        elif hasattr(ip_core, 'ports'):
+            # Legacy support for IPCore objects with direct ports
+            ports = ip_core.ports
+        else:
+            # No ports found
+            ports = []
+            
+        # Process ports to extract the correct type information
+        processed_ports = [
+            {
+                "name": port.name.lower(),
+                "direction": port.direction.value.lower() if hasattr(port.direction, "value") else str(port.direction).lower(),
+                "type": self._get_port_type_string(port),
+                "width": port.width
+            }
+            for port in ports
+        ]
+        
+        # Correctly set has_std_logic_vector based on vector types
+        has_std_logic_vector = any(
+            isinstance(port.type, VectorType) if hasattr(port, 'type') else False
+            for port in ports
+        )
+        
+        entity_template = self.env.get_template("entity.vhdl.j2")
+        entity_data = {
+            "entity_name": ip_core.name.lower(),
+            "ports": processed_ports,
+            "has_std_logic_vector": has_std_logic_vector
+        }
+        
+        return entity_template.render(**entity_data)
+    
+    def generate_architecture(self, ip_core: IPCore, arch_name: str = None) -> str:
+        """
+        Generate VHDL architecture for the given IP core.
+        
+        Args:
+            ip_core: IPCore object to generate VHDL for
+            arch_name: Optional architecture name (defaults to ip_core.name_arch)
+            
+        Returns:
+            String containing the VHDL architecture
+        """
+        if not arch_name:
+            arch_name = f"{ip_core.name.lower()}_arch"
+            
+        architecture_template = self.env.get_template("architecture.vhdl.j2")
+        architecture_data = {
+            "architecture_name": arch_name,
+            "entity_name": ip_core.name.lower()
+        }
+        
+        return architecture_template.render(**architecture_data)
+    
+    def generate_vhdl(self, ip_core: IPCore) -> str:
+        """
+        Generate complete VHDL code (entity and architecture) for the given IP core.
+        
+        Args:
+            ip_core: IPCore object to generate VHDL for
+            
+        Returns:
+            String containing the complete VHDL code
+        """
+        entity_code = self.generate_entity(ip_core)
+        architecture_code = self.generate_architecture(ip_core)
+        
+        return f"{entity_code.strip()}\n\n{architecture_code.strip()}"
+    
+    def _get_port_type_string(self, port) -> str:
+        """
+        Get the VHDL type string for a port.
+        
+        Args:
+            port: Port object
+            
+        Returns:
+            String representation of the port type for VHDL
+        """
+        if hasattr(port, 'type'):
+            port_type = port.type
+            
+            if hasattr(port_type, "to_vhdl"):
+                return port_type.to_vhdl()
+            elif isinstance(port_type, VectorType):
+                return f"std_logic_vector({port.width - 1} downto 0)"
+            elif isinstance(port_type, BitType):
+                return "std_logic"
+            elif hasattr(port_type, 'base_type') and hasattr(port_type.base_type, 'name'):
+                # Handle case when type is DataType with base_type
+                base_type_name = port_type.base_type.name.lower()
+                if base_type_name == 'std_logic_vector':
+                    range_constraint = port_type.range_constraint
+                    return f"std_logic_vector({range_constraint})"
+                else:
+                    return base_type_name
+            elif isinstance(port_type, str):
+                return port_type.lower()
+                
+        # Default case for unknown types
+        return "std_logic" if port.width == 1 else f"std_logic_vector({port.width - 1} downto 0)"
+
+
+# Keep the original function for backward compatibility
 def generate_vhdl(ip_core: IPCore) -> str:
     """
     Generates VHDL code for a given IPCore object using Jinja2 templates,
@@ -15,46 +149,9 @@ def generate_vhdl(ip_core: IPCore) -> str:
     Returns:
         str: The generated VHDL code.
     """
-    # Get the directory of the current file
-    template_dir = os.path.join(os.path.dirname(__file__), "templates")
-    # Initialize the Jinja2 environment with the template directory
-    env = Environment(loader=FileSystemLoader(template_dir))
+    generator = VHDLGenerator()
+    return generator.generate_vhdl(ip_core)
 
-    # We can now directly use the ip_core.ports list, as it contains both user-defined
-    # ports and interface signals.
-    entity_ports = ip_core.ports
-
-    # Process ports to extract the correct type information based on whether the type
-    # is a string or a DataType object
-    processed_ports = [
-        {
-            "name": port.name.lower(),
-            "direction": port.direction.value.lower(),
-            "type": "std_logic_vector({} downto 0)".format(port.width - 1) if isinstance(port.type, VectorType) else "std_logic" if isinstance(port.type, BitType) else port.type.lower(),
-            "width": port.width
-        }
-        for port in entity_ports
-    ]
-
-    # Correctly set has_std_logic_vector based on vector types
-    has_std_logic_vector = any(isinstance(port.type, VectorType) for port in entity_ports)
-
-    entity_template = env.get_template("entity.vhdl.j2")
-    entity_data = {
-        "entity_name": ip_core.name.lower(),
-        "ports": processed_ports,
-        "has_std_logic_vector": has_std_logic_vector
-    }
-    entity_code = entity_template.render(**entity_data)
-
-    architecture_template = env.get_template("architecture.vhdl.j2")
-    architecture_data = {
-        "architecture_name": f"{ip_core.name.lower()}_arch",
-        "entity_name": ip_core.name.lower()
-    }
-    architecture_code = architecture_template.render(**architecture_data)
-
-    return f"{entity_code.strip()}\n\n{architecture_code.strip()}"
 
 if __name__ == '__main__':
     # Example usage
