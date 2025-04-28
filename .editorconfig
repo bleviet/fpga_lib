@@ -1,0 +1,29 @@
+# EditorConfig helps maintain consistent coding styles for multiple developers working on the same project across various editors and IDEs.
+# editorconfig.org
+root = true
+
+[*]
+indent_style = space
+# Default indent size, can be overridden per file type
+indent_size = 4
+end_of_line = lf
+charset = utf-8
+trim_trailing_whitespace = true
+insert_final_newline = true
+
+[Makefile]
+indent_style = tab
+# Keep trailing whitespace for Makefiles if needed, but generally good to trim
+# trim_trailing_whitespace = false
+
+[*.md]
+# Don't trim trailing whitespace for Markdown files, as it can affect formatting (e.g., line breaks)
+trim_trailing_whitespace = false
+
+[*.py]
+indent_style = space
+indent_size = 4
+
+# Add other file types as needed, e.g.:
+# [*.js]
+# indent_size = 2

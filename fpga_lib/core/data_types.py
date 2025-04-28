@@ -17,16 +17,16 @@ class VHDLBaseType(Enum):
     BIT_VECTOR = "bit_vector"
     NATURAL = "natural"
     POSITIVE = "positive"
-    
+
     @classmethod
     def from_string(cls, type_str: str) -> 'VHDLBaseType':
         """
         Convert a string to a VHDLBaseType enum.
         Handles case-insensitive conversion.
-        
+
         Args:
             type_str: String representation of the type
-            
+
         Returns:
             VHDLBaseType enum corresponding to the string
         """
@@ -40,7 +40,7 @@ class VHDLBaseType(Enum):
 class DataType:
     """
     Base class for data types.
-    
+
     Attributes:
         base_type: Base type (e.g., std_logic, std_logic_vector)
         range_constraint: Optional range constraint (e.g., "7 downto 0")
@@ -49,11 +49,11 @@ class DataType:
     base_type: Union[VHDLBaseType, str]
     range_constraint: Optional[str] = None
     array_dimensions: Optional[List[str]] = None
-    
+
     def __str__(self) -> str:
         """
         Generate string representation of the data type.
-        
+
         Returns:
             String representation of the data type
         """
@@ -61,29 +61,29 @@ class DataType:
             result = self.base_type.value
         else:
             result = str(self.base_type)
-            
+
         if self.range_constraint:
             result += f"({self.range_constraint})"
-            
+
         if self.array_dimensions:
             dims = " ".join(self.array_dimensions)
             result = f"array ({dims}) of {result}"
-            
+
         return result
-    
+
     def to_vhdl(self) -> str:
         """
         Convert to VHDL type representation.
-        
+
         Returns:
             VHDL type representation
         """
         return str(self)
-    
+
     def to_verilog(self) -> str:
         """
         Convert to Verilog type representation.
-        
+
         Returns:
             Verilog type representation
         """
@@ -99,7 +99,7 @@ class DataType:
                     return f"wire [{msb}:{lsb}]"
                 except:
                     return f"wire [0:0]"
-        
+
         # Default case
         return "wire"
 
