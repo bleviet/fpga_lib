@@ -138,6 +138,90 @@ end entity counter;
         assert "count : out std_logic_vector(7 downto 0)" in norm_regenerated
         assert "end entity counter" in norm_regenerated
 
+    def test_parse_entity_with_generics(self):
+        """Test parsing a VHDL entity with generics."""
+        parser = VHDLParser()
+        vhdl_code = """
+        library IEEE;
+        use IEEE.std_logic_1164.all;
+    
+        entity configurable_counter is
+            generic (
+                WIDTH       : natural := 8;
+                RESET_VALUE : std_logic_vector(7 downto 0) := (others => '0')
+            );
+            port (
+                clk     : in std_logic;
+                rst     : in std_logic;
+                enable  : in std_logic;
+                count   : out std_logic_vector(WIDTH-1 downto 0)
+            );
+        end entity configurable_counter;
+        """
+
+        result = parser.parse_text(vhdl_code)
+
+        # Verify entity was parsed
+        assert result["entity"] is not None
+        assert isinstance(result["entity"], IPCore)
+        assert result["entity"].name == "configurable_counter"
+
+        # Verify generics/parameters
+        assert len(result["entity"].parameters) == 2
+        assert "WIDTH" in result["entity"].parameters
+        assert "RESET_VALUE" in result["entity"].parameters
+        
+        # Check generic types
+        width_param = result["entity"].parameters["WIDTH"]
+        assert width_param.type == "natural"
+        
+        reset_value_param = result["entity"].parameters["RESET_VALUE"]
+        assert "std_logic_vector" in reset_value_param.type
+
+        # Verify ports
+        interface = result["entity"].interfaces[0]
+        assert len(interface.ports) == 4
+
+        # Verify port details
+        port_names = [p.name for p in interface.ports]
+        assert "clk" in port_names
+        assert "rst" in port_names
+        assert "enable" in port_names
+        assert "count" in port_names
+
+    def test_parse_neorv32_cfs_with_generics(self):
+        """Test parsing the actual neorv32_cfs.vhd file that has generics."""
+        parser = VHDLParser()
+        
+        # Use the actual neorv32_cfs.vhd file from the test resources
+        file_path = os.path.join(os.path.dirname(__file__), "..", "resources", "vhdl", "neorv32_core", "neorv32_cfs.vhd")
+        result = parser.parse_file(file_path)
+        
+        # Verify entity was parsed
+        assert result["entity"] is not None
+        assert isinstance(result["entity"], IPCore)
+        assert result["entity"].name == "neorv32_cfs"
+
+        # Verify generics/parameters - should have 3 generics
+        assert len(result["entity"].parameters) == 3
+        assert "CFS_CONFIG" in result["entity"].parameters
+        assert "CFS_IN_SIZE" in result["entity"].parameters
+        assert "CFS_OUT_SIZE" in result["entity"].parameters
+        
+        # Check generic types
+        cfs_config = result["entity"].parameters["CFS_CONFIG"]
+        assert "std_ulogic_vector" in cfs_config.type
+        
+        cfs_in_size = result["entity"].parameters["CFS_IN_SIZE"]
+        assert cfs_in_size.type == "natural"
+        
+        cfs_out_size = result["entity"].parameters["CFS_OUT_SIZE"]
+        assert cfs_out_size.type == "natural"
+
+        # Verify all 9 ports are still parsed correctly
+        interface = result["entity"].interfaces[0]
+        assert len(interface.ports) == 9
+
     def _normalize_whitespace(self, text):
         """Normalize whitespace for comparison."""
         return ' '.join(text.replace("\n", " ").split())

@@ -1,0 +1,25 @@
+library ieee;
+use ieee.std_logic_1164.all;
+
+entity neorv32_fifo is
+    generic (
+        FIFO_DEPTH : natural := 4;
+        FIFO_WIDTH : natural := 32;
+        FIFO_RSYNC : boolean := false;
+        FIFO_SAFE : boolean := false;
+        FULL_RESET : boolean := false
+    );
+    port (
+        clk_i : in std_ulogic;
+        rstn_i : in std_ulogic;
+        clear_i : in std_ulogic;
+        half_o : out std_ulogic;
+        level_o : out std_ulogic_vector(31 downto 0);
+        wdata_i : in std_ulogic_vector(FIFO_WIDTH-1 downto 0);
+        we_i : in std_ulogic;
+        free_o : out std_ulogic;
+        re_i : in std_ulogic;
+        rdata_o : out std_ulogic_vector(FIFO_WIDTH-1 downto 0);
+        avail_o : out std_ulogic
+    );
+end entity neorv32_fifo;

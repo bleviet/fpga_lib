@@ -1,0 +1,65 @@
+File: neorv32_sysinfo.vhd
+Original file: /Users/bachleviet/workspace/fpga_lib/fpga_lib/tests/parser/hdl/../resources/vhdl/neorv32_core/neorv32_sysinfo.vhd
+
+Entity: neorv32_sysinfo
+Ports (4):
+  - clk_i : in std_ulogic
+  - rstn_i : in std_ulogic
+  - bus_req_i : in bus_req_t
+  - bus_rsp_o : out bus_rsp_t
+
+Generated VHDL:
+library ieee;
+use ieee.std_logic_1164.all;
+
+entity neorv32_sysinfo is
+    generic (
+        NUM_HARTS : natural;
+        CLOCK_FREQUENCY : natural;
+        BOOT_MODE_SELECT : natural;
+        INT_BOOTLOADER_EN : boolean;
+        MEM_INT_IMEM_EN : boolean;
+        MEM_INT_IMEM_ROM : boolean;
+        MEM_INT_IMEM_SIZE : natural;
+        MEM_INT_DMEM_EN : boolean;
+        MEM_INT_DMEM_SIZE : natural;
+        ICACHE_EN : boolean;
+        ICACHE_NUM_BLOCKS : natural;
+        ICACHE_BLOCK_SIZE : natural;
+        DCACHE_EN : boolean;
+        DCACHE_NUM_BLOCKS : natural;
+        DCACHE_BLOCK_SIZE : natural;
+        XBUS_EN : boolean;
+        XBUS_CACHE_EN : boolean;
+        XBUS_CACHE_NUM_BLOCKS : natural;
+        XBUS_CACHE_BLOCK_SIZE : natural;
+        OCD_EN : boolean;
+        OCD_AUTH : boolean;
+        IO_GPIO_EN : boolean;
+        IO_CLINT_EN : boolean;
+        IO_UART0_EN : boolean;
+        IO_UART1_EN : boolean;
+        IO_SPI_EN : boolean;
+        IO_SDI_EN : boolean;
+        IO_TWI_EN : boolean;
+        IO_TWD_EN : boolean;
+        IO_PWM_EN : boolean;
+        IO_WDT_EN : boolean;
+        IO_TRNG_EN : boolean;
+        IO_CFS_EN : boolean;
+        IO_NEOLED_EN : boolean;
+        IO_GPTMR_EN : boolean;
+        IO_ONEWIRE_EN : boolean;
+        IO_DMA_EN : boolean;
+        IO_SLINK_EN : boolean;
+        IO_CRC_EN : boolean;
+        IO_HWSPINLOCK_EN : boolean
+    );
+    port (
+        clk_i : in std_ulogic;
+        rstn_i : in std_ulogic;
+        bus_req_i : in bus_req_t;
+        bus_rsp_o : out bus_rsp_t
+    );
+end entity neorv32_sysinfo;
+Validation: ✅ PASS

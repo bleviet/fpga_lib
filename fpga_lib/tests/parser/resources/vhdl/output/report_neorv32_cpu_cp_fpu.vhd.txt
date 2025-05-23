@@ -1,0 +1,44 @@
+File: neorv32_cpu_cp_fpu.vhd
+Original file: /Users/bachleviet/workspace/fpga_lib/fpga_lib/tests/parser/hdl/../resources/vhdl/neorv32_core/neorv32_cpu_cp_fpu.vhd
+
+Entity: neorv32_cpu_cp_fpu
+Ports (13):
+  - clk_i : in std_ulogic
+  - rstn_i : in std_ulogic
+  - ctrl_i : in ctrl_bus_t
+  - csr_we_i : in std_ulogic
+  - csr_addr_i : in std_ulogic_vector(1 downto 0)
+  - csr_wdata_i : in std_ulogic_vector(XLEN-1 downto 0)
+  - csr_rdata_o : out std_ulogic_vector(XLEN-1 downto 0)
+  - cmp_i : in std_ulogic_vector(1 downto 0)
+  - rs1_i : in std_ulogic_vector(XLEN-1 downto 0)
+  - rs2_i : in std_ulogic_vector(XLEN-1 downto 0)
+  - rs3_i : in std_ulogic_vector(XLEN-1 downto 0)
+  - res_o : out std_ulogic_vector(XLEN-1 downto 0)
+  - valid_o : out std_ulogic
+
+Generated VHDL:
+library ieee;
+use ieee.std_logic_1164.all;
+
+entity neorv32_cpu_cp_fpu is
+    generic (
+        FPU_SUBNORMAL_SUPPORT : boolean := false
+    );
+    port (
+        clk_i : in std_ulogic;
+        rstn_i : in std_ulogic;
+        ctrl_i : in ctrl_bus_t;
+        csr_we_i : in std_ulogic;
+        csr_addr_i : in std_ulogic_vector(1 downto 0);
+        csr_wdata_i : in std_ulogic_vector(XLEN-1 downto 0);
+        csr_rdata_o : out std_ulogic_vector(XLEN-1 downto 0);
+        cmp_i : in std_ulogic_vector(1 downto 0);
+        rs1_i : in std_ulogic_vector(XLEN-1 downto 0);
+        rs2_i : in std_ulogic_vector(XLEN-1 downto 0);
+        rs3_i : in std_ulogic_vector(XLEN-1 downto 0);
+        res_o : out std_ulogic_vector(XLEN-1 downto 0);
+        valid_o : out std_ulogic
+    );
+end entity neorv32_cpu_cp_fpu;
+Validation: ✅ PASS

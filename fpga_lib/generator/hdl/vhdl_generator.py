@@ -32,7 +32,9 @@ class VHDLGenerator:
         if hasattr(ip_core, 'interfaces') and ip_core.interfaces:
             # Use the first interface by default
             interface = ip_core.interfaces[0]
-            ports = interface.ports
+            # Make sure we get ALL ports from the interface
+            if hasattr(interface, 'ports') and interface.ports:
+                ports = interface.ports
         elif hasattr(ip_core, 'ports'):
             # Legacy support for IPCore objects with direct ports
             ports = ip_core.ports
@@ -41,15 +43,25 @@ class VHDLGenerator:
             ports = []
             
         # Process ports to extract the correct type information
-        processed_ports = [
-            {
+        processed_ports = []
+        for port in ports:
+            port_info = {
                 "name": port.name.lower(),
                 "direction": port.direction.value.lower() if hasattr(port.direction, "value") else str(port.direction).lower(),
-                "type": self._get_port_type_string(port),
                 "width": port.width
             }
-            for port in ports
-        ]
+            
+            # Use original type if available, otherwise generate a type string
+            if hasattr(port, 'original_type') and port.original_type:
+                port_info["type"] = port.original_type
+            else:
+                port_info["type"] = self._get_port_type_string(port)
+                
+            processed_ports.append(port_info)
+        
+        # Debug port count to ensure all ports are included
+        if not processed_ports:
+            print(f"Warning: No ports found for entity {ip_core.name}")
         
         # Correctly set has_std_logic_vector based on vector types
         has_std_logic_vector = any(
@@ -57,10 +69,22 @@ class VHDLGenerator:
             for port in ports
         )
         
+        # Process generics/parameters
+        generics = []
+        if hasattr(ip_core, 'parameters') and ip_core.parameters:
+            for param_name, param in ip_core.parameters.items():
+                generic_info = {
+                    "name": param.name,
+                    "type": param.type if param.type else "natural",  # Default to natural if no type specified
+                    "default_value": param.value if param.value is not None else None
+                }
+                generics.append(generic_info)
+        
         entity_template = self.env.get_template("entity.vhdl.j2")
         entity_data = {
             "entity_name": ip_core.name.lower(),
             "ports": processed_ports,
+            "generics": generics,
             "has_std_logic_vector": has_std_logic_vector
         }
         
@@ -116,6 +140,11 @@ class VHDLGenerator:
         if hasattr(port, 'type'):
             port_type = port.type
             
+            # First, check if we have the original type saved during parsing
+            if hasattr(port, 'original_type') and port.original_type:
+                return port.original_type
+            
+            # Otherwise, generate type based on the type object
             if hasattr(port_type, "to_vhdl"):
                 return port_type.to_vhdl()
             elif isinstance(port_type, VectorType):
@@ -124,17 +153,34 @@ class VHDLGenerator:
                 return "std_logic"
             elif hasattr(port_type, 'base_type') and hasattr(port_type.base_type, 'name'):
                 # Handle case when type is DataType with base_type
-                base_type_name = port_type.base_type.name.lower()
-                if base_type_name == 'std_logic_vector':
-                    range_constraint = port_type.range_constraint
-                    return f"std_logic_vector({range_constraint})"
+                base_type_name = port_type.base_type.name
+                
+                # For vector types, we need the range constraint
+                if base_type_name.lower() == 'std_logic_vector':
+                    # Use the original range constraint if available
+                    if hasattr(port_type, 'range_constraint') and port_type.range_constraint:
+                        return f"std_logic_vector({port_type.range_constraint})"
+                    else:
+                        # Fall back to calculating from width
+                        width = getattr(port, 'width', 1)
+                        if width > 1:
+                            return f"std_logic_vector({width - 1} downto 0)"
+                        else:
+                            # If it's a 1-bit vector, use std_logic
+                            return "std_logic"
                 else:
+                    # Preserve original case of type name
                     return base_type_name
             elif isinstance(port_type, str):
-                return port_type.lower()
+                # Preserve original type string exactly as it was
+                return port_type
                 
-        # Default case for unknown types
-        return "std_logic" if port.width == 1 else f"std_logic_vector({port.width - 1} downto 0)"
+        # Default case for unknown types - preserve std_ulogic if that's what's needed
+        default_type = "std_logic"
+        if hasattr(port, 'width') and port.width > 1:
+            default_type = f"std_logic_vector({port.width - 1} downto 0)"
+            
+        return default_type
 
 
 # Keep the original function for backward compatibility

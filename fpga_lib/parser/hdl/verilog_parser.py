@@ -140,7 +140,8 @@ class VerilogParser:
             
         # Try regex approach first (more flexible with different formatting)
         try:
-            # Extract module name and port list
+            # Extract module name - handle modules with special /* AUTOARG */ comment
+            # This pattern is more robust for modules with special comments
             module_pattern = r'module\s+(\w+)\s*\((.*?)\);'
             module_match = re.search(module_pattern, verilog_text, re.IGNORECASE | re.DOTALL)
             
@@ -151,6 +152,56 @@ class VerilogParser:
                 print(f"Regex found module: {module_name}")
                 print(f"Ports text: {ports_text}")
                 
+                # Special handling for AUTOARG comments - common in mor1kx files
+                if "/*AUTOARG*/" in ports_text:
+                    # This is a special case - find all port names and infer directions
+                    # Look for the AUTOARG comment section that lists ports
+                    autoarg_pattern = r'/\*AUTOARG\*/\s*(.*?)(?:\/\/|$)'
+                    autoarg_match = re.search(autoarg_pattern, verilog_text, re.IGNORECASE | re.DOTALL)
+                    
+                    if autoarg_match:
+                        # Get the AUTOARG section text
+                        autoarg_text = autoarg_match.group(1)
+                        
+                        # Find outputs section
+                        outputs_pattern = r'\/\/\s*outputs\s*(.*?)(?:\/\/|$)'
+                        outputs_match = re.search(outputs_pattern, autoarg_text, re.IGNORECASE | re.DOTALL)
+                        
+                        # Find inputs section
+                        inputs_pattern = r'\/\/\s*inputs\s*(.*?)(?:$)'
+                        inputs_match = re.search(inputs_pattern, autoarg_text, re.IGNORECASE | re.DOTALL)
+                        
+                        ports = []
+                        
+                        # Process output ports
+                        if outputs_match:
+                            outputs_text = outputs_match.group(1)
+                            output_ports = re.findall(r'(\w+)(?:,|\s*$)', outputs_text)
+                            
+                            for port_name in output_ports:
+                                port_name = port_name.strip()
+                                if port_name:  # Skip empty entries
+                                    port = self._create_port(port_name, "output", None, None)
+                                    ports.append(port)
+                        
+                        # Process input ports
+                        if inputs_match:
+                            inputs_text = inputs_match.group(1)
+                            input_ports = re.findall(r'(\w+)(?:,|\s*$)', inputs_text)
+                            
+                            for port_name in input_ports:
+                                port_name = port_name.strip()
+                                if port_name:  # Skip empty entries
+                                    port = self._create_port(port_name, "input", None, None)
+                                    ports.append(port)
+                        
+                        if ports:
+                            # Create interface with all ports from AUTOARG
+                            interface = Interface(name=module_name, interface_type="verilog_default", ports=ports)
+                            result["module"] = IPCore(name=module_name, interfaces=[interface])
+                            return result  # Return early since we've handled the special case
+                
+                # If not AUTOARG or AUTOARG handling failed, continue with standard parsing
                 # Parse ANSI-style port declarations with a more flexible regex pattern
                 # This handles: input/output/inout, with optional reg/wire/logic, optional bit range, and name
                 ansi_port_pattern = r'(input|output|inout)\s+(reg|wire|logic)?\s*(?:\[(\d+)\s*:\s*(\d+)\])?\s*(\w+)'
@@ -211,65 +262,129 @@ class VerilogParser:
                             ports.append(port)
                             
                 else:
-                    # Try a more general approach to find all ports
-                    # This is a more comprehensive regex that handles more variations
-                    comprehensive_pattern = r'(input|output|inout)(?:\s+(reg|wire|logic))?(?:\s*\[(\d+)\s*:\s*(\d+)\])?(?:\s+(\w+))(?:,|$|;)'
-                    port_matches = re.findall(comprehensive_pattern, ports_text, re.IGNORECASE)
+                    # If the port list is just a list of names without directions
+                    # Check if it's just a comma-separated list of identifiers without direction keywords
+                    is_simple_list = not any(kw in ports_text.lower() for kw in ['input', 'output', 'inout'])
                     
-                    for port_match in port_matches:
-                        direction_str = port_match[0].lower()
-                        port_type = port_match[1].lower() if port_match[1] else None
-                        msb_str = port_match[2]
-                        lsb_str = port_match[3]
-                        port_name = port_match[4]
+                    if is_simple_list:
+                        # Try to extract port names from the list
+                        port_names = [p.strip() for p in re.split(r',\s*', ports_text) if p.strip()]
                         
-                        # Parse MSB and LSB if present
-                        msb = int(msb_str) if msb_str else None
-                        lsb = int(lsb_str) if lsb_str else None
+                        # Look for port declarations elsewhere in the file
+                        # First extract all input/output/inout declarations in the module body
+                        port_decls = re.findall(
+                            r'(input|output|inout)\s+(reg|wire|logic)?\s*(?:\[(\d+)\s*:\s*(\d+)\])?\s*(\w+)\s*;', 
+                            verilog_text, 
+                            re.IGNORECASE
+                        )
                         
-                        print(f"Found port: {port_name}, direction: {direction_str}, type: {port_type}, range: {msb}:{lsb}")
-                        
-                        # Create port
-                        port = self._create_port(port_name, direction_str, msb, lsb)
-                        ports.append(port)
-                    
-                    # If still no ports found, fall back to non-ANSI style
-                    if not ports:
-                        # Handle non-ANSI style (just port names in the list)
-                        port_names = [name.strip() for name in ports_text.split(',')]
-                        
-                        # Look for port declarations in the rest of the module
-                        decl_pattern = r'(input|output|inout)(?:\s+(?:reg|wire|logic))?(?:\s*\[(\d+)\s*:\s*(\d+)\])?(?:\s+(\w+))'
-                        port_decls = re.findall(decl_pattern, verilog_text, re.IGNORECASE)
-                        
-                        # Create a dictionary of port declarations for quick lookup
                         port_dict = {}
-                        for port_decl in port_decls:
-                            direction_str = port_decl[0].lower()
-                            has_range = port_decl[1] != '' and port_decl[2] != ''
-                            msb = int(port_decl[1]) if has_range else None
-                            lsb = int(port_decl[2]) if has_range else None
-                            port_name = port_decl[3]
+                        for decl in port_decls:
+                            direction = decl[0].lower()
+                            has_range = decl[2] != '' and decl[3] != ''
+                            msb = int(decl[2]) if has_range else None
+                            lsb = int(decl[3]) if has_range else None
+                            name = decl[4]
                             
-                            port_dict[port_name] = (direction_str, msb, lsb)
+                            port_dict[name] = (direction, msb, lsb)
                         
-                        # Create ports based on declarations
                         for port_name in port_names:
-                            port_name = port_name.strip()
                             if port_name in port_dict:
-                                direction_str, msb, lsb = port_dict[port_name]
-                                port = self._create_port(port_name, direction_str, msb, lsb)
+                                direction, msb, lsb = port_dict[port_name]
+                                ports.append(self._create_port(port_name, direction, msb, lsb))
                             else:
-                                # Default port if no declaration found
-                                port = Port(port_name, Direction.IN, type=DataType(VHDLBaseType.STD_LOGIC))
-                                
+                                # Default to input if direction is not specified
+                                ports.append(self._create_port(port_name, "input", None, None))
+                    else:
+                        # Try a more general approach to find all ports
+                        # This is a more comprehensive regex that handles more variations
+                        comprehensive_pattern = r'(input|output|inout)(?:\s+(reg|wire|logic))?(?:\s*\[(\d+)\s*:\s*(\d+)\])?(?:\s+(\w+))(?:,|$|;)'
+                        port_matches = re.findall(comprehensive_pattern, ports_text, re.IGNORECASE)
+                        
+                        for port_match in port_matches:
+                            direction_str = port_match[0].lower()
+                            port_type = port_match[1].lower() if port_match[1] else None
+                            msb_str = port_match[2]
+                            lsb_str = port_match[3]
+                            port_name = port_match[4]
+                            
+                            # Parse MSB and LSB if present
+                            msb = int(msb_str) if msb_str else None
+                            lsb = int(lsb_str) if lsb_str else None
+                            
+                            print(f"Found port: {port_name}, direction: {direction_str}, type: {port_type}, range: {msb}:{lsb}")
+                            
+                            # Create port
+                            port = self._create_port(port_name, direction_str, msb, lsb)
                             ports.append(port)
+                        
+                        # If still no ports found, fall back to non-ANSI style
+                        if not ports:
+                            # Handle non-ANSI style (just port names in the list)
+                            port_names = [name.strip() for name in ports_text.split(',')]
+                            
+                            # Look for port declarations in the rest of the module
+                            decl_pattern = r'(input|output|inout)(?:\s+(?:reg|wire|logic))?(?:\s*\[(\d+)\s*:\s*(\d+)\])?(?:\s+(\w+))'
+                            port_decls = re.findall(decl_pattern, verilog_text, re.IGNORECASE)
+                            
+                            # Create a dictionary of port declarations for quick lookup
+                            port_dict = {}
+                            for port_decl in port_decls:
+                                direction_str = port_decl[0].lower()
+                                has_range = port_decl[1] != '' and port_decl[2] != ''
+                                msb = int(port_decl[1]) if has_range else None
+                                lsb = int(port_decl[2]) if has_range else None
+                                port_name = port_decl[3]
+                                
+                                port_dict[port_name] = (direction_str, msb, lsb)
+                            
+                            # Create ports based on declarations
+                            for port_name in port_names:
+                                port_name = port_name.strip()
+                                if port_name in port_dict:
+                                    direction_str, msb, lsb = port_dict[port_name]
+                                    port = self._create_port(port_name, direction_str, msb, lsb)
+                                else:
+                                    # Default port if no declaration found
+                                    port = Port(port_name, Direction.IN, type=DataType(VHDLBaseType.STD_LOGIC))
+                                    
+                                ports.append(port)
                 
                 # Create interface with all ports
                 interface = Interface(name=module_name, interface_type="verilog_default", ports=ports)
                 
                 # Create and return IPCore with the correct module name
                 result["module"] = IPCore(name=module_name, interfaces=[interface])
+            else:
+                # Try a more flexible pattern to match module declarations
+                # Some module declarations might have comments or unusual formatting
+                module_alt_pattern = r'module\s+([a-zA-Z0-9_]+)'
+                module_alt_match = re.search(module_alt_pattern, verilog_text, re.IGNORECASE)
+                
+                if module_alt_match:
+                    module_name = module_alt_match.group(1)
+                    print(f"Found module name using alternative pattern: {module_name}")
+                    
+                    # Try to find port declarations in the module body
+                    port_decls = re.findall(
+                        r'(input|output|inout)\s+(reg|wire|logic)?\s*(?:\[(\d+)\s*:\s*(\d+)\])?\s*(\w+)\s*;', 
+                        verilog_text, 
+                        re.IGNORECASE
+                    )
+                    
+                    ports = []
+                    for decl in port_decls:
+                        direction = decl[0].lower()
+                        has_range = decl[2] != '' and decl[3] != ''
+                        msb = int(decl[2]) if has_range else None
+                        lsb = int(decl[3]) if has_range else None
+                        name = decl[4]
+                        
+                        ports.append(self._create_port(name, direction, msb, lsb))
+                    
+                    if ports:
+                        interface = Interface(name=module_name, interface_type="verilog_default", ports=ports)
+                        result["module"] = IPCore(name=module_name, interfaces=[interface])
                 
         except Exception as e:
             print(f"Error in regex parsing: {e}")

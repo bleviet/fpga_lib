@@ -1,0 +1,19 @@
+File: neorv32_cpu_decompressor.vhd
+Original file: /Users/bachleviet/workspace/fpga_lib/fpga_lib/tests/parser/hdl/../resources/vhdl/neorv32_core/neorv32_cpu_decompressor.vhd
+
+Entity: neorv32_cpu_decompressor
+Ports (2):
+  - instr_i : in std_ulogic_vector(15 downto 0)
+  - instr_o : out std_ulogic_vector(31 downto 0)
+
+Generated VHDL:
+library ieee;
+use ieee.std_logic_1164.all;
+
+entity neorv32_cpu_decompressor is
+    port (
+        instr_i : in std_ulogic_vector(15 downto 0);
+        instr_o : out std_ulogic_vector(31 downto 0)
+    );
+end entity neorv32_cpu_decompressor;
+Validation: ✅ PASS

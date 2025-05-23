@@ -1,0 +1,51 @@
+File: neorv32_slink.vhd
+Original file: /Users/bachleviet/workspace/fpga_lib/fpga_lib/tests/parser/hdl/../resources/vhdl/neorv32_core/neorv32_slink.vhd
+
+Entity: neorv32_slink
+Ports (16):
+  - clk_i : in std_ulogic
+  - rstn_i : in std_ulogic
+  - bus_req_i : in bus_req_t
+  - bus_rsp_o : out bus_rsp_t
+  - rx_irq_o : out std_ulogic
+  - tx_irq_o : out std_ulogic
+  - slink_rx_data_i : in std_ulogic_vector(31 downto 0)
+  - slink_rx_src_i : in std_ulogic_vector(3 downto 0)
+  - slink_rx_valid_i : in std_ulogic
+  - slink_rx_last_i : in std_ulogic
+  - slink_rx_ready_o : out std_ulogic
+  - slink_tx_data_o : out std_ulogic_vector(31 downto 0)
+  - slink_tx_dst_o : out std_ulogic_vector(3 downto 0)
+  - slink_tx_valid_o : out std_ulogic
+  - slink_tx_last_o : out std_ulogic
+  - slink_tx_ready_i : in std_ulogic
+
+Generated VHDL:
+library ieee;
+use ieee.std_logic_1164.all;
+
+entity neorv32_slink is
+    generic (
+        SLINK_RX_FIFO : natural range 1 to 2**15;
+        SLINK_TX_FIFO : natural range 1 to 2**15
+    );
+    port (
+        clk_i : in std_ulogic;
+        rstn_i : in std_ulogic;
+        bus_req_i : in bus_req_t;
+        bus_rsp_o : out bus_rsp_t;
+        rx_irq_o : out std_ulogic;
+        tx_irq_o : out std_ulogic;
+        slink_rx_data_i : in std_ulogic_vector(31 downto 0);
+        slink_rx_src_i : in std_ulogic_vector(3 downto 0);
+        slink_rx_valid_i : in std_ulogic;
+        slink_rx_last_i : in std_ulogic;
+        slink_rx_ready_o : out std_ulogic;
+        slink_tx_data_o : out std_ulogic_vector(31 downto 0);
+        slink_tx_dst_o : out std_ulogic_vector(3 downto 0);
+        slink_tx_valid_o : out std_ulogic;
+        slink_tx_last_o : out std_ulogic;
+        slink_tx_ready_i : in std_ulogic
+    );
+end entity neorv32_slink;
+Validation: ✅ PASS

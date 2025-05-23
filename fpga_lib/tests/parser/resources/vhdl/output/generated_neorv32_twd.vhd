@@ -1,0 +1,22 @@
+library ieee;
+use ieee.std_logic_1164.all;
+
+entity neorv32_twd is
+    generic (
+        TWD_RX_FIFO : natural range 1 to 2**15;
+        TWD_TX_FIFO : natural range 1 to 2**15
+    );
+    port (
+        clk_i : in std_ulogic;
+        rstn_i : in std_ulogic;
+        bus_req_i : in bus_req_t;
+        bus_rsp_o : out bus_rsp_t;
+        clkgen_en_o : out std_ulogic;
+        clkgen_i : in std_ulogic_vector(7 downto 0);
+        twd_sda_i : in std_ulogic;
+        twd_sda_o : out std_ulogic;
+        twd_scl_i : in std_ulogic;
+        twd_scl_o : out std_ulogic;
+        irq_o : out std_ulogic
+    );
+end entity neorv32_twd;

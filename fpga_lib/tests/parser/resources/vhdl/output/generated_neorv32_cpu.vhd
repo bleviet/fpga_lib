@@ -1,0 +1,63 @@
+library ieee;
+use ieee.std_logic_1164.all;
+
+entity neorv32_cpu is
+    generic (
+        HART_ID : natural range 0 to 1023;
+        BOOT_ADDR : std_ulogic_vector(31 downto 0);
+        DEBUG_PARK_ADDR : std_ulogic_vector(31 downto 0);
+        DEBUG_EXC_ADDR : std_ulogic_vector(31 downto 0);
+        ICC_EN : boolean;
+        RISCV_ISA_C : boolean;
+        RISCV_ISA_E : boolean;
+        RISCV_ISA_M : boolean;
+        RISCV_ISA_U : boolean;
+        RISCV_ISA_Zaamo : boolean;
+        RISCV_ISA_Zalrsc : boolean;
+        RISCV_ISA_Zba : boolean;
+        RISCV_ISA_Zbb : boolean;
+        RISCV_ISA_Zbkb : boolean;
+        RISCV_ISA_Zbkc : boolean;
+        RISCV_ISA_Zbkx : boolean;
+        RISCV_ISA_Zbs : boolean;
+        RISCV_ISA_Zfinx : boolean;
+        RISCV_ISA_Zicntr : boolean;
+        RISCV_ISA_Zicond : boolean;
+        RISCV_ISA_Zihpm : boolean;
+        RISCV_ISA_Zknd : boolean;
+        RISCV_ISA_Zkne : boolean;
+        RISCV_ISA_Zknh : boolean;
+        RISCV_ISA_Zksed : boolean;
+        RISCV_ISA_Zksh : boolean;
+        RISCV_ISA_Zmmul : boolean;
+        RISCV_ISA_Zxcfu : boolean;
+        RISCV_ISA_Sdext : boolean;
+        RISCV_ISA_Sdtrig : boolean;
+        RISCV_ISA_Smpmp : boolean;
+        CPU_FAST_MUL_EN : boolean;
+        CPU_FAST_SHIFT_EN : boolean;
+        CPU_RF_HW_RST_EN : boolean;
+        PMP_NUM_REGIONS : natural range 0 to 16;
+        PMP_MIN_GRANULARITY : natural;
+        PMP_TOR_MODE_EN : boolean;
+        PMP_NAP_MODE_EN : boolean;
+        HPM_NUM_CNTS : natural range 0 to 13;
+        HPM_CNT_WIDTH : natural range 0 to 64
+    );
+    port (
+        clk_i : in std_ulogic;
+        rstn_i : in std_ulogic;
+        msi_i : in std_ulogic;
+        mei_i : in std_ulogic;
+        mti_i : in std_ulogic;
+        firq_i : in std_ulogic_vector(15 downto 0);
+        dbi_i : in std_ulogic;
+        icc_tx_o : out icc_t;
+        icc_rx_i : in icc_t;
+        ibus_req_o : out bus_req_t;
+        ibus_rsp_i : in bus_rsp_t;
+        dbus_req_o : out bus_req_t;
+        dbus_rsp_i : in bus_rsp_t;
+        mem_sync_i : in std_ulogic
+    );
+end entity neorv32_cpu;

@@ -73,6 +73,36 @@ verilog_ip_core = verilog_result["module"]
 
 This project uses pytest for testing. There are several test cases covering different components of the library.
 
+### Using the Makefile (Recommended)
+
+The easiest way to run tests is using the provided Makefile:
+
+```bash
+# See all available commands
+make help
+
+# Run all tests
+make test
+
+# Run tests with verbose output
+make test-verbose
+
+# Run tests with coverage reporting
+make test-coverage
+
+# Run specific test modules
+make test-vhdl-parser      # VHDL parser tests only
+make test-verilog-parser   # Verilog parser tests only
+make test-core             # IP core tests only
+make test-generator        # Generator tests only
+make test-parser           # All parser tests
+make test-roundtrip        # HDL roundtrip tests
+```
+
+### Running Tests Manually
+
+You can also run tests directly with pytest:
+
 ### Running All Tests
 
 To run all tests:
