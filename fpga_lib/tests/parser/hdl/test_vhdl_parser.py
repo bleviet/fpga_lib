@@ -21,7 +21,7 @@ class TestVHDLParser:
         vhdl_code = """
         library IEEE;
         use IEEE.std_logic_1164.all;
-    
+
         entity counter is
             port (
                 clk     : in std_logic;
@@ -62,7 +62,7 @@ class TestVHDLParser:
         library IEEE;
         use IEEE.std_logic_1164.all;
         use IEEE.numeric_std.all;
-    
+
         entity counter is
             port (
                 clk     : in std_logic;
@@ -71,7 +71,7 @@ class TestVHDLParser:
                 count   : out std_logic_vector(7 downto 0)
             );
         end entity counter;
-    
+
         architecture behavioral of counter is
             signal count_internal : unsigned(7 downto 0);
         begin
@@ -85,7 +85,7 @@ class TestVHDLParser:
                     end if;
                 end if;
             end process;
-    
+
             count <= std_logic_vector(count_internal);
         end architecture behavioral;
         """

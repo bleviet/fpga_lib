@@ -31,7 +31,7 @@ end architecture simple_ip_arch;
 
         generated_vhdl = generate_vhdl(simple_core)
         self.assertEqual(generated_vhdl, expected_vhdl)
-        
+
     def test_generate_entity_with_datatype_objects(self) -> None:
         # Test with DataType objects
         complex_core = IPCore(name="complex_ip")
