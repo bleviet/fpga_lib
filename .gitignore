@@ -32,6 +32,10 @@ tmp/
 temp/
 *.tmp
 
+# Test coverage reports
+.coverage
+htmlcov/
+
 # Dependencies (can vary based on setup)
 # requirements.txt # Usually you track this file
 # Dependency folders if you store them locally
