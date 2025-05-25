@@ -3,10 +3,12 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Optional, Any, List, Dict, Union
 
+
 class VHDLBaseType(Enum):
     """
     Enumeration of VHDL base types.
     """
+
     STD_LOGIC = "std_logic"
     STD_LOGIC_VECTOR = "std_logic_vector"
     UNSIGNED = "unsigned"
@@ -19,7 +21,7 @@ class VHDLBaseType(Enum):
     POSITIVE = "positive"
 
     @classmethod
-    def from_string(cls, type_str: str) -> 'VHDLBaseType':
+    def from_string(cls, type_str: str) -> "VHDLBaseType":
         """
         Convert a string to a VHDLBaseType enum.
         Handles case-insensitive conversion.
@@ -36,6 +38,7 @@ class VHDLBaseType(Enum):
             # Default to std_logic if unknown
             return cls.STD_LOGIC
 
+
 @dataclass
 class DataType:
     """
@@ -46,6 +49,7 @@ class DataType:
         range_constraint: Optional range constraint (e.g., "7 downto 0")
         array_dimensions: Optional array dimensions
     """
+
     base_type: Union[VHDLBaseType, str]
     range_constraint: Optional[str] = None
     array_dimensions: Optional[List[str]] = None
@@ -90,7 +94,10 @@ class DataType:
         if isinstance(self.base_type, VHDLBaseType):
             if self.base_type == VHDLBaseType.STD_LOGIC:
                 return "wire"
-            elif self.base_type == VHDLBaseType.STD_LOGIC_VECTOR and self.range_constraint:
+            elif (
+                self.base_type == VHDLBaseType.STD_LOGIC_VECTOR
+                and self.range_constraint
+            ):
                 # Parse range like "7 downto 0" -> "[7:0]"
                 try:
                     parts = self.range_constraint.split()
@@ -103,28 +110,34 @@ class DataType:
         # Default case
         return "wire"
 
+
 @dataclass
 class BitType(DataType):
     """
     Represents a bit data type (std_logic in VHDL).
     """
+
     def __init__(self):
         super().__init__(VHDLBaseType.STD_LOGIC)
+
 
 @dataclass
 class VectorType(DataType):
     """
     Represents a vector data type.
     """
+
     def __init__(self, width: int = 1):
         range_str = f"{width-1} downto 0" if width > 1 else None
         super().__init__(VHDLBaseType.STD_LOGIC_VECTOR, range_str)
         self.width = width
+
 
 @dataclass
 class IntegerType(DataType):
     """
     Represents an integer data type.
     """
+
     def __init__(self):
         super().__init__(VHDLBaseType.INTEGER)

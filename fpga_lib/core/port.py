@@ -5,24 +5,29 @@ from enum import Enum
 if TYPE_CHECKING:
     from .data_types import DataType
 
+
 class PortDirection(str, Enum):
     """
     Enum for port directions.
     """
+
     IN = "in"
     OUT = "out"
     INOUT = "inout"
     BUFFER = "buffer"
     LINKAGE = "linkage"
 
+
 # Alias for compatibility with parser code
 Direction = PortDirection
+
 
 @dataclass
 class Port:
     """
     Represents a port with its attributes and behaviors.
     """
+
     name: str
     direction: PortDirection
     type: Union[str, "DataType"]  # Forward reference to DataType
@@ -59,8 +64,8 @@ class Port:
             PortDirection.IN: "input",
             PortDirection.OUT: "output",
             PortDirection.INOUT: "inout",
-            PortDirection.BUFFER: "output", # No direct buffer in Verilog
-            PortDirection.LINKAGE: "inout"  # No direct linkage in Verilog
+            PortDirection.BUFFER: "output",  # No direct buffer in Verilog
+            PortDirection.LINKAGE: "inout",  # No direct linkage in Verilog
         }
 
         verilog_dir = direction_map.get(self.direction, "input")

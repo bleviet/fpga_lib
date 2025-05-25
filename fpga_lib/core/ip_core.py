@@ -5,10 +5,13 @@ from .interface import Interface, AXILiteInterface, AXIStreamInterface
 from .data_types import DataType, VectorType
 from fpga_lib.core.port import Port, PortDirection
 
+
 class PortDefault:
     """Optional default value for a port."""
+
     def __init__(self, value: Any = None):
         self.value = value
+
 
 @dataclass
 class Parameter:
@@ -16,11 +19,13 @@ class Parameter:
     value: Any
     type: Optional[str] = None
 
+
 @dataclass
 class IPCore:
     """
     Base class for IP cores.
     """
+
     vendor: str = ""
     library: str = ""
     name: str = "generic_ip_core"  # Default IP core name
@@ -34,7 +39,14 @@ class IPCore:
     def __post_init__(self):
         pass
 
-    def add_port(self, name: str, direction: str, data_type: Union[str, DataType], width: int = 1, default: Any = None) -> None:
+    def add_port(
+        self,
+        name: str,
+        direction: str,
+        data_type: Union[str, DataType],
+        width: int = 1,
+        default: Any = None,
+    ) -> None:
         """
         Adds a port to the IP core. Supports all VHDL directions and default values.
         Args:
@@ -48,8 +60,12 @@ class IPCore:
         """
         valid_directions = [d.value for d in PortDirection] + ["inout", "buffer"]
         if direction.lower() not in valid_directions:
-            self.errors.append(f"Invalid port direction: {direction}. Must be one of {valid_directions}.")
-            raise ValueError(f"Invalid port direction: {direction}. Must be one of {valid_directions}.")
+            self.errors.append(
+                f"Invalid port direction: {direction}. Must be one of {valid_directions}."
+            )
+            raise ValueError(
+                f"Invalid port direction: {direction}. Must be one of {valid_directions}."
+            )
         # Normalize port name for duplicate check
         norm_name = name.lower()
         if any(port.name.lower() == norm_name for port in self.ports):
@@ -57,7 +73,16 @@ class IPCore:
             raise ValueError(f"Duplicate port name: {name}")
         if isinstance(data_type, VectorType):
             width = data_type.width
-        port = Port(name=name, direction=PortDirection(direction.lower()) if direction.lower() in [d.value for d in PortDirection] else direction.lower(), type=data_type, width=width if width else 1)
+        port = Port(
+            name=name,
+            direction=(
+                PortDirection(direction.lower())
+                if direction.lower() in [d.value for d in PortDirection]
+                else direction.lower()
+            ),
+            type=data_type,
+            width=width if width else 1,
+        )
         port.default = PortDefault(default) if default is not None else None
         self.ports.append(port)
 
@@ -108,7 +133,14 @@ class IPCore:
                 return True
         return False
 
-    def modify_port(self, name: str, direction: str = None, data_type: Union[str, DataType] = None, width: int = None, default: Any = None) -> bool:
+    def modify_port(
+        self,
+        name: str,
+        direction: str = None,
+        data_type: Union[str, DataType] = None,
+        width: int = None,
+        default: Any = None,
+    ) -> bool:
         """
         Modifies an existing port in the IP core.
         Args:
@@ -126,11 +158,22 @@ class IPCore:
         for port in self.ports:
             if port.name.lower() == norm_name:
                 if direction is not None:
-                    valid_directions = [d.value for d in PortDirection] + ["inout", "buffer"]
+                    valid_directions = [d.value for d in PortDirection] + [
+                        "inout",
+                        "buffer",
+                    ]
                     if direction.lower() not in valid_directions:
-                        self.errors.append(f"Invalid port direction: {direction}. Must be one of {valid_directions}.")
-                        raise ValueError(f"Invalid port direction: {direction}. Must be one of {valid_directions}.")
-                    port.direction = PortDirection(direction.lower()) if direction.lower() in [d.value for d in PortDirection] else direction.lower()
+                        self.errors.append(
+                            f"Invalid port direction: {direction}. Must be one of {valid_directions}."
+                        )
+                        raise ValueError(
+                            f"Invalid port direction: {direction}. Must be one of {valid_directions}."
+                        )
+                    port.direction = (
+                        PortDirection(direction.lower())
+                        if direction.lower() in [d.value for d in PortDirection]
+                        else direction.lower()
+                    )
                 if data_type is not None:
                     port.type = data_type
                 if width is not None:
@@ -165,7 +208,11 @@ class IPCore:
         if interface in self.interfaces:
             # Remove ports associated with this interface
             interface_port_names = {port.name.lower() for port in interface.ports}
-            self.ports = [port for port in self.ports if port.name.lower() not in interface_port_names]
+            self.ports = [
+                port
+                for port in self.ports
+                if port.name.lower() not in interface_port_names
+            ]
             self.interfaces.remove(interface)
             return True
         return False
@@ -185,8 +232,9 @@ class IPCore:
             "ports": [port.__dict__ for port in self.ports],
             "parameters": {k: v.__dict__ for k, v in self.parameters.items()},
             "interfaces": [str(interface) for interface in self.interfaces],
-            "errors": self.errors
+            "errors": self.errors,
         }
+
 
 # Examples of IP cores with interfaces
 @dataclass
@@ -194,8 +242,9 @@ class RAM(IPCore):
     """
     RAM IP core.
     """
-    depth: int = 1024   # Default depth
-    width: int = 32     # Default width
+
+    depth: int = 1024  # Default depth
+    width: int = 32  # Default width
     technology: str = "Generic"
     vendor: str = "my_company"
     library: str = "memory_blocks"
@@ -205,23 +254,25 @@ class RAM(IPCore):
     def __post_init__(self):
         super().__post_init__()
         address_width = (self.depth - 1).bit_length() if self.depth > 1 else 1
-        if not any(port.name == 'clk' for port in self.ports):
+        if not any(port.name == "clk" for port in self.ports):
             self.add_port("clk", "in", "std_logic")
-        if not any(port.name == 'addr' for port in self.ports):
+        if not any(port.name == "addr" for port in self.ports):
             self.add_port("addr", "in", "std_logic", width=address_width)
-        if not any(port.name == 'din' for port in self.ports):
+        if not any(port.name == "din" for port in self.ports):
             self.add_port("din", "in", "std_logic_vector", width=self.width)
-        if not any(port.name == 'dout' for port in self.ports):
+        if not any(port.name == "dout" for port in self.ports):
             self.add_port("dout", "out", "std_logic_vector", width=self.width)
         self.add_interface(AXILiteInterface(name="s_axi"))
+
 
 @dataclass
 class FIFO(IPCore):
     """
     FIFO IP core.
     """
-    depth: int = 64     # Default depth
-    width: int = 8      # Default width
+
+    depth: int = 64  # Default depth
+    width: int = 8  # Default width
     almost_full_threshold: int = 0
     vendor: str = "my_company"
     library: str = "fifo_blocks"
@@ -230,19 +281,19 @@ class FIFO(IPCore):
 
     def __post_init__(self):
         super().__post_init__()
-        if not any(port.name == 'clk' for port in self.ports):
+        if not any(port.name == "clk" for port in self.ports):
             self.add_port("clk", "in", "std_logic")
-        if not any(port.name == 'wr_en' for port in self.ports):
+        if not any(port.name == "wr_en" for port in self.ports):
             self.add_port("wr_en", "in", "std_logic")
-        if not any(port.name == 'rd_en' for port in self.ports):
+        if not any(port.name == "rd_en" for port in self.ports):
             self.add_port("rd_en", "in", "std_logic")
-        if not any(port.name == 'din' for port in self.ports):
+        if not any(port.name == "din" for port in self.ports):
             self.add_port("din", "in", "std_logic_vector", width=self.width)
-        if not any(port.name == 'dout' for port in self.ports):
+        if not any(port.name == "dout" for port in self.ports):
             self.add_port("dout", "out", "std_logic_vector", width=self.width)
-        if not any(port.name == 'full' for port in self.ports):
+        if not any(port.name == "full" for port in self.ports):
             self.add_port("full", "out", "std_logic")
-        if not any(port.name == 'empty' for port in self.ports):
+        if not any(port.name == "empty" for port in self.ports):
             self.add_port("empty", "out", "std_logic")
         self.add_interface(AXIStreamInterface(name="s_axis"))
         self.add_interface(AXIStreamInterface(name="m_axis"))

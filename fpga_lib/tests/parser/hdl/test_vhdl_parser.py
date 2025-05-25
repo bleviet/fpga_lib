@@ -1,6 +1,7 @@
 """
 Test cases for the VHDL parser module.
 """
+
 import os
 import difflib
 import pytest
@@ -170,11 +171,11 @@ end entity counter;
         assert len(result["entity"].parameters) == 2
         assert "WIDTH" in result["entity"].parameters
         assert "RESET_VALUE" in result["entity"].parameters
-        
+
         # Check generic types
         width_param = result["entity"].parameters["WIDTH"]
         assert width_param.type == "natural"
-        
+
         reset_value_param = result["entity"].parameters["RESET_VALUE"]
         assert "std_logic_vector" in reset_value_param.type
 
@@ -192,11 +193,18 @@ end entity counter;
     def test_parse_neorv32_cfs_with_generics(self):
         """Test parsing the actual neorv32_cfs.vhd file that has generics."""
         parser = VHDLParser()
-        
+
         # Use the actual neorv32_cfs.vhd file from the test resources
-        file_path = os.path.join(os.path.dirname(__file__), "..", "resources", "vhdl", "neorv32_core", "neorv32_cfs.vhd")
+        file_path = os.path.join(
+            os.path.dirname(__file__),
+            "..",
+            "resources",
+            "vhdl",
+            "neorv32_core",
+            "neorv32_cfs.vhd",
+        )
         result = parser.parse_file(file_path)
-        
+
         # Verify entity was parsed
         assert result["entity"] is not None
         assert isinstance(result["entity"], IPCore)
@@ -207,14 +215,14 @@ end entity counter;
         assert "CFS_CONFIG" in result["entity"].parameters
         assert "CFS_IN_SIZE" in result["entity"].parameters
         assert "CFS_OUT_SIZE" in result["entity"].parameters
-        
+
         # Check generic types
         cfs_config = result["entity"].parameters["CFS_CONFIG"]
         assert "std_ulogic_vector" in cfs_config.type
-        
+
         cfs_in_size = result["entity"].parameters["CFS_IN_SIZE"]
         assert cfs_in_size.type == "natural"
-        
+
         cfs_out_size = result["entity"].parameters["CFS_OUT_SIZE"]
         assert cfs_out_size.type == "natural"
 
@@ -224,4 +232,4 @@ end entity counter;
 
     def _normalize_whitespace(self, text):
         """Normalize whitespace for comparison."""
-        return ' '.join(text.replace("\n", " ").split())
+        return " ".join(text.replace("\n", " ").split())

@@ -5,6 +5,7 @@ from fpga_lib.core.ip_core import IPCore, RAM, FIFO, Parameter
 from fpga_lib.core.port import Port, PortDirection
 from fpga_lib.core.interface import Interface
 
+
 class TestIPCore(unittest.TestCase):
     def test_ipcore_creation(self) -> None:
         ip_core = IPCore(name="generic_ip")
@@ -20,11 +21,22 @@ class TestIPCore(unittest.TestCase):
         ip_core = IPCore(name="test_core")
         ip_core.add_port("clk", "in", "std_logic")
         self.assertEqual(len(ip_core.ports), 1)
-        self.assertEqual(ip_core.ports[0], Port(name="clk", direction=PortDirection.IN, type="std_logic", width=1))
+        self.assertEqual(
+            ip_core.ports[0],
+            Port(name="clk", direction=PortDirection.IN, type="std_logic", width=1),
+        )
 
         ip_core.add_port("data_in", "in", "std_logic_vector", width=8)
         self.assertEqual(len(ip_core.ports), 2)
-        self.assertEqual(ip_core.ports[1], Port(name="data_in", direction=PortDirection.IN, type="std_logic_vector", width=8))
+        self.assertEqual(
+            ip_core.ports[1],
+            Port(
+                name="data_in",
+                direction=PortDirection.IN,
+                type="std_logic_vector",
+                width=8,
+            ),
+        )
 
     def test_ipcore_add_port_all_directions(self) -> None:
         ip_core = IPCore(name="test_core")
@@ -43,15 +55,17 @@ class TestIPCore(unittest.TestCase):
         ip_core = IPCore(name="test_core")
         ip_core.add_port("clk", "in", "std_logic")
         with self.assertRaises(ValueError):
-            ip_core.add_port("CLK", "in", "std_logic")  # Should raise due to duplicate (case-insensitive)
+            ip_core.add_port(
+                "CLK", "in", "std_logic"
+            )  # Should raise due to duplicate (case-insensitive)
 
     def test_ipcore_add_port_with_default(self) -> None:
         ip_core = IPCore(name="test_core")
-        ip_core.add_port("rst", "in", "std_logic", default='0')
+        ip_core.add_port("rst", "in", "std_logic", default="0")
         port = ip_core.get_port("rst")
         self.assertIsNotNone(port)
-        self.assertTrue(hasattr(port, 'default'))
-        self.assertEqual(port.default.value, '0')
+        self.assertTrue(hasattr(port, "default"))
+        self.assertEqual(port.default.value, "0")
 
     def test_ipcore_add_parameter(self) -> None:
         ip_core = IPCore(name="test_core")
@@ -96,9 +110,18 @@ class TestIPCore(unittest.TestCase):
 
     def test_ipcore_remove_interface_and_ports(self) -> None:
         ip_core = IPCore(name="test_core")
-        iface = Interface(name="bus", interface_type="custom", ports=[
-            Port(name="bus_clk", direction=PortDirection.IN, type="std_logic", width=1)
-        ])
+        iface = Interface(
+            name="bus",
+            interface_type="custom",
+            ports=[
+                Port(
+                    name="bus_clk",
+                    direction=PortDirection.IN,
+                    type="std_logic",
+                    width=1,
+                )
+            ],
+        )
         ip_core.add_interface(iface)
         self.assertTrue(any(p.name == "bus_clk" for p in ip_core.ports))
         ip_core.remove_interface(iface)
@@ -117,11 +140,12 @@ class TestIPCore(unittest.TestCase):
     def test_ipcore_modify_port(self) -> None:
         ip_core = IPCore(name="test_core")
         ip_core.add_port("data", "in", "std_logic_vector", width=8)
-        ip_core.modify_port("data", direction="out", width=16, default='Z')
+        ip_core.modify_port("data", direction="out", width=16, default="Z")
         port = ip_core.get_port("data")
         self.assertEqual(port.direction, PortDirection.OUT)
         self.assertEqual(port.width, 16)
-        self.assertEqual(port.default.value, 'Z')
+        self.assertEqual(port.default.value, "Z")
+
 
 class TestRAM(unittest.TestCase):
     def test_ram_creation(self) -> None:
@@ -132,10 +156,17 @@ class TestRAM(unittest.TestCase):
         self.assertEqual(ram.version, "2.0")
         self.assertEqual(ram.depth, 1024)
         self.assertEqual(ram.width, 32)
-        self.assertTrue(any(port.name == 'clk' for port in ram.ports))
-        self.assertTrue(any(port.name == 'addr' and port.width == 10 for port in ram.ports))
-        self.assertTrue(any(port.name == 'din' and port.width == 32 for port in ram.ports))
-        self.assertTrue(any(port.name == 'dout' and port.width == 32 for port in ram.ports))
+        self.assertTrue(any(port.name == "clk" for port in ram.ports))
+        self.assertTrue(
+            any(port.name == "addr" and port.width == 10 for port in ram.ports)
+        )
+        self.assertTrue(
+            any(port.name == "din" and port.width == 32 for port in ram.ports)
+        )
+        self.assertTrue(
+            any(port.name == "dout" and port.width == 32 for port in ram.ports)
+        )
+
 
 class TestFIFO(unittest.TestCase):
     def test_fifo_creation(self) -> None:
@@ -147,13 +178,18 @@ class TestFIFO(unittest.TestCase):
         self.assertEqual(fifo.depth, 64)
         self.assertEqual(fifo.width, 16)
         self.assertEqual(fifo.almost_full_threshold, 50)
-        self.assertTrue(any(port.name == 'clk' for port in fifo.ports))
-        self.assertTrue(any(port.name == 'wr_en' for port in fifo.ports))
-        self.assertTrue(any(port.name == 'rd_en' for port in fifo.ports))
-        self.assertTrue(any(port.name == 'din' and port.width == 16 for port in fifo.ports))
-        self.assertTrue(any(port.name == 'dout' and port.width == 16 for port in fifo.ports))
-        self.assertTrue(any(port.name == 'full' for port in fifo.ports))
-        self.assertTrue(any(port.name == 'empty' for port in fifo.ports))
+        self.assertTrue(any(port.name == "clk" for port in fifo.ports))
+        self.assertTrue(any(port.name == "wr_en" for port in fifo.ports))
+        self.assertTrue(any(port.name == "rd_en" for port in fifo.ports))
+        self.assertTrue(
+            any(port.name == "din" and port.width == 16 for port in fifo.ports)
+        )
+        self.assertTrue(
+            any(port.name == "dout" and port.width == 16 for port in fifo.ports)
+        )
+        self.assertTrue(any(port.name == "full" for port in fifo.ports))
+        self.assertTrue(any(port.name == "empty" for port in fifo.ports))
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

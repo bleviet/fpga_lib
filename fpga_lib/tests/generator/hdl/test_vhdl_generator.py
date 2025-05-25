@@ -5,6 +5,7 @@ from fpga_lib.core.ip_core import IPCore
 from fpga_lib.generator.hdl.vhdl_generator import generate_vhdl
 from fpga_lib.core.data_types import BitType, VectorType
 
+
 class TestVHDLGenerator(unittest.TestCase):
     def test_generate_simple_entity(self) -> None:
         # Test with string data types
@@ -63,5 +64,6 @@ end architecture complex_ip_arch;
             print(f"Port: {port.name}, Width: {port.width}, Type: {port.type}")
         self.assertEqual(generated_vhdl, expected_vhdl)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

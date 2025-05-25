@@ -7,6 +7,7 @@
 .PHONY: help test test-all test-verbose test-coverage clean install install-dev
 .PHONY: test-vhdl test-verilog test-core test-generator test-parser test-roundtrip
 .PHONY: test-vhdl-parser test-verilog-parser test-vhdl-generator test-ip-core
+.PHONY: lint format format-check type-check quality tox build
 
 help:
 	@echo "fpga_lib Makefile Commands:"
@@ -16,6 +17,7 @@ help:
 	@echo "  make test-all          - Run all tests (alias for test)"
 	@echo "  make test-verbose      - Run all tests with verbose output"
 	@echo "  make test-coverage     - Run tests with coverage reporting"
+	@echo "  make tox               - Run tests in multiple Python versions"
 	@echo ""
 	@echo "Individual Test Modules:"
 	@echo "  make test-core         - Run IP core tests"
@@ -30,10 +32,18 @@ help:
 	@echo "Specific Generator Tests:"
 	@echo "  make test-vhdl-generator - Run VHDL generator tests"
 	@echo ""
+	@echo "Code Quality Commands:"
+	@echo "  make lint              - Run code linting (flake8)"
+	@echo "  make format            - Format code with black"
+	@echo "  make type-check        - Run type checking with mypy"
+	@echo "  make quality           - Run all quality checks"
+	@echo ""
 	@echo "Development Commands:"
 	@echo "  make install           - Install package in editable mode"
 	@echo "  make install-dev       - Install package with development dependencies"
 	@echo "  make clean             - Remove Python cache files"
+	@echo "  make build             - Build distribution packages"
+	@echo
 	@echo ""
 	@echo "Usage Examples:"
 	@echo "  make test              # Quick test run"
@@ -82,12 +92,11 @@ test-ip-core:
 
 # Development commands
 install:
-	pip install -e .
+	pip install -r requirements.txt
 
 install-dev:
-	pip install -e .
 	pip install -r requirements.txt
-	pip install pytest pytest-cov
+	pip install -r requirements-dev.txt
 
 clean:
 	find . -type f -name "*.pyc" -delete
@@ -134,3 +143,26 @@ test-neorv32:
 test-generics:
 	python -m pytest fpga_lib/tests/parser/hdl/test_vhdl_parser.py::TestVHDLParser::test_parse_entity_with_generics -v
 	python -m pytest fpga_lib/tests/parser/hdl/test_vhdl_parser.py::TestVHDLParser::test_parse_neorv32_cfs_with_generics -v
+
+# Code quality commands
+lint:
+	flake8 fpga_lib
+
+format:
+	black fpga_lib
+
+format-check:
+	black --check fpga_lib
+
+type-check:
+	mypy fpga_lib
+
+quality: lint format-check type-check
+	@echo "All quality checks passed!"
+
+# Advanced development commands
+tox:
+	tox
+
+build:
+	python -m build
