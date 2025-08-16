@@ -1,0 +1,116 @@
+name: "UART Controller"
+description: "High-speed UART with FIFO buffers"
+base_address: 0x40001000
+
+registers:
+  - name: control
+    offset: 0x00
+    description: "UART control register"
+    fields:
+      - name: enable
+        bit: 0
+        access: rw
+        description: "UART enable"
+      - name: parity_enable
+        bit: 1
+        access: rw
+        description: "Parity enable"
+      - name: parity_odd
+        bit: 2
+        access: rw
+        description: "Odd parity (0=even, 1=odd)"
+      - name: stop_bits
+        bit: 3
+        access: rw
+        description: "Stop bits (0=1 bit, 1=2 bits)"
+      - name: data_bits
+        bits: '[5:4]'
+        access: rw
+        description: "Data bits (0=5, 1=6, 2=7, 3=8)"
+      - name: flow_control
+        bits: '[7:6]'
+        access: rw
+        description: "Flow control (0=none, 1=RTS/CTS)"
+
+  - name: status
+    offset: 0x04
+    description: "UART status register"
+    fields:
+      - name: tx_ready
+        bit: 0
+        access: r
+        description: "Transmitter ready"
+      - name: rx_valid
+        bit: 1
+        access: r
+        description: "Receiver data valid"
+      - name: tx_empty
+        bit: 2
+        access: r
+        description: "Transmit buffer empty"
+      - name: rx_full
+        bit: 3
+        access: r
+        description: "Receive buffer full"
+      - name: parity_error
+        bit: 4
+        access: r
+        description: "Parity error flag"
+      - name: frame_error
+        bit: 5
+        access: r
+        description: "Frame error flag"
+      - name: overrun_error
+        bit: 6
+        access: r
+        description: "Overrun error flag"
+
+  - name: baud_rate
+    offset: 0x08
+    description: "Baud rate configuration"
+    fields:
+      - name: divisor
+        bits: '[15:0]'
+        access: rw
+        description: "Baud rate divisor"
+      - name: prescaler
+        bits: '[23:16]'
+        access: rw
+        description: "Clock prescaler"
+
+  - name: tx_data
+    offset: 0x0C
+    description: "Transmit data register"
+    fields:
+      - name: data
+        bits: '[7:0]'
+        access: w
+        description: "Transmit data"
+
+  - name: rx_data
+    offset: 0x10
+    description: "Receive data register"
+    fields:
+      - name: data
+        bits: '[7:0]'
+        access: r
+        description: "Received data"
+
+  - name: fifo_buffers
+    offset: 0x200
+    count: 16
+    stride: 8
+    description: "FIFO buffer entries"
+    fields:
+      - name: tx_data
+        bits: '[7:0]'
+        access: rw
+        description: "TX FIFO data"
+      - name: rx_data
+        bits: '[15:8]'
+        access: r
+        description: "RX FIFO data"
+      - name: valid
+        bit: 31
+        access: rw
+        description: "Entry valid flag"
