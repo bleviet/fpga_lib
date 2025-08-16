@@ -7,7 +7,7 @@ operations, field validation, and access control.
 """
 
 from dataclasses import dataclass
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
 from abc import ABC, abstractmethod
 
 
@@ -342,3 +342,163 @@ class Register:
         """Detailed string representation of the register."""
         field_names = ', '.join(self._fields.keys())
         return f"Register(name='{self.name}', offset=0x{self.offset:04X}, fields=[{field_names}])"
+
+    def __getattr__(self, name: str):
+        """Dynamic field access for reading field values."""
+        if name.startswith('_'):
+            raise AttributeError(f"'{type(self).__name__}' object has no attribute '{name}'")
+
+        if name not in self._fields:
+            raise AttributeError(f"Register '{self.name}' has no field named '{name}'")
+
+        field = self._fields[name]
+
+        # Create a property-like object for this field
+        class FieldProperty:
+            def __init__(self, register, field):
+                self._register = register
+                self._field = field
+
+            def read(self):
+                if self._field.access == 'w':
+                    raise ValueError(f"Field '{self._field.name}' is write-only")
+                reg_value = self._register.read()
+                mask = ((1 << self._field.width) - 1) << self._field.offset
+                return (reg_value & mask) >> self._field.offset
+
+            def write(self, value):
+                if self._field.access == 'r':
+                    raise ValueError(f"Field '{self._field.name}' is read-only")
+
+                if value > ((1 << self._field.width) - 1):
+                    raise ValueError(f"Value {value} exceeds field width {self._field.width}")
+
+                if self._field.access == 'rw':
+                    reg_value = self._register.read()
+                else:
+                    reg_value = 0
+
+                mask = ((1 << self._field.width) - 1) << self._field.offset
+                cleared_val = reg_value & ~mask
+                new_reg_value = cleared_val | ((value << self._field.offset) & mask)
+                self._register.write(new_reg_value)
+
+            def __int__(self):
+                return self.read()
+
+            def __index__(self):
+                return self.read()
+
+            def __format__(self, format_spec):
+                return format(self.read(), format_spec)
+
+            def __str__(self):
+                return str(self.read())
+
+            def __repr__(self):
+                return repr(self.read())
+
+        return FieldProperty(self, field)
+
+    def __setattr__(self, name: str, value):
+        """Dynamic field access for writing field values."""
+        if name.startswith('_') or name in ['name', 'offset', 'description']:
+            super().__setattr__(name, value)
+        elif hasattr(self, '_fields') and name in self._fields:
+            field_prop = getattr(self, name)
+            field_prop.write(value)
+        else:
+            super().__setattr__(name, value)
+
+
+class RegisterArrayAccessor:
+    """
+    Provides indexed access to a block of registers (Block RAM regions).
+
+    This class implements the register array functionality from the concept document,
+    enabling memory-efficient access to Block RAM regions with structured register
+    elements. Registers are created on-demand when accessed.
+
+    Features:
+    - On-demand register creation for memory efficiency
+    - Pythonic array indexing syntax (accessor[index])
+    - Bounds checking with meaningful error messages
+    - Configurable stride for different element sizes
+    - Compatible with any register field structure
+    """
+
+    def __init__(self, name: str, base_offset: int, count: int, stride: int,
+                 field_template: List[BitField], bus_interface: AbstractBusInterface):
+        """
+        Initialize a register array accessor.
+
+        Args:
+            name: Human-readable name of the register array
+            base_offset: Base address of the first array element
+            count: Number of elements in the array
+            stride: Byte offset between consecutive elements
+            field_template: List of BitField definitions used for each element
+            bus_interface: Bus interface for hardware communication
+        """
+        self._name = name
+        self._bus = bus_interface
+        self._base_offset = base_offset
+        self._count = count
+        self._stride = stride
+        self._field_template = field_template
+
+    def __getitem__(self, index: int) -> Register:
+        """
+        Access a specific element in the register array.
+
+        Args:
+            index: Array index (0-based)
+
+        Returns:
+            Register object for the specified array element
+
+        Raises:
+            IndexError: If index is out of bounds
+        """
+        if not (0 <= index < self._count):
+            raise IndexError(f"Index {index} out of bounds for array '{self._name}' of size {self._count}")
+
+        # Calculate the absolute address of the requested element
+        item_offset = self._base_offset + (index * self._stride)
+
+        # Create a Register object for this specific element on-the-fly
+        return Register(
+            name=f"{self._name}[{index}]",
+            offset=item_offset,
+            bus=self._bus,
+            fields=self._field_template,
+            description=f"Element {index} of {self._name} array"
+        )
+
+    def __len__(self) -> int:
+        """Get the number of elements in the array."""
+        return self._count
+
+    def get_info(self) -> Dict[str, Any]:
+        """
+        Get information about this register array.
+
+        Returns:
+            Dictionary containing array metadata
+        """
+        return {
+            'name': self._name,
+            'base_address': f"0x{self._base_offset:04X}",
+            'count': self._count,
+            'stride': self._stride,
+            'total_size': self._count * self._stride,
+            'address_range': f"0x{self._base_offset:04X} - 0x{self._base_offset + (self._count * self._stride) - 1:04X}"
+        }
+
+    def __str__(self) -> str:
+        """String representation of the register array."""
+        return f"RegisterArray('{self._name}', count={self._count}, stride={self._stride})"
+
+    def __repr__(self) -> str:
+        """Detailed string representation of the register array."""
+        return f"RegisterArrayAccessor(name='{self._name}', base=0x{self._base_offset:04X}, count={self._count}, stride={self._stride})"

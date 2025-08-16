@@ -55,6 +55,22 @@ registers:
     offset: 0x08
     description: "Input data FIFO."
     fields: # This register has no bit-fields, it's accessed as a whole
+
+  # --- Definition for a Block RAM region ---
+  - name: lut_entry
+    offset: 0x100      # Base address of the entire block RAM
+    count: 64          # There are 64 entries in this RAM
+    stride: 4          # Each entry is 4 bytes apart
+    description: "A 64-entry lookup table."
+    fields: # This is the template for EACH of the 64 entries
+      - name: coefficient
+        bits: [15:0]
+        access: rw
+        description: "Coefficient value for this entry."
+      - name: enabled
+        bit: 31
+        access: rw
+        description: "Enable this specific LUT entry."
 ```
 
 -----
@@ -93,6 +109,33 @@ def _parse_bits(bits_def):
         return low, (high - low + 1)
     raise ValueError(f"Invalid bit definition: {bits_def}")
 
+class RegisterArrayAccessor:
+    """Provides indexed access to a block of registers."""
+    def __init__(self, base_offset, count, stride, field_template, bus_interface):
+        self._bus = bus_interface
+        self._base_offset = base_offset
+        self._count = count
+        self._stride = stride
+        self._field_template = field_template # The list of BitField objects
+
+    def __getitem__(self, index):
+        if not (0 <= index < self._count):
+            raise IndexError(f"Index {index} out of bounds for array of size {self._count}")
+        
+        # Calculate the absolute address of the requested element
+        item_offset = self._base_offset + (index * self._stride)
+        
+        # Create a Register object for this specific element on-the-fly
+        return Register(
+            name=f"item[{index}]",
+            offset=item_offset,
+            bus_interface=self._bus,
+            fields=self._field_template
+        )
+
+    def __len__(self):
+        return self._count
+
 def load_from_yaml(yaml_path: str, bus_interface: AbstractBusInterface):
     """Loads a register map from YAML and builds a driver object."""
     driver = IpCoreDriver(bus_interface)
@@ -110,13 +153,24 @@ def load_from_yaml(yaml_path: str, bus_interface: AbstractBusInterface):
                 access=Access[field_info.get('access', 'rw').upper()]
             ))
         
-        register = Register(
-            name=reg_info['name'],
-            offset=reg_info['offset'],
-            bus_interface=bus_interface,
-            fields=fields
-        )
-        setattr(driver, reg_info['name'], register)
+        # Check if this is a register array
+        if 'count' in reg_info:
+            accessor = RegisterArrayAccessor(
+                base_offset=reg_info['offset'],
+                count=reg_info['count'],
+                stride=reg_info.get('stride', 4), # Default to 4-byte stride
+                field_template=fields,
+                bus_interface=bus_interface
+            )
+            setattr(driver, reg_info['name'], accessor)
+        else: # It's a single register
+            register = Register(
+                name=reg_info['name'],
+                offset=reg_info['offset'],
+                bus_interface=bus_interface,
+                fields=fields
+            )
+            setattr(driver, reg_info['name'], register)
         
     return driver
 
@@ -296,6 +350,19 @@ driver = create_driver(config=hw_config)
 # --- The API is identical in both environments! ---
 driver.control.enable = 1
 status = driver.status.ready
+
+# --- Register arrays provide clean access to Block RAM ---
+# Accessing the 5th entry in the lookup table:
+driver.lut_entry[5].coefficient = 0xABCD
+
+# Enabling the 10th entry:
+driver.lut_entry[10].enabled = 1
+
+# Reading a value back from the 5th entry:
+coeff = driver.lut_entry[5].coefficient
+
+# Can also write to the whole register in the array
+driver.lut_entry[20].write(0xFFFFFFFF)
 ```
 
 -----
@@ -307,4 +374,6 @@ status = driver.status.ready
   - **Reduced Boilerplate**: The register map loader eliminates the need to manually write and maintain tedious register definition code. 📝
   - **Decoupled Design**: Changes to a bus protocol do not require changes to the high-level register access logic.
   - **Clean and Intuitive API**: The user-facing API allows developers to interact with registers and bit fields using simple, dot notation (`driver.reg_name.field_name`).
+  - **Handles Complex Structures**: The architecture elegantly supports not only single registers but also complex register arrays and block RAM regions. 🎛️
+  - **Memory Efficient**: The driver is lightweight as it doesn't pre-instantiate hundreds of objects for a large RAM; register objects are created on-demand.
   - **Scalability**: New bus backends (e.g., for PCIe or SPI) can be added by simply implementing the `AbstractBusInterface`.

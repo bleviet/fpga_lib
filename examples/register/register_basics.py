@@ -179,6 +179,7 @@ def demonstrate_register_basics():
     field_operations(register)
     bulk_operations(register)
     error_handling(register)
+    register_array_preview()
 
     print("\n" + "=" * 50)
     print("✅ DEMO COMPLETE")
@@ -189,7 +190,39 @@ def demonstrate_register_basics():
     print("• Access control prevents invalid operations")
     print("• Type safety catches errors at the API level")
     print("• Reset functionality ensures known state")
+    print("• Register arrays provide memory-efficient Block RAM access")
     print("• Same patterns work for any IP core type")
+
+
+def register_array_preview():
+    """Preview of register array functionality."""
+    print("=" * 50)
+    print("REGISTER ARRAY PREVIEW")
+    print("=" * 50)
+    print("The updated concept document introduces register arrays for Block RAM:")
+    print()
+    print("YAML Definition:")
+    print("  - name: lut_entry")
+    print("    offset: 0x100")
+    print("    count: 64          # 64 entries")
+    print("    stride: 4          # 4 bytes apart")
+    print("    fields:")
+    print("      - name: coefficient")
+    print("        bits: '[15:0]'")
+    print("        access: rw")
+    print()
+    print("Usage:")
+    print("  driver.lut_entry[5].coefficient = 0xABCD")
+    print("  driver.lut_entry[10].enabled = 1")
+    print("  coeff = driver.lut_entry[5].coefficient")
+    print()
+    print("Benefits:")
+    print("• On-demand register creation (memory efficient)")
+    print("• Pythonic array indexing syntax")
+    print("• Same field validation as single registers")
+    print("• Bounds checking with meaningful errors")
+    print()
+    print("📚 See register_array_example.py for full demonstration")
 
 
 if __name__ == "__main__":

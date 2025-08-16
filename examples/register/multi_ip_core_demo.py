@@ -306,11 +306,72 @@ def demonstrate_reusability():
     print("✅ Register introspection capabilities")
     print("✅ Reduced code duplication")
     print("✅ Easier testing and maintenance")
+    print("✅ Register arrays for Block RAM regions")
+
+    # Demonstrate register array concept
+    register_array_examples()
+
     print("\n" + "="*60)
     print("This demonstrates the power of well-designed abstractions!")
     print("The same code patterns work for GPIO, UART, SPI, Timer,")
     print("and any other IP core you might encounter.")
+    print("Register arrays extend this to Block RAM regions!")
     print("="*60)
+
+
+def register_array_examples():
+    """Show how register arrays would work for different IP core types."""
+    print("\n=== REGISTER ARRAY EXAMPLES ===")
+    print("Register arrays extend the concept to Block RAM regions:")
+
+    print("\n🔢 Mathematical Accelerator - Coefficient Tables:")
+    print("YAML:")
+    print("  - name: coeff_table")
+    print("    offset: 0x2000")
+    print("    count: 256")
+    print("    stride: 8")
+    print("    fields:")
+    print("      - {name: real_part, bits: '[31:0]', access: rw}")
+    print("      - {name: imag_part, bits: '[63:32]', access: rw}")
+    print("Usage:")
+    print("  accel.coeff_table[42].real_part = 0x12345678")
+    print("  accel.coeff_table[42].imag_part = 0x87654321")
+
+    print("\n📡 Network Controller - Packet Descriptors:")
+    print("YAML:")
+    print("  - name: rx_descriptors")
+    print("    offset: 0x4000")
+    print("    count: 64")
+    print("    stride: 16")
+    print("    fields:")
+    print("      - {name: buffer_addr, bits: '[31:0]', access: rw}")
+    print("      - {name: length, bits: '[47:32]', access: rw}")
+    print("      - {name: flags, bits: '[63:48]', access: rw}")
+    print("Usage:")
+    print("  net.rx_descriptors[0].buffer_addr = 0x80000000")
+    print("  net.rx_descriptors[0].length = 1500")
+    print("  net.rx_descriptors[0].flags = 0x8000  # Valid bit")
+
+    print("\n🎵 Audio Processor - Sample Buffer:")
+    print("YAML:")
+    print("  - name: sample_buffer")
+    print("    offset: 0x8000")
+    print("    count: 1024")
+    print("    stride: 4")
+    print("    fields:")
+    print("      - {name: left_channel, bits: '[15:0]', access: rw}")
+    print("      - {name: right_channel, bits: '[31:16]', access: rw}")
+    print("Usage:")
+    print("  for i in range(1024):")
+    print("    audio.sample_buffer[i].left_channel = left_samples[i]")
+    print("    audio.sample_buffer[i].right_channel = right_samples[i]")
+
+    print("\n🎯 Benefits:")
+    print("• Same Register/BitField classes for arrays and single registers")
+    print("• Memory efficient - registers created on-demand")
+    print("• Pythonic indexing: core.array[index].field")
+    print("• Automatic bounds checking")
+    print("• Works with any IP core type")
 
 
 if __name__ == "__main__":
