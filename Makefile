@@ -8,6 +8,8 @@
 .PHONY: test-vhdl test-verilog test-core test-generator test-parser test-roundtrip
 .PHONY: test-vhdl-parser test-verilog-parser test-vhdl-generator test-ip-core
 .PHONY: lint format format-check type-check quality tox build
+.PHONY: discover list-tests run-examples test-summary run-demos list-scripts
+.PHONY: workspace-info test-collect examples-gpio examples-register
 
 help:
 	@echo "fpga_lib Makefile Commands:"
@@ -43,12 +45,28 @@ help:
 	@echo "  make install-dev       - Install package with development dependencies"
 	@echo "  make clean             - Remove Python cache files"
 	@echo "  make build             - Build distribution packages"
+	@echo ""
+	@echo "Discovery & Navigation Commands:"
+	@echo "  make discover          - Discover all scripts and tests in workspace"
+	@echo "  make list-tests        - List all test files and their test functions"
+	@echo "  make list-scripts      - List all Python scripts with descriptions"
+	@echo "  make run-examples      - Run all example scripts"
+	@echo "  make run-demos         - Run all demo scripts"
+	@echo "  make test-summary      - Show test file statistics"
+	@echo "  make workspace-info    - Show complete workspace information"
+	@echo "  make test-collect      - Show all discoverable tests (without running)"
+	@echo ""
+	@echo "Example-specific Commands:"
+	@echo "  make examples-gpio     - Run all GPIO examples"
+	@echo "  make examples-register - Run all register examples"
 	@echo
 	@echo ""
 	@echo "Usage Examples:"
 	@echo "  make test              # Quick test run"
 	@echo "  make test-vhdl-parser  # Test only VHDL parsing"
 	@echo "  make test-coverage     # Check test coverage"
+	@echo "  make discover          # Find all scripts and tests"
+	@echo "  make run-examples      # Execute all example scripts"
 
 # Main test commands
 test:
@@ -166,3 +184,116 @@ tox:
 
 build:
 	python -m build
+
+# Discovery and Navigation Commands
+discover:
+	@echo "=== FPGA_LIB WORKSPACE DISCOVERY ==="
+	@echo ""
+	@echo "📁 DIRECTORY STRUCTURE:"
+	@echo "  Core Library:     fpga_lib/"
+	@echo "  Examples:         examples/"
+	@echo "  Tests:            fpga_lib/tests/"
+	@echo "  Documentation:    docs/"
+	@echo ""
+	@echo "🐍 EXECUTABLE SCRIPTS:"
+	@find ./examples -name "*.py" -type f | sort | while read file; do \
+		echo "  $$file"; \
+		head -n 10 "$$file" | grep -E '""".*"""' | head -1 | sed 's/"""//g' | sed 's/^/    /'; \
+	done
+	@echo ""
+	@echo "🧪 TEST FILES:"
+	@find . -name "test_*.py" -not -path "./.pytest_cache/*" | sort | while read file; do \
+		echo "  $$file"; \
+	done
+	@echo ""
+	@echo "📚 DEMO SCRIPTS:"
+	@find . -name "*demo*.py" -not -path "./.pytest_cache/*" | sort
+
+list-tests:
+	@echo "=== ALL TEST FUNCTIONS ==="
+	@find . -name "test_*.py" -not -path "./.pytest_cache/*" | sort | while read file; do \
+		echo ""; \
+		echo "📁 $$file:"; \
+		python -m pytest --collect-only "$$file" 2>/dev/null | grep -E "test_[a-zA-Z0-9_]*" | sed 's/^/  /' || echo "  (No tests found)"; \
+	done
+
+list-scripts:
+	@echo "=== ALL PYTHON SCRIPTS WITH DESCRIPTIONS ==="
+	@find . -name "*.py" -not -path "./.pytest_cache/*" -not -path "./__pycache__/*" | sort | while read file; do \
+		echo ""; \
+		echo "📄 $$file"; \
+		head -n 15 "$$file" | grep -A 10 '"""' | grep -B 10 '"""' | grep -v '"""' | head -3 | sed 's/^/  /' || echo "  (No description available)"; \
+	done
+
+workspace-info:
+	@echo "=== COMPLETE WORKSPACE INFORMATION ==="
+	@echo ""
+	@echo "📊 STATISTICS:"
+	@echo "  Total Python files: $$(find . -name '*.py' -not -path './.pytest_cache/*' -not -path './__pycache__/*' | wc -l)"
+	@echo "  Test files:         $$(find . -name 'test_*.py' | wc -l)"
+	@echo "  Example scripts:    $$(find ./examples -name '*.py' -type f | wc -l)"
+	@echo "  Core modules:       $$(find ./fpga_lib -name '*.py' -not -name 'test_*' | wc -l)"
+	@echo ""
+	@echo "📁 MODULE BREAKDOWN:"
+	@echo "  Core tests:         $$(find ./fpga_lib/tests/core -name 'test_*.py' | wc -l) files"
+	@echo "  Parser tests:       $$(find ./fpga_lib/tests/parser -name 'test_*.py' | wc -l) files"
+	@echo "  Generator tests:    $$(find ./fpga_lib/tests/generator -name 'test_*.py' | wc -l) files"
+	@echo "  GPIO examples:      $$(find ./examples/gpio -name '*.py' | wc -l) files"
+	@echo "  Register examples:  $$(find ./examples/register -name '*.py' | wc -l) files"
+
+test-collect:
+	@echo "=== DISCOVERABLE TESTS (WITHOUT RUNNING) ==="
+	@python -m pytest --collect-only -q
+
+test-summary:
+	@echo "=== TEST SUMMARY ==="
+	@echo "Total test files: $$(find . -name 'test_*.py' | wc -l)"
+	@echo "Core tests:       $$(find ./fpga_lib/tests/core -name 'test_*.py' | wc -l)"
+	@echo "Parser tests:     $$(find ./fpga_lib/tests/parser -name 'test_*.py' | wc -l)"
+	@echo "Generator tests:  $$(find ./fpga_lib/tests/generator -name 'test_*.py' | wc -l)"
+	@echo ""
+	@echo "Running quick test collection..."
+	@python -m pytest --collect-only 2>/dev/null | grep -E "(test_[a-zA-Z0-9_]*|collected [0-9]+ item)" | tail -1
+
+run-examples:
+	@echo "=== RUNNING ALL EXAMPLE SCRIPTS ==="
+	@find ./examples -name "*.py" -type f | sort | while read script; do \
+		echo ""; \
+		echo "🚀 Running $$script..."; \
+		echo ""; \
+		cd "$$(dirname "$$script")" && python "$$(basename "$$script")" && echo "✅ Completed successfully" || echo "❌ Failed"; \
+		cd - > /dev/null; \
+		echo ""; \
+	done
+
+run-demos:
+	@echo "=== RUNNING ALL DEMO SCRIPTS ==="
+	@find . -name "*demo*.py" -not -path "./.pytest_cache/*" | sort | while read script; do \
+		echo ""; \
+		echo "🎯 Running $$script..."; \
+		echo ""; \
+		cd "$$(dirname "$$script")" && python "$$(basename "$$script")" && echo "✅ Completed successfully" || echo "❌ Failed"; \
+		cd - > /dev/null; \
+		echo ""; \
+	done
+
+# Example-specific commands
+examples-gpio:
+	@echo "=== RUNNING GPIO EXAMPLES ==="
+	@cd examples/gpio && echo "🎯 Running GPIO demo..." && python demo.py
+	@echo ""
+	@cd examples/gpio && echo "🎯 Running YAML demo..." && python yaml_demo.py
+	@echo ""
+	@cd examples/gpio && echo "🎯 Running GPIO examples..." && python examples.py
+	@echo ""
+	@cd examples/gpio && echo "🎯 Running GPIO tests..." && python test_gpio.py
+
+examples-register:
+	@echo "=== RUNNING REGISTER EXAMPLES ==="
+	@cd examples/register && echo "🎯 Running register basics..." && python register_basics.py
+	@echo ""
+	@cd examples/register && echo "🎯 Running multi IP core demo..." && python multi_ip_core_demo.py
+	@echo ""
+	@cd examples/register && echo "🎯 Running register array example..." && python register_array_example.py
+	@echo ""
+	@cd examples/register && echo "🎯 Running core classes test..." && python test_core_classes.py
