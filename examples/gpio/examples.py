@@ -3,6 +3,7 @@ GPIO Example Usage Scripts
 
 This module demonstrates how to use the GPIO driver with different
 bus interfaces, showcasing the portability of the unified architecture.
+Now includes examples using both traditional and YAML-driven approaches.
 """
 
 import asyncio
@@ -13,12 +14,13 @@ from config import (
     create_jtag_gpio_driver,
     create_pcie_gpio_driver,
     create_ethernet_gpio_driver,
-    GpioDriverConfig,
     MockBusConfig,
     SimulationBusConfig,
     JtagBusConfig
 )
 from gpio_driver import GpioDirection, GpioValue
+from gpio_wrapper import GpioDriverWrapper
+from memory_map_loader import load_from_yaml
 
 
 def basic_gpio_example():
@@ -31,7 +33,7 @@ def basic_gpio_example():
     print("=== Basic GPIO Example ===")
 
     # Create a GPIO driver with 8 pins for simplicity
-    driver = create_mock_gpio_driver(num_pins=8)
+    driver = create_mock_gpio_driver()
 
     print(f"Created GPIO driver with {driver.num_pins} pins")
 
@@ -71,7 +73,7 @@ def multi_pin_gpio_example():
     print("=== Multi-Pin GPIO Example ===")
 
     # Create a GPIO driver with 16 pins
-    driver = create_mock_gpio_driver(num_pins=16)
+    driver = create_mock_gpio_driver()
 
     # Configure pins 0-7 as outputs
     for pin in range(8):
@@ -111,7 +113,7 @@ def interrupt_gpio_example():
     """
     print("=== GPIO Interrupt Example ===")
 
-    driver = create_mock_gpio_driver(num_pins=8)
+    driver = create_mock_gpio_driver()
 
     # Configure pins 0-3 as inputs with interrupts enabled
     interrupt_pins = [0, 1, 2, 3]
@@ -157,25 +159,23 @@ def simulation_example(dut=None, clock=None):
         print("Note: This example requires a cocotb DUT and clock signal")
         print("Showing configuration only...")
 
-        # Create configuration for simulation
-        config = GpioDriverConfig(
-            bus_type="simulation",
-            bus_config=SimulationBusConfig(
-                dut=None,  # Would be the actual DUT object
-                bus_name="s_axi",
-                clock=None  # Would be the actual clock signal
-            ),
-            num_pins=32
-        )
-        print(f"Simulation config created: {config.bus_type} bus")
+        # Create GPIO driver for simulation (new YAML-driven approach)
+        print("Using YAML-driven GPIO driver for simulation:")
+        print("  - Memory map: gpio_memory_map.yaml")
+        print("  - Bus interface: Simulation (cocotb)")
+        print("  - DUT bus: s_axi")
+        print("  - Clock domain: provided clock")
+
+        # Example of how it would be created:
+        # driver = create_simulation_gpio_driver(dut, "s_axi", clock)
+        print("Configuration completed (mock)")
         return
 
     # Create simulation driver
     driver = create_simulation_gpio_driver(
         dut=dut,
         bus_name="s_axi",
-        clock=clock,
-        num_pins=32
+        clock=clock
     )
 
     print("Created simulation GPIO driver")
@@ -208,24 +208,22 @@ def hardware_jtag_example(jtag_session=None):
         print("Note: This example requires a JTAG session object")
         print("Showing configuration only...")
 
-        # Create configuration for JTAG
-        config = GpioDriverConfig(
-            bus_type="jtag",
-            bus_config=JtagBusConfig(
-                jtag_session=None,  # Would be the actual JTAG session
-                chain_position=0
-            ),
-            num_pins=32,
-            base_address=0x40000000  # Example base address
-        )
-        print(f"JTAG config created: {config.bus_type} bus at 0x{config.base_address:08X}")
+        # Create GPIO driver for JTAG (new YAML-driven approach)
+        print("Using YAML-driven GPIO driver for JTAG:")
+        print("  - Memory map: gpio_memory_map.yaml")
+        print("  - Bus interface: JTAG")
+        print("  - Chain position: 0")
+        print("  - Base address: 0x40000000")
+
+        # Example of how it would be created:
+        # driver = create_jtag_gpio_driver(jtag_session, 0, 0x40000000)
+        print("Configuration completed (mock)")
         return
 
     # Create JTAG driver
     driver = create_jtag_gpio_driver(
         jtag_session=jtag_session,
         chain_position=0,
-        num_pins=32,
         base_address=0x40000000
     )
 
@@ -265,25 +263,24 @@ def advanced_configuration_example():
     """
     print("=== Advanced Configuration Example ===")
 
-    # Example 1: High pin count GPIO
-    high_pin_driver = create_mock_gpio_driver(num_pins=64, base_address=0x80000000)
+    # Example 1: High pin count GPIO (YAML-based, always 32 pins)
+    high_pin_driver = create_mock_gpio_driver(driver_name="High Pin Count GPIO")
     print(f"Created high pin count driver: {high_pin_driver.num_pins} pins")
 
-    # Example 2: Multiple GPIO instances at different addresses
+    # Example 2: Multiple GPIO instances with different names
     gpio_configs = [
-        {"base_address": 0x40000000, "pins": 32, "name": "GPIO_A"},
-        {"base_address": 0x40001000, "pins": 16, "name": "GPIO_B"},
-        {"base_address": 0x40002000, "pins": 8, "name": "GPIO_C"},
+        {"name": "GPIO_A"},
+        {"name": "GPIO_B"},
+        {"name": "GPIO_C"},
     ]
 
     gpio_drivers = {}
     for config in gpio_configs:
         driver = create_mock_gpio_driver(
-            num_pins=config["pins"],
-            base_address=config["base_address"]
+            driver_name=config["name"]
         )
         gpio_drivers[config["name"]] = driver
-        print(f"Created {config['name']}: {config['pins']} pins at 0x{config['base_address']:08X}")
+        print(f"Created {config['name']}: {driver.num_pins} pins")
 
     # Example 3: Different bus types for same functionality
     bus_examples = [
@@ -306,7 +303,7 @@ def performance_test_example():
     """
     print("=== Performance Test Example ===")
 
-    driver = create_mock_gpio_driver(num_pins=32)
+    driver = create_mock_gpio_driver()
 
     # Test individual pin operations
     print("Testing individual pin operations...")
@@ -334,6 +331,115 @@ def performance_test_example():
     print()
 
 
+def yaml_driven_example():
+    """
+    YAML-driven GPIO example using memory map loader.
+
+    This example demonstrates the new YAML-based approach where
+    register definitions are loaded from a YAML file.
+    """
+    print("YAML-Driven GPIO Example")
+    print("-" * 40)
+
+    # Create GPIO driver from YAML memory map
+    driver = create_mock_gpio_driver("gpio_memory_map.yaml", "YAML GPIO Example")
+
+    print(f"Created GPIO driver from YAML: {driver._driver._name}")
+
+    # Get core information from YAML-defined config
+    core_info = driver.get_core_info()
+    print(f"Core info: {core_info}")
+
+    # Demonstrate direct register access (YAML-defined registers)
+    print("\n1. Direct Register Access (from YAML):")
+
+    # Set direction register (all pins as outputs for lower 16 bits)
+    driver._driver.direction.gpio_dir = 0x0000FFFF
+    print("   Set lower 16 pins as outputs via direction register")
+
+    # Set data register
+    driver._driver.data.gpio_pins = 0x0000AAAA
+    print("   Set alternating pattern on data register")
+
+    # Read config register if available
+    if hasattr(driver._driver, 'config'):
+        pin_count = driver._driver.config.pin_count
+        version = driver._driver.config.version
+        print(f"   Config - Pin count: {pin_count}, Version: 0x{version:02X}")
+
+    # Show register summary
+    summary = driver._driver.get_register_summary()
+    print("\n   Register Summary:")
+    for reg_name, value in summary.items():
+        print(f"     {reg_name.upper():20s}: 0x{value:08X}")
+
+    # Demonstrate high-level GPIO API (wrapper over YAML-driven core)
+    print("\n2. High-Level GPIO API (YAML backend):")
+
+    # Configure individual pins using high-level API
+    driver.configure_pin(0, GpioDirection.OUTPUT, GpioValue.HIGH)
+    driver.configure_pin(1, GpioDirection.OUTPUT, GpioValue.LOW)
+    driver.configure_pin(2, GpioDirection.INPUT, interrupt_enable=True)
+
+    print("   Configured pins 0 (OUT=1), 1 (OUT=0), 2 (IN+INT)")
+
+    # Read pin states
+    for pin in range(3):
+        value = driver.get_pin_value(pin)
+        direction = driver.get_pin_direction(pin)
+        print(f"   Pin {pin}: {value.name} ({direction.name})")
+
+    # Demonstrate bulk operations
+    print("\n3. Bulk Operations (YAML backend):")
+
+    # Set multiple pins direction at once (direct register access)
+    driver._driver.direction.gpio_dir = 0xFF  # First 8 pins as outputs
+    driver.set_pins_value(0xFF, 0x5A)  # Set pattern 01011010
+
+    all_values = driver.get_all_pins_value()
+    print(f"   Set pattern 0x5A on first 8 pins, result: 0x{all_values:08X}")
+
+    # Toggle pins (manual implementation)
+    current_value = driver.get_all_pins_value()
+    toggled_value = current_value ^ 0x0F  # Toggle first 4 pins
+    driver.set_pins_value(0x0F, toggled_value & 0x0F)
+    all_values = driver.get_all_pins_value()
+    print(f"   After toggling first 4 pins: 0x{all_values:08X}")
+
+    print("\n4. Access Control Demonstration:")
+
+    # Try to access read-only fields
+    if hasattr(driver._driver, 'config'):
+        try:
+            pin_count = driver._driver.config.pin_count
+            print(f"   ✅ Read pin_count (RO): {pin_count}")
+        except Exception as e:
+            print(f"   ❌ Failed to read pin_count: {e}")
+
+        try:
+            # This should fail if properly implemented as read-only
+            driver._driver.config.pin_count = 64
+            print("   ❌ Writing to read-only field should have failed!")
+        except Exception as e:
+            print(f"   ✅ Write to pin_count (RO) blocked: {type(e).__name__}")
+
+    # Test write-only fields
+    if hasattr(driver._driver, 'interrupt_clear'):
+        try:
+            driver._driver.interrupt_clear.int_clear = 0x0F
+            print("   ✅ Write to int_clear (WO): Success")
+        except Exception as e:
+            print(f"   ❌ Failed to write int_clear: {e}")
+
+    print("\nYAML-driven approach benefits:")
+    print("• Single source of truth for register definitions")
+    print("• Automatic access control enforcement")
+    print("• Human-readable memory map documentation")
+    print("• Easy maintenance and hardware sync")
+
+    print()
+
+
 def run_all_examples():
     """Run all GPIO examples."""
     print("GPIO Driver Examples - Unified Architecture Demonstration")
@@ -346,9 +452,11 @@ def run_all_examples():
     hardware_jtag_example()
     advanced_configuration_example()
     performance_test_example()
+    yaml_driven_example()
 
     print("All examples completed successfully!")
     print("This demonstrates the portability and flexibility of the unified GPIO driver architecture.")
+    print("The new YAML-driven approach provides improved maintainability and documentation.")
 
 
 if __name__ == "__main__":

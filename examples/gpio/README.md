@@ -1,10 +1,45 @@
 # GPIO IP Core Driver Example
 
-This directory contains a comprehensive example implementation of a GPIO IP core driver based on the unified driver architecture concept. It demonstrates the three-layer architecture with complete functionality, tests, and usage examples.
+This directory contains a comprehensive example implementation of a GPIO IP core driver based on the unified driver architecture concept. It demonstrates both the traditional three-layer architecture and the new **YAML-driven memory map approach** with complete functionality, tests, and usage examples.
 
 ## Architecture Overview
 
-The GPIO driver implementation follows the three-layer architecture:
+The GPIO driver implementation supports two approaches:
+
+### Traditional Three-Layer Architecture
+1. **Layer 1: Core IP Driver** (`gpio_driver.py`) - High-level GPIO API with manual register definitions
+2. **Layer 2: Bus Interface** (`bus_interface.py`) - Abstract bus interface
+3. **Layer 3: Concrete Bus Backends** (`bus_backends.py`) - Implementation-specific bus interfaces
+
+### NEW: YAML-Driven Memory Map Architecture
+1. **Memory Map Definition** (`gpio_memory_map.yaml`) - Human-readable register definitions
+2. **Memory Map Loader** (`memory_map_loader.py`) - Dynamic driver generation from YAML
+3. **GPIO Wrapper** (`gpio_wrapper.py`) - GPIO-specific high-level API
+4. **Configuration Factory** (`config.py`) - Unified factory system
+
+## Key Components
+
+### YAML-Driven Components (Recommended)
+
+#### Memory Map Definition (`gpio_memory_map.yaml`)
+- **Single source of truth** for all register definitions
+- Human-readable YAML format with comprehensive field descriptions
+- Automatic access control (read-only, write-only, read-write)
+- Complete bit field definitions with ranges and descriptions
+
+#### Memory Map Loader (`memory_map_loader.py`)
+- **IpCoreDriver**: Generic IP core driver built from YAML definitions
+- **Register**: Dynamic register objects with automatic field access
+- **BitField**: Runtime bit field validation and access control
+- **Access Control**: Automatic enforcement of read/write permissions
+
+#### GPIO Wrapper (`gpio_wrapper.py`)
+- **GpioDriverWrapper**: High-level GPIO API over YAML-driven core
+- **Pin-oriented operations**: Individual pin control and status
+- **Bulk operations**: Efficient multi-pin operations
+- **Interrupt support**: Full interrupt configuration and handling
+
+### Traditional Components (Legacy Support)
 
 ### Layer 1: Core IP Driver (`gpio_driver.py`)
 - **GpioDriver**: High-level GPIO IP core driver with intuitive pin-oriented API

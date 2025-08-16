@@ -1,14 +1,15 @@
 """
 Configuration and Factory Module
 
-This module implements the unified factory and configuration system
-described in the concept document. It provides a clean interface for
-creating GPIO drivers with different bus backends.
+This module implements the updated unified factory and configuration system
+based on YAML-driven memory map definitions. It provides a clean interface for
+creating IP core drivers with different bus backends.
 """
 
 from dataclasses import dataclass
 from typing import Any, Union, Optional
-from gpio_driver import GpioDriver
+from memory_map_loader import load_from_yaml, IpCoreDriver
+from gpio_wrapper import GpioDriverWrapper
 from bus_interface import AbstractBusInterface, MockBusInterface
 from bus_backends import (
     SimulationBusInterface,
@@ -64,22 +65,20 @@ BusConfig = Union[
 
 
 @dataclass
-class GpioDriverConfig:
+class DriverConfig:
     """
-    Complete configuration for GPIO driver creation.
+    Complete configuration for IP core driver creation using YAML memory maps.
 
     Attributes:
+        map_file: Path to the YAML memory map file
         bus_type: Type of bus interface ("mock", "simulation", "jtag", "pcie", "ethernet")
         bus_config: Bus-specific configuration
-        num_pins: Number of GPIO pins (default: 32)
-        base_address: Base address of GPIO registers (default: 0x0)
+        driver_name: Optional name for the driver instance
     """
+    map_file: str
     bus_type: str
     bus_config: BusConfig
-    num_pins: int = 32
-    base_address: int = 0x0
-
-
+    driver_name: str = "IP Core Driver"
 def create_bus_interface(bus_type: str, bus_config: BusConfig) -> AbstractBusInterface:
     """
     Factory function to create the appropriate bus interface.
@@ -138,31 +137,33 @@ def create_bus_interface(bus_type: str, bus_config: BusConfig) -> AbstractBusInt
         raise ValueError(f"Unsupported bus_type '{bus_type}'. Supported types: {supported_types}")
 
 
-def create_gpio_driver(config: GpioDriverConfig) -> GpioDriver:
+def create_ip_core_driver(config: DriverConfig) -> IpCoreDriver:
     """
-    Factory function to create a GPIO driver with the specified configuration.
+    Factory function to create an IP core driver with the specified configuration.
 
     This is the main factory function that users should call to create
-    GPIO driver instances. It handles all the complexity of creating
-    the appropriate bus interface and configuring the driver.
+    IP core driver instances. It handles all the complexity of creating
+    the appropriate bus interface and loading the memory map from YAML.
 
     Args:
-        config: Complete configuration for the GPIO driver
+        config: Complete configuration for the IP core driver
 
     Returns:
-        Configured GPIO driver instance
+        Configured IP core driver instance loaded from YAML
 
     Example:
         # Create a mock driver for testing
-        config = GpioDriverConfig(
+        config = DriverConfig(
+            map_file="gpio_memory_map.yaml",
             bus_type="mock",
             bus_config=MockBusConfig(),
-            num_pins=16
+            driver_name="GPIO Test Driver"
         )
-        driver = create_gpio_driver(config)
+        driver = create_ip_core_driver(config)
 
         # Create a simulation driver for cocotb
-        config = GpioDriverConfig(
+        config = DriverConfig(
+            map_file="gpio_memory_map.yaml",
             bus_type="simulation",
             bus_config=SimulationBusConfig(
                 dut=dut,
@@ -170,50 +171,55 @@ def create_gpio_driver(config: GpioDriverConfig) -> GpioDriver:
                 clock=dut.aclk
             )
         )
-        driver = create_gpio_driver(config)
+        driver = create_ip_core_driver(config)
 
         # Create a JTAG driver for hardware
-        config = GpioDriverConfig(
+        config = DriverConfig(
+            map_file="gpio_memory_map.yaml",
             bus_type="jtag",
             bus_config=JtagBusConfig(jtag_session=xsdb_session)
         )
-        driver = create_gpio_driver(config)
+        driver = create_ip_core_driver(config)
     """
     # Create the appropriate bus interface
     bus_interface = create_bus_interface(config.bus_type, config.bus_config)
 
-    # Create and return the GPIO driver
-    return GpioDriver(
-        bus=bus_interface,
-        num_pins=config.num_pins,
-        base_address=config.base_address
-    )
+    # Load the driver from YAML memory map
+    return load_from_yaml(config.map_file, bus_interface, config.driver_name)
 
 
-# Convenience functions for common configurations
+# Convenience functions for GPIO-specific drivers (with wrapper)
 
-def create_mock_gpio_driver(num_pins: int = 32, base_address: int = 0) -> GpioDriver:
+def create_mock_gpio_driver(map_file: str = "gpio_memory_map.yaml",
+                           driver_name: str = "Mock GPIO Driver") -> GpioDriverWrapper:
     """
     Create a mock GPIO driver for testing.
 
     Args:
-        num_pins: Number of GPIO pins
-        base_address: Base address of GPIO registers
+        map_file: Path to the GPIO memory map YAML file
+        driver_name: Name for the driver instance
 
     Returns:
-        GPIO driver with mock bus interface
+        GPIO driver wrapper with mock bus interface
     """
-    config = GpioDriverConfig(
-        bus_type="mock",
-        bus_config=MockBusConfig(),
-        num_pins=num_pins,
-        base_address=base_address
-    )
-    return create_gpio_driver(config)
+    ip_driver = create_mock_ip_driver(map_file, driver_name)
+
+    # Initialize mock bus with sensible default values for GPIO config
+    if hasattr(ip_driver, 'config'):
+        try:
+            # Set default config values that make sense for a 32-pin GPIO
+            # pin_count=32, has_interrupts=1, version=0x01, enable=1
+            default_config = 32 | (1 << 8) | (0x01 << 16) | (1 << 31)
+            ip_driver._bus.write_word(0x14, default_config)  # Config register offset
+        except Exception:
+            pass  # If anything fails, just continue with defaults
+
+    return GpioDriverWrapper(ip_driver)
 
 
 def create_simulation_gpio_driver(dut: Any, bus_name: str, clock: Any,
-                                 num_pins: int = 32, base_address: int = 0) -> GpioDriver:
+                                 map_file: str = "gpio_memory_map.yaml",
+                                 driver_name: str = "Simulation GPIO Driver") -> GpioDriverWrapper:
     """
     Create a simulation GPIO driver for cocotb testbenches.
 
@@ -221,67 +227,56 @@ def create_simulation_gpio_driver(dut: Any, bus_name: str, clock: Any,
         dut: The DUT object from cocotb
         bus_name: Name of the bus interface in the DUT
         clock: Clock signal for synchronization
-        num_pins: Number of GPIO pins
-        base_address: Base address of GPIO registers
+        map_file: Path to the GPIO memory map YAML file
+        driver_name: Name for the driver instance
 
     Returns:
-        GPIO driver with simulation bus interface
+        GPIO driver wrapper with simulation bus interface
     """
-    config = GpioDriverConfig(
-        bus_type="simulation",
-        bus_config=SimulationBusConfig(dut=dut, bus_name=bus_name, clock=clock),
-        num_pins=num_pins,
-        base_address=base_address
-    )
-    return create_gpio_driver(config)
+    ip_driver = create_simulation_ip_driver(dut, bus_name, clock, map_file, driver_name)
+    return GpioDriverWrapper(ip_driver)
 
 
 def create_jtag_gpio_driver(jtag_session: Any, chain_position: int = 0,
-                           num_pins: int = 32, base_address: int = 0) -> GpioDriver:
+                           map_file: str = "gpio_memory_map.yaml",
+                           driver_name: str = "JTAG GPIO Driver") -> GpioDriverWrapper:
     """
     Create a JTAG GPIO driver for hardware access.
 
     Args:
         jtag_session: JTAG session object
         chain_position: Position in the JTAG chain
-        num_pins: Number of GPIO pins
-        base_address: Base address of GPIO registers
+        map_file: Path to the GPIO memory map YAML file
+        driver_name: Name for the driver instance
 
     Returns:
-        GPIO driver with JTAG bus interface
+        GPIO driver wrapper with JTAG bus interface
     """
-    config = GpioDriverConfig(
-        bus_type="jtag",
-        bus_config=JtagBusConfig(jtag_session=jtag_session, chain_position=chain_position),
-        num_pins=num_pins,
-        base_address=base_address
-    )
-    return create_gpio_driver(config)
+    ip_driver = create_jtag_ip_driver(jtag_session, chain_position, map_file, driver_name)
+    return GpioDriverWrapper(ip_driver)
 
 
-def create_pcie_gpio_driver(device_path: str, num_pins: int = 32, base_address: int = 0) -> GpioDriver:
+def create_pcie_gpio_driver(device_path: str,
+                           map_file: str = "gpio_memory_map.yaml",
+                           driver_name: str = "PCIe GPIO Driver") -> GpioDriverWrapper:
     """
     Create a PCIe GPIO driver for high-speed hardware access.
 
     Args:
         device_path: Path to the PCIe device
-        num_pins: Number of GPIO pins
-        base_address: Base address of GPIO registers
+        map_file: Path to the GPIO memory map YAML file
+        driver_name: Name for the driver instance
 
     Returns:
-        GPIO driver with PCIe bus interface
+        GPIO driver wrapper with PCIe bus interface
     """
-    config = GpioDriverConfig(
-        bus_type="pcie",
-        bus_config=PCIeBusConfig(device_path=device_path),
-        num_pins=num_pins,
-        base_address=base_address
-    )
-    return create_gpio_driver(config)
+    ip_driver = create_pcie_ip_driver(device_path, map_file, driver_name)
+    return GpioDriverWrapper(ip_driver)
 
 
 def create_ethernet_gpio_driver(host: str, port: int, protocol: str = "tcp",
-                               num_pins: int = 32, base_address: int = 0) -> GpioDriver:
+                               map_file: str = "gpio_memory_map.yaml",
+                               driver_name: str = "Ethernet GPIO Driver") -> GpioDriverWrapper:
     """
     Create an Ethernet GPIO driver for remote hardware access.
 
@@ -289,16 +284,77 @@ def create_ethernet_gpio_driver(host: str, port: int, protocol: str = "tcp",
         host: Hostname or IP address
         port: Port number
         protocol: Communication protocol ("tcp" or "udp")
-        num_pins: Number of GPIO pins
-        base_address: Base address of GPIO registers
+        map_file: Path to the GPIO memory map YAML file
+        driver_name: Name for the driver instance
 
     Returns:
-        GPIO driver with Ethernet bus interface
+        GPIO driver wrapper with Ethernet bus interface
     """
-    config = GpioDriverConfig(
+    ip_driver = create_ethernet_ip_driver(host, port, protocol, map_file, driver_name)
+    return GpioDriverWrapper(ip_driver)
+
+
+# Convenience functions for raw IP core drivers (without GPIO wrapper)
+
+def create_mock_ip_driver(map_file: str = "gpio_memory_map.yaml",
+                         driver_name: str = "Mock IP Driver") -> IpCoreDriver:
+    """Create a mock IP core driver for testing."""
+    config = DriverConfig(
+        map_file=map_file,
+        bus_type="mock",
+        bus_config=MockBusConfig(),
+        driver_name=driver_name
+    )
+    return create_ip_core_driver(config)
+
+
+def create_simulation_ip_driver(dut: Any, bus_name: str, clock: Any,
+                               map_file: str = "gpio_memory_map.yaml",
+                               driver_name: str = "Simulation IP Driver") -> IpCoreDriver:
+    """Create a simulation IP core driver for cocotb testbenches."""
+    config = DriverConfig(
+        map_file=map_file,
+        bus_type="simulation",
+        bus_config=SimulationBusConfig(dut=dut, bus_name=bus_name, clock=clock),
+        driver_name=driver_name
+    )
+    return create_ip_core_driver(config)
+
+
+def create_jtag_ip_driver(jtag_session: Any, chain_position: int = 0,
+                         map_file: str = "gpio_memory_map.yaml",
+                         driver_name: str = "JTAG IP Driver") -> IpCoreDriver:
+    """Create a JTAG IP core driver for hardware access."""
+    config = DriverConfig(
+        map_file=map_file,
+        bus_type="jtag",
+        bus_config=JtagBusConfig(jtag_session=jtag_session, chain_position=chain_position),
+        driver_name=driver_name
+    )
+    return create_ip_core_driver(config)
+
+
+def create_pcie_ip_driver(device_path: str,
+                         map_file: str = "gpio_memory_map.yaml",
+                         driver_name: str = "PCIe IP Driver") -> IpCoreDriver:
+    """Create a PCIe IP core driver for high-speed hardware access."""
+    config = DriverConfig(
+        map_file=map_file,
+        bus_type="pcie",
+        bus_config=PCIeBusConfig(device_path=device_path),
+        driver_name=driver_name
+    )
+    return create_ip_core_driver(config)
+
+
+def create_ethernet_ip_driver(host: str, port: int, protocol: str = "tcp",
+                             map_file: str = "gpio_memory_map.yaml",
+                             driver_name: str = "Ethernet IP Driver") -> IpCoreDriver:
+    """Create an Ethernet IP core driver for remote hardware access."""
+    config = DriverConfig(
+        map_file=map_file,
         bus_type="ethernet",
         bus_config=EthernetBusConfig(host=host, port=port, protocol=protocol),
-        num_pins=num_pins,
-        base_address=base_address
+        driver_name=driver_name
     )
-    return create_gpio_driver(config)
+    return create_ip_core_driver(config)

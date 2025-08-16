@@ -4,6 +4,7 @@ GPIO Driver Demo Script
 
 This script demonstrates the unified GPIO driver architecture with a
 practical example that showcases all the key features and capabilities.
+Now includes support for both traditional and YAML-driven approaches.
 """
 
 import time
@@ -13,11 +14,11 @@ from pathlib import Path
 # Import from local modules
 from config import (
     create_mock_gpio_driver,
-    GpioDriverConfig,
-    MockBusConfig,
-    create_gpio_driver
+    MockBusConfig
 )
 from gpio_driver import GpioDirection, GpioValue
+from gpio_wrapper import GpioDriverWrapper
+from memory_map_loader import load_from_yaml
 
 
 def print_banner(title):
@@ -39,8 +40,8 @@ def demo_basic_operations():
     """Demonstrate basic GPIO operations."""
     print_banner("Basic GPIO Operations Demo")
 
-    # Create a GPIO driver with 8 pins
-    driver = create_mock_gpio_driver(num_pins=8)
+    # Create a GPIO driver with 32 pins (from YAML config)
+    driver = create_mock_gpio_driver()
     print(f"Created GPIO driver with {driver.num_pins} pins")
 
     print("\n1. Configuring Individual Pins:")
@@ -82,7 +83,7 @@ def demo_bulk_operations():
     """Demonstrate bulk GPIO operations for performance."""
     print_banner("Bulk GPIO Operations Demo")
 
-    driver = create_mock_gpio_driver(num_pins=16)
+    driver = create_mock_gpio_driver()
 
     print("1. Configuring Multiple Pins:")
 
@@ -121,7 +122,7 @@ def demo_interrupt_handling():
     """Demonstrate GPIO interrupt functionality."""
     print_banner("GPIO Interrupt Handling Demo")
 
-    driver = create_mock_gpio_driver(num_pins=8)
+    driver = create_mock_gpio_driver()
 
     print("1. Configuring Interrupt-Enabled Pins:")
 
@@ -191,12 +192,11 @@ def demo_multiple_gpio_instances():
     print("1. Creating Multiple GPIO Instances:")
     for config in gpio_configs:
         driver = create_mock_gpio_driver(
-            num_pins=config["pins"],
-            base_address=config["base_addr"]
+            driver_name=config["name"]
         )
         gpio_drivers[config["name"]] = driver
 
-        print(f"   - {config['name']:15s}: {config['pins']:2d} pins at 0x{config['base_addr']:08X}")
+        print(f"   - {config['name']:15s}: {driver.num_pins:2d} pins")
         print(f"     {config['description']}")
 
     print("\n2. Configuring Each GPIO Instance:")
@@ -247,7 +247,7 @@ def demo_performance_comparison():
     """Demonstrate performance differences between individual and bulk operations."""
     print_banner("Performance Comparison Demo")
 
-    driver = create_mock_gpio_driver(num_pins=32)
+    driver = create_mock_gpio_driver()
 
     # Configure all pins as outputs
     for pin in range(32):
@@ -294,7 +294,7 @@ def demo_error_handling():
     """Demonstrate error handling and validation."""
     print_banner("Error Handling and Validation Demo")
 
-    driver = create_mock_gpio_driver(num_pins=4)  # Small GPIO for demo
+    driver = create_mock_gpio_driver()  # Small GPIO for demo
 
     print("1. Pin Number Validation:")
 
@@ -319,9 +319,15 @@ def demo_error_handling():
 
     # Test field width validation
     try:
-        # Try to write a value too large for a single pin (enable field is 1 bit)
-        driver.direction_reg.write_field("gpio_dir", 0x1F)  # 5 bits for 4-pin GPIO
-        print("   ✗ Field validation: Should have failed for oversized value")
+        # Try to write a value too large for a field (using YAML-driven approach)
+        driver._driver.direction.gpio_dir = 0xFFFFFFFF  # This should work
+        print("   ✓ Field validation: Large value accepted within field width")
+        
+        # Try to access a field that doesn't exist
+        _ = driver._driver.direction.nonexistent_field
+        print("   ✗ Field validation: Should have failed for non-existent field")
+    except AttributeError:
+        print("   ✓ Field validation: Correctly rejected non-existent field")
     except ValueError:
         print("   ✓ Field validation: Correctly rejected oversized value")
 
@@ -339,6 +345,110 @@ def demo_error_handling():
     print("   Bus error handling mechanisms demonstrated")
 
 
+def demo_yaml_driven_approach():
+    """Demonstrate YAML-driven memory map approach."""
+    print_banner("YAML-Driven Memory Map Demonstration")
+    
+    # Check if YAML file exists
+    yaml_file = "gpio_memory_map.yaml"
+    if not Path(yaml_file).exists():
+        print(f"⚠ YAML file {yaml_file} not found - skipping YAML demo")
+        return
+    
+    # Create GPIO driver from YAML memory map
+    print("1. Creating GPIO driver from YAML memory map:")
+    
+    try:
+        driver = create_mock_gpio_driver(yaml_file, "YAML Demo Driver")
+        print(f"   ✓ Successfully created driver: {driver._driver._name}")
+        
+        # Get core information
+        core_info = driver.get_core_info()
+        print(f"   Core information: {core_info}")
+        
+    except Exception as e:
+        print(f"   ✗ Failed to create YAML driver: {e}")
+        return
+    
+    print("\n2. Direct Register Access (YAML-defined):")
+    
+    # Access registers directly using YAML-defined structure
+    try:
+        # Set direction register
+        driver._driver.direction.gpio_dir = 0x0000FFFF
+        print("   ✓ Set direction register via YAML-defined field")
+        
+        # Set data register 
+        driver._driver.data.gpio_pins = 0x0000AAAA
+        print("   ✓ Set data register via YAML-defined field")
+        
+        # Read config register if available
+        if hasattr(driver._driver, 'config'):
+            pin_count = driver._driver.config.pin_count
+            version = driver._driver.config.version
+            has_interrupts = driver._driver.config.has_interrupts
+            print(f"   ✓ Config - Pins: {pin_count}, Version: 0x{version:02X}, Interrupts: {bool(has_interrupts)}")
+        
+        # Show register summary
+        summary = driver._driver.get_register_summary()
+        print("\n   Current Register State:")
+        for reg_name, value in summary.items():
+            print(f"     {reg_name.upper():18s}: 0x{value:08X}")
+            
+    except Exception as e:
+        print(f"   ✗ Direct register access failed: {e}")
+    
+    print("\n3. High-Level GPIO API (YAML Backend):")
+    
+    try:
+        # Configure pins using high-level API
+        driver.configure_pin(0, GpioDirection.OUTPUT, GpioValue.HIGH)
+        driver.configure_pin(1, GpioDirection.OUTPUT, GpioValue.LOW)
+        driver.configure_pin(2, GpioDirection.INPUT, interrupt_enable=True)
+        
+        print("   ✓ Configured pins using high-level API over YAML backend")
+        
+        # Read pin states
+        for pin in range(3):
+            value = driver.get_pin_value(pin)
+            direction = driver.get_pin_direction(pin)
+            print(f"     Pin {pin}: {value.name} ({direction.name})")
+            
+    except Exception as e:
+        print(f"   ✗ High-level API failed: {e}")
+    
+    print("\n4. Access Control Validation:")
+    
+    try:
+        # Test read-only access
+        if hasattr(driver._driver, 'config'):
+            pin_count = driver._driver.config.pin_count
+            print(f"   ✓ Read pin_count (RO): {pin_count}")
+            
+            # Try to write to read-only field
+            try:
+                driver._driver.config.pin_count = 64
+                print("   ✗ Writing to read-only field should have failed!")
+            except AttributeError:
+                print("   ✓ Write to read-only field correctly blocked")
+        
+        # Test write-only access
+        if hasattr(driver._driver, 'interrupt_clear'):
+            driver._driver.interrupt_clear.int_clear = 0x0F
+            print("   ✓ Write to write-only field successful")
+            
+    except Exception as e:
+        print(f"   ✗ Access control test failed: {e}")
+    
+    print("\n5. YAML Approach Benefits:")
+    print("   • Single source of truth for memory maps")
+    print("   • Human-readable register documentation")
+    print("   • Automatic access control enforcement")
+    print("   • Dynamic driver generation")
+    print("   • Hardware documentation synchronization")
+    print("   • Easy maintenance and updates")
+
+
 def main():
     """Main demo function."""
     print("GPIO IP Core Driver - Unified Architecture Demonstration")
@@ -351,6 +461,7 @@ def main():
         demo_multiple_gpio_instances()
         demo_performance_comparison()
         demo_error_handling()
+        demo_yaml_driven_approach()
 
         print_banner("Demo Complete")
         print("All demonstrations completed successfully!")
@@ -361,8 +472,11 @@ def main():
         print("• Multiple GPIO instance support")
         print("• Robust error handling")
         print("• Type-safe configuration")
+        print("• YAML-driven memory maps")
+        print("• Single source of truth documentation")
         print("\nThe same code can run in simulation, hardware, or test environments")
         print("by simply changing the bus interface configuration.")
+        print("YAML memory maps provide human-readable hardware documentation.")
 
     except Exception as e:
         print(f"\nDemo failed with error: {e}")
