@@ -342,32 +342,65 @@ class MainWindow(QMainWindow):
         if isinstance(reference_item, Register):
             # Insert before a regular register
             reference_offset = reference_item.offset
-            target_offset = max(0, reference_offset - 4)
         elif isinstance(reference_item, RegisterArrayAccessor):
             # Insert before a register array
             reference_offset = reference_item._base_offset
-            target_offset = max(0, reference_offset - 4)
         else:
             return
 
-        # Find a free offset near the target
+        # Strategy: Always ensure we can insert before by potentially shifting registers
+        # Find what offset the new register should have
+        target_offset = max(0, reference_offset - 4)
+
+        # Check if we need to shift existing registers to make space
         used_offsets = {reg.offset for reg in self.current_project.registers}
         for array in self.current_project.register_arrays:
             for i in range(array._count):
                 used_offsets.add(array._base_offset + i * array._stride)
 
-        # Find the best available offset before the reference
-        new_offset = target_offset
-        while new_offset in used_offsets and new_offset >= 0:
-            new_offset -= 4
+        # If target offset is occupied or we're trying to insert at a negative offset,
+        # we need to shift everything forward to make space
+        if target_offset in used_offsets or target_offset < 0:
+            # Shift all registers and arrays forward by 4 to make space at the beginning
+            # if inserting before the first register, or find a gap
 
-        if new_offset < 0:
-            # If no space before, find first available offset
-            new_offset = 0
-            while new_offset in used_offsets:
-                new_offset += 4
+            if reference_offset == 0:
+                # Special case: inserting before register at offset 0
+                # Shift all registers forward by 4
+                for reg in self.current_project.registers:
+                    reg.offset += 4
+                for array in self.current_project.register_arrays:
+                    array._base_offset += 4
+                new_offset = 0
+            else:
+                # Find the largest gap we can use before the reference
+                sorted_offsets = sorted(used_offsets)
 
-        # Create the register directly instead of using add_register
+                # Find gaps before the reference offset
+                new_offset = 0
+                for offset in sorted_offsets:
+                    if offset >= reference_offset:
+                        break
+                    if offset - new_offset >= 4:
+                        # Found a gap of at least 4 bytes
+                        break
+                    new_offset = offset + 4
+
+                # If new_offset would be >= reference_offset, we need to shift
+                if new_offset >= reference_offset:
+                    # Shift all registers and arrays at or after reference_offset forward by 4
+                    shift_amount = 4
+                    for reg in self.current_project.registers:
+                        if reg.offset >= reference_offset:
+                            reg.offset += shift_amount
+                    for array in self.current_project.register_arrays:
+                        if array._base_offset >= reference_offset:
+                            array._base_offset += shift_amount
+                    new_offset = reference_offset
+        else:
+            new_offset = target_offset
+
+        # Create the register
         register = Register(
             name=f"register_{len(self.current_project.registers)}",
             offset=new_offset,
@@ -376,15 +409,9 @@ class MainWindow(QMainWindow):
             description="New register (inserted before)"
         )
 
-        # Insert at the correct position in the list
-        insert_index = 0
-        for i, existing_reg in enumerate(self.current_project.registers):
-            if existing_reg.offset > new_offset:
-                insert_index = i
-                break
-            insert_index = i + 1
-
-        self.current_project.registers.insert(insert_index, register)
+        # Add the register and then sort the entire list by offset
+        self.current_project.registers.append(register)
+        self.current_project.registers.sort(key=lambda r: r.offset)
 
         self.refresh_views()
         self.outline.select_item(register)
@@ -401,23 +428,32 @@ class MainWindow(QMainWindow):
             target_offset = reference_offset + 4
         elif isinstance(reference_item, RegisterArrayAccessor):
             # Insert after a register array (after its last element)
-            reference_offset = reference_item._base_offset + (reference_item._count * reference_item._stride)
-            target_offset = reference_offset
+            last_array_offset = reference_item._base_offset + ((reference_item._count - 1) * reference_item._stride)
+            target_offset = last_array_offset + 4
         else:
             return
 
-        # Find a free offset near the target
+        # Strategy: Always ensure we can insert immediately after by potentially shifting registers
+        # Check what's currently at the target offset
         used_offsets = {reg.offset for reg in self.current_project.registers}
         for array in self.current_project.register_arrays:
             for i in range(array._count):
                 used_offsets.add(array._base_offset + i * array._stride)
 
-        # Find the best available offset after the reference
-        new_offset = target_offset
-        while new_offset in used_offsets:
-            new_offset += 4
+        # If target offset is occupied, we need to shift registers forward
+        if target_offset in used_offsets:
+            # Shift all registers and arrays at or after target_offset forward by 4
+            shift_amount = 4
+            for reg in self.current_project.registers:
+                if reg.offset >= target_offset:
+                    reg.offset += shift_amount
+            for array in self.current_project.register_arrays:
+                if array._base_offset >= target_offset:
+                    array._base_offset += shift_amount
 
-        # Create the register directly
+        new_offset = target_offset
+
+        # Create the register
         register = Register(
             name=f"register_{len(self.current_project.registers)}",
             offset=new_offset,
@@ -426,14 +462,9 @@ class MainWindow(QMainWindow):
             description="New register (inserted after)"
         )
 
-        # Insert at the correct position in the list
-        insert_index = len(self.current_project.registers)  # Default to end
-        for i, existing_reg in enumerate(self.current_project.registers):
-            if existing_reg.offset > new_offset:
-                insert_index = i
-                break
-
-        self.current_project.registers.insert(insert_index, register)
+        # Add the register and then sort the entire list by offset
+        self.current_project.registers.append(register)
+        self.current_project.registers.sort(key=lambda r: r.offset)
 
         self.refresh_views()
         self.outline.select_item(register)

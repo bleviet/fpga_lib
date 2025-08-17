@@ -238,7 +238,7 @@ class RegisterDetailForm(QWidget):
             access_combo = QComboBox()
             access_combo.addItems(['RO', 'WO', 'RW', 'RW1C'])
             access_combo.setCurrentText(field.access.upper())
-            
+
             # Connect signal to handle changes using partial to avoid closure issues
             access_combo.currentTextChanged.connect(
                 functools.partial(self._on_access_type_changed, field)
