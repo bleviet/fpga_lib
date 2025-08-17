@@ -62,6 +62,22 @@ class MemoryMapOutline(QWidget):
         self.add_array_btn.setMaximumWidth(60)
         header_layout.addWidget(self.add_array_btn)
         
+        # Register management buttons
+        self.insert_before_btn = QPushButton("↑ Insert")
+        self.insert_before_btn.setToolTip("Insert Before Selected")
+        self.insert_before_btn.setMaximumWidth(70)
+        header_layout.addWidget(self.insert_before_btn)
+        
+        self.insert_after_btn = QPushButton("↓ Insert")
+        self.insert_after_btn.setToolTip("Insert After Selected")
+        self.insert_after_btn.setMaximumWidth(70)
+        header_layout.addWidget(self.insert_after_btn)
+        
+        self.remove_register_btn = QPushButton("✗ Remove")
+        self.remove_register_btn.setToolTip("Remove Selected Register")
+        self.remove_register_btn.setMaximumWidth(70)
+        header_layout.addWidget(self.remove_register_btn)
+        
         layout.addLayout(header_layout)
         
         # Tree widget
@@ -75,12 +91,24 @@ class MemoryMapOutline(QWidget):
         self.tree.setColumnWidth(0, 150)
         self.tree.setColumnWidth(1, 80)
         self.tree.setColumnWidth(2, 70)
+        
+        # Initially disable register management buttons (no selection)
+        self._update_button_states(False)
+    
+    def _update_button_states(self, has_selection):
+        """Update the enabled state of register management buttons."""
+        self.insert_before_btn.setEnabled(has_selection)
+        self.insert_after_btn.setEnabled(has_selection)
+        self.remove_register_btn.setEnabled(has_selection)
     
     def _connect_signals(self):
         """Connect internal signals."""
         self.tree.currentItemChanged.connect(self._on_selection_changed)
         self.add_register_btn.clicked.connect(self._add_register_clicked)
         self.add_array_btn.clicked.connect(self._add_array_clicked)
+        self.insert_before_btn.clicked.connect(self._insert_before_clicked)
+        self.insert_after_btn.clicked.connect(self._insert_after_clicked)
+        self.remove_register_btn.clicked.connect(self._remove_register_clicked)
     
     def set_project(self, project: MemoryMapProject):
         """Set the current project and populate the tree."""
@@ -142,8 +170,12 @@ class MemoryMapOutline(QWidget):
         if current:
             memory_item = current.data(0, Qt.UserRole)
             self.current_item_changed.emit(memory_item)
+            # Enable register management buttons when an item is selected
+            self._update_button_states(True)
         else:
             self.current_item_changed.emit(None)
+            # Disable register management buttons when no item is selected
+            self._update_button_states(False)
     
     def _add_register_clicked(self):
         """Handle add register button click."""
@@ -162,3 +194,33 @@ class MemoryMapOutline(QWidget):
             parent = parent.parent()
         if parent:
             parent.add_register_array()
+    
+    def _insert_before_clicked(self):
+        """Handle insert before button click."""
+        selected_item = self.get_selected_item()
+        if selected_item:
+            parent = self.parent()
+            while parent and not hasattr(parent, 'insert_register_before'):
+                parent = parent.parent()
+            if parent:
+                parent.insert_register_before(selected_item)
+    
+    def _insert_after_clicked(self):
+        """Handle insert after button click."""
+        selected_item = self.get_selected_item()
+        if selected_item:
+            parent = self.parent()
+            while parent and not hasattr(parent, 'insert_register_after'):
+                parent = parent.parent()
+            if parent:
+                parent.insert_register_after(selected_item)
+    
+    def _remove_register_clicked(self):
+        """Handle remove register button click."""
+        selected_item = self.get_selected_item()
+        if selected_item:
+            parent = self.parent()
+            while parent and not hasattr(parent, 'remove_register'):
+                parent = parent.parent()
+            if parent:
+                parent.remove_register(selected_item)

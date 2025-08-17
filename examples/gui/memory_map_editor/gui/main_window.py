@@ -18,6 +18,7 @@ from .memory_map_outline import MemoryMapOutline
 from .register_detail_form import RegisterDetailForm
 from .bit_field_visualizer import BitFieldVisualizer
 from memory_map_core import MemoryMapProject, load_from_yaml, save_to_yaml, create_new_project
+from fpga_lib.core import Register, RegisterArrayAccessor
 
 
 class MainWindow(QMainWindow):
@@ -332,6 +333,121 @@ class MainWindow(QMainWindow):
             self.refresh_views()
             self.outline.select_item(array)
             self.project_changed.emit()
+    
+    def insert_register_before(self, reference_item):
+        """Insert a new register before the reference item."""
+        if not self.current_project:
+            return
+            
+        if isinstance(reference_item, Register):
+            # Insert before a regular register
+            target_offset = max(0, reference_item.offset - 4)
+        elif isinstance(reference_item, RegisterArrayAccessor):
+            # Insert before a register array
+            target_offset = max(0, reference_item._base_offset - 4)
+        else:
+            return
+            
+        # Find a free offset near the target
+        used_offsets = {reg.offset for reg in self.current_project.registers}
+        for array in self.current_project.register_arrays:
+            for i in range(array._count):
+                used_offsets.add(array._base_offset + i * array._stride)
+        
+        # Find the best available offset before the reference
+        new_offset = target_offset
+        while new_offset in used_offsets and new_offset >= 0:
+            new_offset -= 4
+        
+        if new_offset < 0:
+            # If no space before, use the next available after
+            new_offset = target_offset + 4
+            while new_offset in used_offsets:
+                new_offset += 4
+        
+        register = self.current_project.add_register(
+            f"register_{len(self.current_project.registers)}",
+            new_offset,
+            "New register (inserted before)"
+        )
+        
+        self.refresh_views()
+        self.outline.select_item(register)
+        self.project_changed.emit()
+    
+    def insert_register_after(self, reference_item):
+        """Insert a new register after the reference item."""
+        if not self.current_project:
+            return
+            
+        if isinstance(reference_item, Register):
+            # Insert after a regular register
+            target_offset = reference_item.offset + 4
+        elif isinstance(reference_item, RegisterArrayAccessor):
+            # Insert after a register array (after its last element)
+            target_offset = reference_item._base_offset + (reference_item._count * reference_item._stride)
+        else:
+            return
+            
+        # Find a free offset near the target
+        used_offsets = {reg.offset for reg in self.current_project.registers}
+        for array in self.current_project.register_arrays:
+            for i in range(array._count):
+                used_offsets.add(array._base_offset + i * array._stride)
+        
+        # Find the best available offset after the reference
+        new_offset = target_offset
+        while new_offset in used_offsets:
+            new_offset += 4
+        
+        register = self.current_project.add_register(
+            f"register_{len(self.current_project.registers)}",
+            new_offset,
+            "New register (inserted after)"
+        )
+        
+        self.refresh_views()
+        self.outline.select_item(register)
+        self.project_changed.emit()
+    
+    def remove_register(self, item_to_remove):
+        """Remove a register or register array from the project."""
+        if not self.current_project:
+            return
+            
+        # Confirm removal
+        from PySide6.QtWidgets import QMessageBox
+        
+        if isinstance(item_to_remove, Register):
+            item_name = f"Register '{item_to_remove.name}'"
+            reply = QMessageBox.question(
+                self,
+                "Confirm Removal",
+                f"Are you sure you want to remove {item_name}?",
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.No
+            )
+            
+            if reply == QMessageBox.Yes:
+                self.current_project.registers.remove(item_to_remove)
+                
+        elif isinstance(item_to_remove, RegisterArrayAccessor):
+            item_name = f"Register Array '{item_to_remove.name}'"
+            reply = QMessageBox.question(
+                self,
+                "Confirm Removal",
+                f"Are you sure you want to remove {item_name}?",
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.No
+            )
+            
+            if reply == QMessageBox.Yes:
+                self.current_project.register_arrays.remove(item_to_remove)
+        else:
+            return
+        
+        self.refresh_views()
+        self.project_changed.emit()
     
     def validate_project(self):
         """Validate the current project and show results."""
