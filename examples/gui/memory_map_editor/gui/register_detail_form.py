@@ -5,11 +5,12 @@ Provides form-based editing of register and register array properties,
 including name, address, description, and bit field management.
 """
 
+import functools
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QFormLayout, QTabWidget,
     QLineEdit, QSpinBox, QComboBox, QTextEdit, QPushButton, QTableWidget,
     QTableWidgetItem, QHeaderView, QAbstractItemView, QMessageBox, QLabel,
-    QGroupBox, QStyledItemDelegate
+    QGroupBox
 )
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QFont, QColor
@@ -18,34 +19,6 @@ from .bit_field_visualizer import BitFieldVisualizerWidget
 from memory_map_core import MemoryMapProject
 from fpga_lib.core import Register, BitField, RegisterArrayAccessor
 
-
-class AccessTypeDelegate(QStyledItemDelegate):
-    """Custom delegate for access type column with dropdown."""
-    
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.access_types = ['RO', 'WO', 'RW', 'RW1C']
-    
-    def createEditor(self, parent, option, index):
-        """Create a combo box editor."""
-        combo = QComboBox(parent)
-        combo.addItems(self.access_types)
-        return combo
-    
-    def setEditorData(self, editor, index):
-        """Set the current value in the editor."""
-        value = index.data(Qt.DisplayRole)
-        if value:
-            editor.setCurrentText(value.upper())
-    
-    def setModelData(self, editor, model, index):
-        """Set the data from editor back to model."""
-        value = editor.currentText()
-        model.setData(index, value, Qt.EditRole)
-    
-    def updateEditorGeometry(self, editor, option, index):
-        """Update editor geometry."""
-        editor.setGeometry(option.rect)
 
 
 class RegisterDetailForm(QWidget):
@@ -126,10 +99,6 @@ class RegisterDetailForm(QWidget):
         self.fields_table.setColumnWidth(1, 80)
         self.fields_table.setColumnWidth(2, 60)
         self.fields_table.setColumnWidth(3, 80)
-
-        # Set custom delegate for access type column (column 3)
-        self.access_delegate = AccessTypeDelegate(self)
-        self.fields_table.setItemDelegateForColumn(3, self.access_delegate)
 
         # Enable selection
         self.fields_table.setSelectionBehavior(QAbstractItemView.SelectRows)
@@ -265,9 +234,16 @@ class RegisterDetailForm(QWidget):
             width_item = QTableWidgetItem(str(field.width))
             self.fields_table.setItem(row, 2, width_item)
 
-            # Access - Use delegate for dropdown
-            access_item = QTableWidgetItem(field.access.upper())
-            self.fields_table.setItem(row, 3, access_item)
+            # Access - Use a persistent combo box for immediate usability
+            access_combo = QComboBox()
+            access_combo.addItems(['RO', 'WO', 'RW', 'RW1C'])
+            access_combo.setCurrentText(field.access.upper())
+            
+            # Connect signal to handle changes using partial to avoid closure issues
+            access_combo.currentTextChanged.connect(
+                functools.partial(self._on_access_type_changed, field)
+            )
+            self.fields_table.setCellWidget(row, 3, access_combo)
 
             # Description
             desc_item = QTableWidgetItem(field.description)
@@ -386,7 +362,7 @@ class RegisterDetailForm(QWidget):
         # Find available space for a 1-bit field
         next_offset = self._find_available_space(1)
         if next_offset == -1:
-            QMessageBox.warning(self, "Cannot Add Field", 
+            QMessageBox.warning(self, "Cannot Add Field",
                               "No space available in the 32-bit register for a new field.")
             return
 
@@ -500,7 +476,7 @@ class RegisterDetailForm(QWidget):
         all_fields = self._get_sorted_fields()
         for field in all_fields:
             if field.offset + field.width > 32:
-                QMessageBox.warning(self, "Cannot Insert Field", 
+                QMessageBox.warning(self, "Cannot Insert Field",
                                   f"Inserting field would cause '{field.name}' to extend beyond bit 31. "
                                   f"Consider removing some fields or recalculating offsets.")
                 # Revert the form to show original state
@@ -549,25 +525,25 @@ class RegisterDetailForm(QWidget):
 
         # Remove the preserved field from the list temporarily
         other_fields = [f for f in fields_list if f != preserve_field]
-        
+
         # Sort other fields by their original offset
         other_fields.sort(key=lambda f: f.offset)
-        
+
         # Try to fit other fields around the preserved field
         preserved_start = preserve_field.offset
         preserved_end = preserve_field.offset + preserve_field.width
-        
+
         # Place fields before the preserved field
         current_offset = 0
         fields_before = []
         fields_after = []
-        
+
         for field in other_fields:
             if field.offset < preserved_start:
                 fields_before.append(field)
             else:
                 fields_after.append(field)
-        
+
         # Pack fields before the preserved field
         for field in fields_before:
             if current_offset + field.width <= preserved_start:
@@ -576,7 +552,7 @@ class RegisterDetailForm(QWidget):
             else:
                 # Move to after preserved field
                 fields_after.append(field)
-        
+
         # Pack fields after the preserved field
         current_offset = preserved_end
         for field in fields_after:
@@ -620,72 +596,72 @@ class RegisterDetailForm(QWidget):
     def _validate_field_fits(self, new_field, exclude_field=None):
         """
         Validate that a field fits within the 32-bit register without overlaps.
-        
+
         Args:
             new_field: The BitField to validate
             exclude_field: Optional field to exclude from validation (for editing)
-            
+
         Returns:
             tuple: (is_valid, error_message)
         """
         if new_field.offset < 0:
             return False, "Offset cannot be negative"
-            
+
         if new_field.width < 1 or new_field.width > 32:
             return False, "Width must be between 1 and 32"
-            
+
         if new_field.offset + new_field.width > 32:
             return False, f"Field extends beyond register (bit {new_field.offset + new_field.width - 1} > 31)"
-        
+
         # Check for overlaps with existing fields
         fields_list = self._get_sorted_fields()
         for existing_field in fields_list:
             if exclude_field and existing_field == exclude_field:
                 continue
-                
+
             # Check if fields overlap
-            if not (new_field.offset + new_field.width <= existing_field.offset or 
+            if not (new_field.offset + new_field.width <= existing_field.offset or
                     existing_field.offset + existing_field.width <= new_field.offset):
                 return False, f"Field overlaps with '{existing_field.name}' (bits {existing_field.offset}-{existing_field.offset + existing_field.width - 1})"
-        
+
         return True, ""
 
     def _find_available_space(self, width):
         """
         Find available space for a field of given width.
-        
+
         Returns:
             int: Available offset, or -1 if no space
         """
         if width < 1 or width > 32:
             return -1
-            
+
         fields_list = self._get_sorted_fields()
         if not fields_list:
             return 0 if width <= 32 else -1
-        
+
         # Sort fields by offset
         fields_list.sort(key=lambda f: f.offset)
-        
+
         # Check space at the beginning
         if fields_list[0].offset >= width:
             return 0
-        
+
         # Check gaps between fields
         for i in range(len(fields_list) - 1):
             current_end = fields_list[i].offset + fields_list[i].width
             next_start = fields_list[i + 1].offset
             gap_size = next_start - current_end
-            
+
             if gap_size >= width:
                 return current_end
-        
+
         # Check space at the end
         last_field = fields_list[-1]
         last_end = last_field.offset + last_field.width
         if last_end + width <= 32:
             return last_end
-        
+
         return -1  # No space available
 
     def _generate_unique_field_name(self):
@@ -742,6 +718,12 @@ class RegisterDetailForm(QWidget):
         self._update_form()
         self.field_changed.emit()
 
+    def _on_access_type_changed(self, field, text):
+        """Handle access type changes from combo box."""
+        if not self._updating and field:
+            field.access = text.lower()
+            self.field_changed.emit()
+
     def _on_field_cell_changed(self, row, column):
         """Handle changes to field table cells with validation."""
         if self._updating:
@@ -793,7 +775,7 @@ class RegisterDetailForm(QWidget):
                 if bits_item:
                     try:
                         bits_text = bits_item.text().strip()
-                        
+
                         # Parse bit range: [7:0] or [5]
                         if bits_text.startswith('[') and bits_text.endswith(']'):
                             inner = bits_text[1:-1]
@@ -802,10 +784,10 @@ class RegisterDetailForm(QWidget):
                                 high_str, low_str = inner.split(':')
                                 high_bit = int(high_str.strip())
                                 low_bit = int(low_str.strip())
-                                
+
                                 if high_bit < low_bit:
                                     raise ValueError("High bit must be >= low bit")
-                                
+
                                 new_offset = low_bit
                                 new_width = high_bit - low_bit + 1
                             else:
@@ -815,11 +797,11 @@ class RegisterDetailForm(QWidget):
                                 new_width = 1
                         else:
                             raise ValueError("Bit range must be in format [high:low] or [bit]")
-                        
+
                         # Validate the new offset and width
                         temp_field = BitField(field.name, new_offset, new_width, field.access, field.description)
                         is_valid, error_msg = self._validate_field_fits(temp_field, exclude_field=field)
-                        
+
                         if not is_valid:
                             # Offer to automatically adjust other fields
                             reply = QMessageBox.question(
@@ -829,25 +811,25 @@ class RegisterDetailForm(QWidget):
                                 QMessageBox.Yes | QMessageBox.No,
                                 QMessageBox.Yes
                             )
-                            
+
                             if reply == QMessageBox.Yes:
                                 # Apply the changes
                                 field.offset = new_offset
                                 field.width = new_width
-                                
+
                                 # Recalculate offsets for other fields while preserving this one
                                 self._recalculate_offsets_preserving_field(field)
-                                
+
                                 # Validate final result
                                 final_fields = self._get_sorted_fields()
                                 max_bit = max(f.offset + f.width for f in final_fields) if final_fields else 0
-                                
+
                                 if max_bit > 32:
                                     # Revert if still doesn't fit
                                     self._update_form()
                                     QMessageBox.warning(
-                                        self, 
-                                        "Cannot Fit Fields", 
+                                        self,
+                                        "Cannot Fit Fields",
                                         f"Cannot fit all fields within 32-bit register even after recalculation."
                                     )
                                     return
@@ -859,7 +841,7 @@ class RegisterDetailForm(QWidget):
                             # Valid change, apply it
                             field.offset = new_offset
                             field.width = new_width
-                            
+
                     except ValueError as e:
                         QMessageBox.warning(self, "Invalid Bit Range", str(e))
                         self._update_form()  # Revert changes
@@ -871,11 +853,11 @@ class RegisterDetailForm(QWidget):
                     try:
                         new_width = int(width_item.text())
                         old_width = field.width
-                        
+
                         # Create a temporary field with new width to validate
                         temp_field = BitField(field.name, field.offset, new_width, field.access, field.description)
                         is_valid, error_msg = self._validate_field_fits(temp_field, exclude_field=field)
-                        
+
                         if not is_valid:
                             # Offer to automatically adjust offsets
                             reply = QMessageBox.question(
@@ -885,25 +867,25 @@ class RegisterDetailForm(QWidget):
                                 QMessageBox.Yes | QMessageBox.No,
                                 QMessageBox.Yes
                             )
-                            
+
                             if reply == QMessageBox.Yes:
                                 # Apply the width change first
                                 field.width = new_width
-                                
+
                                 # Then recalculate all offsets
                                 self._recalculate_offsets()
-                                
+
                                 # Check if the recalculation resolved the issue
                                 final_fields = self._get_sorted_fields()
                                 max_bit = max(f.offset + f.width for f in final_fields) if final_fields else 0
-                                
+
                                 if max_bit > 32:
                                     # Still doesn't fit, revert and show error
                                     field.width = old_width
                                     self._recalculate_offsets()
                                     QMessageBox.warning(
-                                        self, 
-                                        "Cannot Fit Fields", 
+                                        self,
+                                        "Cannot Fit Fields",
                                         f"Even after recalculating offsets, the fields would extend to bit {max_bit-1}, "
                                         f"which exceeds the 32-bit register limit. Please reduce field widths."
                                     )
@@ -917,7 +899,7 @@ class RegisterDetailForm(QWidget):
                             # If valid, apply the change directly
                             field.width = new_width
                         # Note: Don't auto-recalculate offsets for width changes to preserve user intent
-                        
+
                     except ValueError as e:
                         QMessageBox.warning(self, "Invalid Width", str(e))
                         self._update_form()  # Revert changes

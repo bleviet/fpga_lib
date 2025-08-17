@@ -19,88 +19,88 @@ from fpga_lib.core import Register, RegisterArrayAccessor
 class MemoryMapOutline(QWidget):
     """
     Tree widget showing the memory map structure.
-    
+
     Displays registers and register arrays in a hierarchical view
     with address information and descriptions.
     """
-    
+
     # Signals
     current_item_changed = Signal(object)  # Emits Register or RegisterArrayAccessor
-    
+
     def __init__(self, parent=None):
         super().__init__(parent)
-        
+
         self.current_project = None
         self._setup_ui()
         self._connect_signals()
-    
+
     def _setup_ui(self):
         """Set up the user interface."""
         layout = QVBoxLayout(self)
         layout.setContentsMargins(5, 5, 5, 5)
-        
+
         # Header
         header_layout = QHBoxLayout()
-        
+
         title_label = QLabel("Memory Map")
         title_font = QFont()
         title_font.setBold(True)
         title_font.setPointSize(12)
         title_label.setFont(title_font)
         header_layout.addWidget(title_label)
-        
+
         header_layout.addStretch()
-        
+
         # Add buttons
         self.add_register_btn = QPushButton("+ Reg")
         self.add_register_btn.setToolTip("Add Register")
         self.add_register_btn.setMaximumWidth(60)
         header_layout.addWidget(self.add_register_btn)
-        
+
         self.add_array_btn = QPushButton("+ Array")
         self.add_array_btn.setToolTip("Add Register Array")
         self.add_array_btn.setMaximumWidth(60)
         header_layout.addWidget(self.add_array_btn)
-        
+
         # Register management buttons
         self.insert_before_btn = QPushButton("↑ Insert")
         self.insert_before_btn.setToolTip("Insert Before Selected")
         self.insert_before_btn.setMaximumWidth(70)
         header_layout.addWidget(self.insert_before_btn)
-        
+
         self.insert_after_btn = QPushButton("↓ Insert")
         self.insert_after_btn.setToolTip("Insert After Selected")
         self.insert_after_btn.setMaximumWidth(70)
         header_layout.addWidget(self.insert_after_btn)
-        
+
         self.remove_register_btn = QPushButton("✗ Remove")
         self.remove_register_btn.setToolTip("Remove Selected Register")
         self.remove_register_btn.setMaximumWidth(70)
         header_layout.addWidget(self.remove_register_btn)
-        
+
         layout.addLayout(header_layout)
-        
+
         # Tree widget
         self.tree = QTreeWidget()
         self.tree.setHeaderLabels(["Name", "Address", "Type"])
         self.tree.setAlternatingRowColors(True)
         self.tree.setRootIsDecorated(False)
         layout.addWidget(self.tree)
-        
+
         # Set column widths
         self.tree.setColumnWidth(0, 150)
         self.tree.setColumnWidth(1, 80)
         self.tree.setColumnWidth(2, 70)
-        
+
         # Initially disable register management buttons (no selection)
         self._update_button_states(False)
-    
+
     def _update_button_states(self, has_selection):
         """Update the enabled state of register management buttons."""
         self.insert_before_btn.setEnabled(has_selection)
         self.insert_after_btn.setEnabled(has_selection)
         self.remove_register_btn.setEnabled(has_selection)
-    
+
     def _connect_signals(self):
         """Connect internal signals."""
         self.tree.currentItemChanged.connect(self._on_selection_changed)
@@ -109,19 +109,19 @@ class MemoryMapOutline(QWidget):
         self.insert_before_btn.clicked.connect(self._insert_before_clicked)
         self.insert_after_btn.clicked.connect(self._insert_after_clicked)
         self.remove_register_btn.clicked.connect(self._remove_register_clicked)
-    
+
     def set_project(self, project: MemoryMapProject):
         """Set the current project and populate the tree."""
         self.current_project = project
         self.refresh()
-    
+
     def refresh(self):
         """Refresh the tree view with current project data."""
         self.tree.clear()
-        
+
         if not self.current_project:
             return
-        
+
         # Add registers (sorted by offset for logical display order)
         sorted_registers = sorted(self.current_project.registers, key=lambda r: r.offset)
         for register in sorted_registers:
@@ -132,7 +132,7 @@ class MemoryMapOutline(QWidget):
             ])
             item.setData(0, Qt.UserRole, register)
             self.tree.addTopLevelItem(item)
-        
+
         # Add register arrays (sorted by base offset for logical display order)
         sorted_arrays = sorted(self.current_project.register_arrays, key=lambda a: a._base_offset)
         for array in sorted_arrays:
@@ -144,14 +144,14 @@ class MemoryMapOutline(QWidget):
             ])
             item.setData(0, Qt.UserRole, array)
             self.tree.addTopLevelItem(item)
-        
+
         # Sort by address (this will mix registers and arrays by address)
         self.tree.sortItems(1, Qt.AscendingOrder)
-        
+
         # Select first item if available
         if self.tree.topLevelItemCount() > 0:
             self.tree.setCurrentItem(self.tree.topLevelItem(0))
-    
+
     def select_item(self, memory_item):
         """Select a specific register or array in the tree."""
         for i in range(self.tree.topLevelItemCount()):
@@ -159,14 +159,14 @@ class MemoryMapOutline(QWidget):
             if item.data(0, Qt.UserRole) == memory_item:
                 self.tree.setCurrentItem(item)
                 break
-    
+
     def get_selected_item(self):
         """Get the currently selected memory map item."""
         current = self.tree.currentItem()
         if current:
             return current.data(0, Qt.UserRole)
         return None
-    
+
     def _on_selection_changed(self, current, previous):
         """Handle tree selection changes."""
         if current:
@@ -178,7 +178,7 @@ class MemoryMapOutline(QWidget):
             self.current_item_changed.emit(None)
             # Disable register management buttons when no item is selected
             self._update_button_states(False)
-    
+
     def _add_register_clicked(self):
         """Handle add register button click."""
         # Emit a signal that will be handled by the main window
@@ -187,7 +187,7 @@ class MemoryMapOutline(QWidget):
             parent = parent.parent()
         if parent:
             parent.add_register()
-    
+
     def _add_array_clicked(self):
         """Handle add array button click."""
         # Emit a signal that will be handled by the main window
@@ -196,7 +196,7 @@ class MemoryMapOutline(QWidget):
             parent = parent.parent()
         if parent:
             parent.add_register_array()
-    
+
     def _insert_before_clicked(self):
         """Handle insert before button click."""
         selected_item = self.get_selected_item()
@@ -206,7 +206,7 @@ class MemoryMapOutline(QWidget):
                 parent = parent.parent()
             if parent:
                 parent.insert_register_before(selected_item)
-    
+
     def _insert_after_clicked(self):
         """Handle insert after button click."""
         selected_item = self.get_selected_item()
@@ -216,7 +216,7 @@ class MemoryMapOutline(QWidget):
                 parent = parent.parent()
             if parent:
                 parent.insert_register_after(selected_item)
-    
+
     def _remove_register_clicked(self):
         """Handle remove register button click."""
         selected_item = self.get_selected_item()
