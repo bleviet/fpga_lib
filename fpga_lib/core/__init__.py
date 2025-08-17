@@ -5,7 +5,7 @@ This module provides core abstractions and utilities for FPGA IP core developmen
 including register abstractions, data types, interfaces, and common utilities.
 """
 
-from .register import BitField, Register, AbstractBusInterface, RegisterArrayAccessor
+from .register import BitField, Register, AbstractBusInterface, RegisterArrayAccessor, AccessType
 from .data_types import *
 from .interface import *
 from .ip_core import *
@@ -17,6 +17,7 @@ __all__ = [
     'Register',
     'AbstractBusInterface',
     'RegisterArrayAccessor',
+    'AccessType',
 
     # Re-exported from other modules
     'VHDLBaseType',

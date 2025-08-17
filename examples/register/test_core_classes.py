@@ -33,7 +33,7 @@ def test_dynamic_field_access():
     fields = [
         BitField("enable", 0, 1, "rw", "Enable bit"),
         BitField("mode", 1, 2, "rw", "Mode selection"),
-        BitField("status", 8, 4, "r", "Status bits")
+        BitField("status", 8, 4, "ro", "Status bits")
     ]
 
     reg = Register("test_reg", 0x100, bus, fields, "Test register")

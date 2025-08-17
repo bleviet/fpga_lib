@@ -26,14 +26,7 @@ from enum import Enum, auto
 # Add the fpga_lib to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 
-from fpga_lib.core import BitField, Register, AbstractBusInterface, RegisterArrayAccessor
-
-
-class Access(Enum):
-    """Access types for register fields."""
-    RO = auto()
-    RW = auto()
-    WO = auto()
+from fpga_lib.core import BitField, Register, AbstractBusInterface, RegisterArrayAccessor, AccessType
 
 
 class MockBusInterface(AbstractBusInterface):

@@ -7,8 +7,25 @@ operations, field validation, and access control.
 """
 
 from dataclasses import dataclass
-from typing import List, Dict, Optional, Any
+from typing import List, Dict, Optional, Any, Union
 from abc import ABC, abstractmethod
+from enum import Enum, auto
+
+
+class AccessType(Enum):
+    """
+    Register field access types.
+
+    This enum defines the valid access patterns for register bit fields:
+    - RO: Read-only fields (e.g., status bits, hardware state)
+    - WO: Write-only fields (e.g., command triggers, control pulses)
+    - RW: Read-write fields (e.g., configuration settings)
+    - RW1C: Read-write-1-to-clear fields (e.g., interrupt status flags)
+    """
+    RO = 'ro'       # Read-only
+    WO = 'wo'       # Write-only
+    RW = 'rw'       # Read-write
+    RW1C = 'rw1c'   # Read-write-1-to-clear
 
 
 @dataclass
@@ -23,14 +40,14 @@ class BitField:
         name: Human-readable name of the bit field
         offset: Bit position within the register (0-based, LSB = 0)
         width: Number of bits in the field (1-32)
-        access: Access type - 'r' (read-only), 'w' (write-only), 'rw' (read-write)
+    access: Access type - AccessType enum or string ('ro', 'wo', 'rw', 'rw1c')
         description: Optional human-readable description of the bit field
         reset_value: Default/reset value of the field (optional)
     """
     name: str
     offset: int
     width: int
-    access: str = 'rw'
+    access: Union[AccessType, str] = AccessType.RW
     description: str = ''
     reset_value: Optional[int] = None
 
@@ -44,8 +61,17 @@ class BitField:
             raise ValueError(f"Bit field '{self.name}' offset must be non-negative, got {self.offset}")
         if self.offset + self.width > 32:
             raise ValueError(f"Bit field '{self.name}' extends beyond 32-bit register boundary")
-        if self.access not in ['r', 'w', 'rw']:
-            raise ValueError(f"Bit field '{self.name}' access must be 'r', 'w', or 'rw', got '{self.access}'")
+
+        # Normalize access to string for internal consistency
+        if isinstance(self.access, AccessType):
+            self.access = self.access.value
+        elif isinstance(self.access, str):
+            # Validate string access types
+            valid_access = {at.value for at in AccessType}
+            if self.access not in valid_access:
+                raise ValueError(f"Bit field '{self.name}' access must be one of {valid_access}, got '{self.access}'")
+        else:
+            raise ValueError(f"Bit field '{self.name}' access must be AccessType enum or string, got {type(self.access)}")
 
         # Validate reset value if provided
         if self.reset_value is not None:
@@ -193,7 +219,7 @@ class Register:
             raise ValueError(f"Register '{self.name}' has no field named '{field_name}'")
 
         field = self._fields[field_name]
-        if field.access == 'w':
+        if field.access == 'wo':
             raise ValueError(f"Field '{field_name}' in register '{self.name}' is write-only")
 
         reg_value = self.read()
@@ -217,7 +243,7 @@ class Register:
             raise ValueError(f"Register '{self.name}' has no field named '{field_name}'")
 
         field = self._fields[field_name]
-        if field.access == 'r':
+        if field.access == 'ro':
             raise ValueError(f"Field '{field_name}' in register '{self.name}' is read-only")
 
         if value > field.max_value:
@@ -227,6 +253,12 @@ class Register:
             # Read-modify-write for read-write fields
             reg_value = self.read()
             new_reg_value = field.insert_value(reg_value, value)
+        elif field.access == 'rw1c':
+            # Read-write-1-to-clear: writing 1 clears the bit, writing 0 has no effect
+            reg_value = self.read()
+            # Only clear bits where value has 1s, preserve bits where value has 0s
+            clear_mask = (value << field.offset) & field.mask
+            new_reg_value = reg_value & ~clear_mask
         else:
             # Write-only field - don't read current value
             new_reg_value = field.insert_value(0, value)
@@ -247,7 +279,7 @@ class Register:
         result = {}
 
         for field_name, field in self._fields.items():
-            if field.access != 'w':  # Skip write-only fields
+            if field.access != 'wo':  # Skip write-only fields
                 result[field_name] = field.extract_value(reg_value)
 
         return result
@@ -271,16 +303,16 @@ class Register:
                 raise ValueError(f"Register '{self.name}' has no field named '{field_name}'")
 
             field = self._fields[field_name]
-            if field.access == 'r':
+            if field.access == 'ro':
                 raise ValueError(f"Field '{field_name}' in register '{self.name}' is read-only")
 
             if value > field.max_value:
                 raise ValueError(f"Value {value} exceeds field '{field_name}' maximum {field.max_value}")
 
-        # Check if we need to read current value (if any RW fields are being written)
-        has_rw_fields = any(self._fields[name].access == 'rw' for name in field_values.keys())
+        # Check if we need to read current value (if any RW or RW1C fields are being written)
+        has_read_fields = any(self._fields[name].access in ['rw', 'rw1c'] for name in field_values.keys())
 
-        if has_rw_fields:
+        if has_read_fields:
             reg_value = self.read()
         else:
             reg_value = 0
@@ -288,7 +320,12 @@ class Register:
         # Apply all field updates
         for field_name, value in field_values.items():
             field = self._fields[field_name]
-            reg_value = field.insert_value(reg_value, value)
+            if field.access == 'rw1c':
+                # Handle rw1c fields specially - clear bits where value has 1s
+                clear_mask = (value << field.offset) & field.mask
+                reg_value = reg_value & ~clear_mask
+            else:
+                reg_value = field.insert_value(reg_value, value)
 
         self.write(reg_value)
 
@@ -329,7 +366,7 @@ class Register:
         reset_value = 0
 
         for field in self._fields.values():
-            if field.reset_value is not None and field.access != 'r':
+            if field.reset_value is not None and field.access != 'ro':
                 reset_value = field.insert_value(reset_value, field.reset_value)
 
         self.write(reset_value)
@@ -360,14 +397,14 @@ class Register:
                 self._field = field
 
             def read(self):
-                if self._field.access == 'w':
+                if self._field.access == 'wo':
                     raise ValueError(f"Field '{self._field.name}' is write-only")
                 reg_value = self._register.read()
                 mask = ((1 << self._field.width) - 1) << self._field.offset
                 return (reg_value & mask) >> self._field.offset
 
             def write(self, value):
-                if self._field.access == 'r':
+                if self._field.access == 'ro':
                     raise ValueError(f"Field '{self._field.name}' is read-only")
 
                 if value > ((1 << self._field.width) - 1):
@@ -375,12 +412,20 @@ class Register:
 
                 if self._field.access == 'rw':
                     reg_value = self._register.read()
+                    mask = ((1 << self._field.width) - 1) << self._field.offset
+                    cleared_val = reg_value & ~mask
+                    new_reg_value = cleared_val | ((value << self._field.offset) & mask)
+                elif self._field.access == 'rw1c':
+                    # Read-write-1-to-clear: writing 1 clears the bit, writing 0 has no effect
+                    reg_value = self._register.read()
+                    clear_mask = (value << self._field.offset) & ((1 << self._field.width) - 1) << self._field.offset
+                    new_reg_value = reg_value & ~clear_mask
                 else:
+                    # Write-only field
                     reg_value = 0
-
-                mask = ((1 << self._field.width) - 1) << self._field.offset
-                cleared_val = reg_value & ~mask
-                new_reg_value = cleared_val | ((value << self._field.offset) & mask)
+                    mask = ((1 << self._field.width) - 1) << self._field.offset
+                    cleared_val = reg_value & ~mask
+                    new_reg_value = cleared_val | ((value << self._field.offset) & mask)
                 self._register.write(new_reg_value)
 
             def __int__(self):

@@ -7,16 +7,14 @@ constructs IP core drivers from human-readable memory map definitions.
 
 import yaml
 from dataclasses import dataclass
-from enum import Enum, auto
 from typing import List, Dict, Any, Union, Tuple
 from bus_interface import AbstractBusInterface
 
-
-class Access(Enum):
-    """Access types for register fields."""
-    RO = auto()  # Read-only
-    RW = auto()  # Read-write
-    WO = auto()  # Write-only
+# Import the centralized AccessType enum from the core module
+import sys
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
+from fpga_lib.core import AccessType
 
 
 @dataclass
@@ -28,13 +26,13 @@ class BitField:
         name: Human-readable name of the bit field
         offset: Bit position within the register (0-based)
         width: Number of bits in the field
-        access: Access type (RO, RW, WO)
+        access: Access type (AccessType enum)
         description: Description of the bit field
     """
     name: str
     offset: int
     width: int
-    access: Access = Access.RW
+    access: AccessType = AccessType.RW
     description: str = ''
 
 
@@ -91,7 +89,7 @@ class Register:
         mask = ((1 << field.width) - 1) << field.offset
 
         # For getter-only access, return the computed value directly
-        if field.access == Access.WO:
+        if field.access == AccessType.WO or field.access == 'wo':
             raise AttributeError(f"Bit-field '{name}' is write-only")
 
         # Return the current field value
@@ -110,7 +108,7 @@ class Register:
             field = self._fields[name]
             mask = ((1 << field.width) - 1) << field.offset
 
-            if field.access == Access.RO:
+            if field.access == AccessType.RO or field.access == 'ro':
                 raise AttributeError(f"Bit-field '{name}' is read-only")
 
             # Validate value fits in field width
@@ -118,11 +116,16 @@ class Register:
             if value > max_value:
                 raise ValueError(f"Value {value} exceeds field width {field.width}")
 
-            if field.access == Access.RW:
+            if field.access == AccessType.RW or field.access == 'rw':
                 # Read-modify-write for RW fields
                 reg_value = self.read()
                 cleared_val = reg_value & ~mask
                 new_reg_value = cleared_val | ((value << field.offset) & mask)
+            elif field.access == AccessType.RW1C or field.access == 'rw1c':
+                # Read-write-1-to-clear: writing 1 clears the bit, writing 0 has no effect
+                reg_value = self.read()
+                clear_mask = (value << field.offset) & mask
+                new_reg_value = reg_value & ~clear_mask
             else:
                 # Write-only field, don't read current value
                 new_reg_value = (value << field.offset) & mask
@@ -200,6 +203,20 @@ def _parse_bits(bits_def: Union[int, str, List]) -> Tuple[int, int]:
     raise ValueError(f"Invalid bit definition: {bits_def}")
 
 
+def _access_enum_to_string(access: AccessType) -> str:
+    """Convert AccessType enum to string format for core register module."""
+    if access == AccessType.RO:
+        return 'ro'
+    elif access == AccessType.WO:
+        return 'wo'
+    elif access == AccessType.RW:
+        return 'rw'
+    elif access == AccessType.RW1C:
+        return 'rw1c'
+    else:
+        raise ValueError(f"Unknown access type: {access}")
+
+
 def load_from_yaml(yaml_path: str, bus_interface: AbstractBusInterface,
                    driver_name: str = "GPIO Driver") -> IpCoreDriver:
     """
@@ -253,15 +270,15 @@ def load_from_yaml(yaml_path: str, bus_interface: AbstractBusInterface,
             # Parse access type
             access_str = field_info.get('access', 'rw').upper()
             try:
-                access = Access[access_str]
+                access = AccessType[access_str]
             except KeyError:
-                raise ValueError(f"Invalid access type '{access_str}'. Must be 'ro', 'rw', or 'wo'")
+                raise ValueError(f"Invalid access type '{access_str}'. Must be 'ro', 'rw', 'wo', or 'rw1c'")
 
             fields.append(BitField(
                 name=field_info['name'],
                 offset=offset,
                 width=width,
-                access=access,
+                access=_access_enum_to_string(access),
                 description=field_info.get('description', '')
             ))
 
@@ -371,7 +388,10 @@ def validate_yaml_memory_map(yaml_path: str) -> List[str]:
                     errors.append(f"{field_prefix}: Cannot specify both 'bit' and 'bits'")
                 else:
                     try:
-                        bit_def = field_info.get('bit') or field_info.get('bits')
+                        if has_bit:
+                            bit_def = field_info['bit']
+                        else:
+                            bit_def = field_info['bits']
                         offset, width = _parse_bits(bit_def)
 
                         # Check for bit overlap
@@ -390,7 +410,7 @@ def validate_yaml_memory_map(yaml_path: str) -> List[str]:
                 # Check access type
                 if 'access' in field_info:
                     access = field_info['access'].upper()
-                    if access not in ['RO', 'RW', 'WO']:
-                        errors.append(f"{field_prefix}: Invalid access type '{access}'. Must be 'ro', 'rw', or 'wo'")
+                    if access not in ['RO', 'RW', 'WO', 'RW1C']:
+                        errors.append(f"{field_prefix}: Invalid access type '{access}'. Must be 'ro', 'rw', 'wo', or 'rw1c'")
 
     return errors
