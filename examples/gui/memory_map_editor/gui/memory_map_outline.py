@@ -10,7 +10,7 @@ from PySide6.QtWidgets import (
     QPushButton, QLabel, QMessageBox
 )
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QFont
+from PySide6.QtGui import QFont, QShortcut, QKeySequence
 
 from memory_map_core import MemoryMapProject
 from fpga_lib.core import Register, RegisterArrayAccessor
@@ -79,6 +79,17 @@ class MemoryMapOutline(QWidget):
         self.remove_register_btn.setMaximumWidth(70)
         header_layout.addWidget(self.remove_register_btn)
 
+        # Move up/down buttons for reordering
+        self.move_up_btn = QPushButton("⬆ Up")
+        self.move_up_btn.setToolTip("Move Selected Register Up (Alt+Up)")
+        self.move_up_btn.setMaximumWidth(60)
+        header_layout.addWidget(self.move_up_btn)
+
+        self.move_down_btn = QPushButton("⬇ Down")
+        self.move_down_btn.setToolTip("Move Selected Register Down (Alt+Down)")
+        self.move_down_btn.setMaximumWidth(60)
+        header_layout.addWidget(self.move_down_btn)
+
         layout.addLayout(header_layout)
 
         # Tree widget
@@ -104,8 +115,17 @@ class MemoryMapOutline(QWidget):
         self.insert_array_before_btn.setEnabled(True)
         self.insert_array_after_btn.setEnabled(True)
 
-        # Remove button only enabled when something is selected
+        # Remove and move buttons only enabled when something is selected
         self.remove_register_btn.setEnabled(has_selection)
+
+        # Move buttons enabled based on selection and position
+        if has_selection and self.tree.topLevelItemCount() > 1:
+            current_index = self.tree.indexOfTopLevelItem(self.tree.currentItem())
+            self.move_up_btn.setEnabled(current_index > 0)
+            self.move_down_btn.setEnabled(current_index < self.tree.topLevelItemCount() - 1)
+        else:
+            self.move_up_btn.setEnabled(False)
+            self.move_down_btn.setEnabled(False)
 
     def _connect_signals(self):
         """Connect internal signals."""
@@ -115,6 +135,17 @@ class MemoryMapOutline(QWidget):
         self.insert_array_before_btn.clicked.connect(self._insert_array_before_clicked)
         self.insert_array_after_btn.clicked.connect(self._insert_array_after_clicked)
         self.remove_register_btn.clicked.connect(self._remove_register_clicked)
+
+        # Move up/down button connections
+        self.move_up_btn.clicked.connect(self._move_up_clicked)
+        self.move_down_btn.clicked.connect(self._move_down_clicked)
+
+        # Keyboard shortcuts for move up/down
+        self.move_up_shortcut = QShortcut(QKeySequence("Alt+Up"), self)
+        self.move_up_shortcut.activated.connect(self._move_up_clicked)
+
+        self.move_down_shortcut = QShortcut(QKeySequence("Alt+Down"), self)
+        self.move_down_shortcut.activated.connect(self._move_down_clicked)
 
     def set_project(self, project: MemoryMapProject):
         """Set the current project and populate the tree."""
@@ -263,3 +294,82 @@ class MemoryMapOutline(QWidget):
                 parent = parent.parent()
             if parent:
                 parent.remove_register(selected_item)
+
+    def _move_up_clicked(self):
+        """Handle move up button click."""
+        self._move_register(-1)
+
+    def _move_down_clicked(self):
+        """Handle move down button click."""
+        self._move_register(1)
+
+    def _move_register(self, direction):
+        """
+        Move the selected register or array up or down in the list.
+
+        Args:
+            direction: -1 for up, 1 for down
+        """
+        selected_item = self.get_selected_item()
+        if not selected_item or not self.current_project:
+            return
+
+        # Find the parent main window to access project manipulation methods
+        parent = self.parent()
+        while parent and not hasattr(parent, 'current_project'):
+            parent = parent.parent()
+        if not parent:
+            return
+
+        # Get all memory map items (registers and arrays) sorted by their base address
+        all_items = []
+
+        # Add registers
+        for reg in self.current_project.registers:
+            all_items.append(('register', reg, reg.offset, 4))  # registers are 4 bytes
+
+        # Add register arrays
+        for array in self.current_project.register_arrays:
+            array_size = array._count * array._stride
+            all_items.append(('array', array, array._base_offset, array_size))
+
+        # Sort by address
+        all_items.sort(key=lambda x: x[2])
+
+        # Find the selected item in the list
+        selected_index = -1
+        for i, (item_type, item, address, size) in enumerate(all_items):
+            if item == selected_item:
+                selected_index = i
+                break
+
+        if selected_index == -1:
+            return  # Selected item not found
+
+        # Calculate new position
+        new_index = selected_index + direction
+        if new_index < 0 or new_index >= len(all_items):
+            return  # Can't move beyond bounds
+
+        # Reorder the items list by moving the selected item
+        moved_item = all_items.pop(selected_index)
+        all_items.insert(new_index, moved_item)
+
+        # Recalculate all addresses from 0, placing items sequentially with no gaps
+        current_address = 0
+        for item_type, item, old_address, size in all_items:
+            if item_type == 'register':
+                item.offset = current_address
+            else:  # array
+                item._base_offset = current_address
+            current_address += size
+
+        # Refresh the view to show new order
+        self.refresh()
+
+        # Maintain selection on the moved item
+        self.select_item(selected_item)
+
+        # Emit project changed signal to update other views
+        if hasattr(parent, 'project_changed'):
+            parent.project_changed.emit()
