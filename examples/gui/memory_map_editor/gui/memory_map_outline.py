@@ -51,28 +51,29 @@ class MemoryMapOutline(QWidget):
 
         header_layout.addStretch()
 
-        # Add buttons
-        self.add_register_btn = QPushButton("+ Reg")
-        self.add_register_btn.setToolTip("Add Register")
-        self.add_register_btn.setMaximumWidth(60)
-        header_layout.addWidget(self.add_register_btn)
+        # Register insertion buttons
+        self.insert_register_before_btn = QPushButton("Reg ↑")
+        self.insert_register_before_btn.setToolTip("Insert Register Before Selected")
+        self.insert_register_before_btn.setMaximumWidth(60)
+        header_layout.addWidget(self.insert_register_before_btn)
 
-        self.add_array_btn = QPushButton("+ Array")
-        self.add_array_btn.setToolTip("Add Register Array")
-        self.add_array_btn.setMaximumWidth(60)
-        header_layout.addWidget(self.add_array_btn)
+        self.insert_register_after_btn = QPushButton("Reg ↓")
+        self.insert_register_after_btn.setToolTip("Insert Register After Selected")
+        self.insert_register_after_btn.setMaximumWidth(60)
+        header_layout.addWidget(self.insert_register_after_btn)
 
-        # Register management buttons
-        self.insert_before_btn = QPushButton("↑ Insert")
-        self.insert_before_btn.setToolTip("Insert Before Selected")
-        self.insert_before_btn.setMaximumWidth(70)
-        header_layout.addWidget(self.insert_before_btn)
+        # Array insertion buttons
+        self.insert_array_before_btn = QPushButton("Array ↑")
+        self.insert_array_before_btn.setToolTip("Insert Array Before Selected")
+        self.insert_array_before_btn.setMaximumWidth(70)
+        header_layout.addWidget(self.insert_array_before_btn)
 
-        self.insert_after_btn = QPushButton("↓ Insert")
-        self.insert_after_btn.setToolTip("Insert After Selected")
-        self.insert_after_btn.setMaximumWidth(70)
-        header_layout.addWidget(self.insert_after_btn)
+        self.insert_array_after_btn = QPushButton("Array ↓")
+        self.insert_array_after_btn.setToolTip("Insert Array After Selected")
+        self.insert_array_after_btn.setMaximumWidth(70)
+        header_layout.addWidget(self.insert_array_after_btn)
 
+        # Remove button
         self.remove_register_btn = QPushButton("✗ Remove")
         self.remove_register_btn.setToolTip("Remove Selected Register")
         self.remove_register_btn.setMaximumWidth(70)
@@ -97,17 +98,22 @@ class MemoryMapOutline(QWidget):
 
     def _update_button_states(self, has_selection):
         """Update the enabled state of register management buttons."""
-        self.insert_before_btn.setEnabled(has_selection)
-        self.insert_after_btn.setEnabled(has_selection)
+        # Insert buttons are always enabled (will add at start/end if no selection)
+        self.insert_register_before_btn.setEnabled(True)
+        self.insert_register_after_btn.setEnabled(True)
+        self.insert_array_before_btn.setEnabled(True)
+        self.insert_array_after_btn.setEnabled(True)
+
+        # Remove button only enabled when something is selected
         self.remove_register_btn.setEnabled(has_selection)
 
     def _connect_signals(self):
         """Connect internal signals."""
         self.tree.currentItemChanged.connect(self._on_selection_changed)
-        self.add_register_btn.clicked.connect(self._add_register_clicked)
-        self.add_array_btn.clicked.connect(self._add_array_clicked)
-        self.insert_before_btn.clicked.connect(self._insert_before_clicked)
-        self.insert_after_btn.clicked.connect(self._insert_after_clicked)
+        self.insert_register_before_btn.clicked.connect(self._insert_register_before_clicked)
+        self.insert_register_after_btn.clicked.connect(self._insert_register_after_clicked)
+        self.insert_array_before_btn.clicked.connect(self._insert_array_before_clicked)
+        self.insert_array_after_btn.clicked.connect(self._insert_array_after_clicked)
         self.remove_register_btn.clicked.connect(self._remove_register_clicked)
 
     def set_project(self, project: MemoryMapProject):
@@ -179,43 +185,57 @@ class MemoryMapOutline(QWidget):
             # Disable register management buttons when no item is selected
             self._update_button_states(False)
 
-    def _add_register_clicked(self):
-        """Handle add register button click."""
-        # Emit a signal that will be handled by the main window
-        parent = self.parent()
-        while parent and not hasattr(parent, 'add_register'):
-            parent = parent.parent()
-        if parent:
-            parent.add_register()
-
-    def _add_array_clicked(self):
-        """Handle add array button click."""
-        # Emit a signal that will be handled by the main window
-        parent = self.parent()
-        while parent and not hasattr(parent, 'add_register_array'):
-            parent = parent.parent()
-        if parent:
-            parent.add_register_array()
-
-    def _insert_before_clicked(self):
-        """Handle insert before button click."""
+    def _insert_register_before_clicked(self):
+        """Handle insert register before button click."""
         selected_item = self.get_selected_item()
-        if selected_item:
-            parent = self.parent()
-            while parent and not hasattr(parent, 'insert_register_before'):
-                parent = parent.parent()
-            if parent:
+        parent = self.parent()
+        while parent and not hasattr(parent, 'insert_register_before'):
+            parent = parent.parent()
+        if parent:
+            if selected_item:
                 parent.insert_register_before(selected_item)
+            else:
+                # No selection - add at beginning
+                parent.add_register()
 
-    def _insert_after_clicked(self):
-        """Handle insert after button click."""
+    def _insert_register_after_clicked(self):
+        """Handle insert register after button click."""
         selected_item = self.get_selected_item()
-        if selected_item:
-            parent = self.parent()
-            while parent and not hasattr(parent, 'insert_register_after'):
-                parent = parent.parent()
-            if parent:
+        parent = self.parent()
+        while parent and not hasattr(parent, 'insert_register_after'):
+            parent = parent.parent()
+        if parent:
+            if selected_item:
                 parent.insert_register_after(selected_item)
+            else:
+                # No selection - add at end
+                parent.add_register()
+
+    def _insert_array_before_clicked(self):
+        """Handle insert array before button click."""
+        selected_item = self.get_selected_item()
+        parent = self.parent()
+        while parent and not hasattr(parent, 'insert_array_before'):
+            parent = parent.parent()
+        if parent:
+            if selected_item:
+                parent.insert_array_before(selected_item)
+            else:
+                # No selection - add at beginning
+                parent.add_register_array()
+
+    def _insert_array_after_clicked(self):
+        """Handle insert array after button click."""
+        selected_item = self.get_selected_item()
+        parent = self.parent()
+        while parent and not hasattr(parent, 'insert_array_after'):
+            parent = parent.parent()
+        if parent:
+            if selected_item:
+                parent.insert_array_after(selected_item)
+            else:
+                # No selection - add at end
+                parent.add_register_array()
 
     def _remove_register_clicked(self):
         """Handle remove register button click."""

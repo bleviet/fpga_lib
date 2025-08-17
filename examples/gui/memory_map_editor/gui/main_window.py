@@ -137,20 +137,6 @@ class MainWindow(QMainWindow):
         # Edit menu
         edit_menu = menubar.addMenu("&Edit")
 
-        # Add register
-        self.action_add_register = QAction("Add &Register", self)
-        self.action_add_register.setStatusTip("Add a new register")
-        self.action_add_register.triggered.connect(self.add_register)
-        edit_menu.addAction(self.action_add_register)
-
-        # Add register array
-        self.action_add_array = QAction("Add Register &Array", self)
-        self.action_add_array.setStatusTip("Add a new register array")
-        self.action_add_array.triggered.connect(self.add_register_array)
-        edit_menu.addAction(self.action_add_array)
-
-        edit_menu.addSeparator()
-
         # Validate
         self.action_validate = QAction("&Validate Memory Map", self)
         self.action_validate.setShortcut(QKeySequence("Ctrl+R"))
@@ -186,9 +172,7 @@ class MainWindow(QMainWindow):
         toolbar.addAction(self.action_open)
         toolbar.addAction(self.action_save)
         toolbar.addSeparator()
-        toolbar.addAction(self.action_add_register)
-        toolbar.addAction(self.action_add_array)
-        toolbar.addSeparator()
+
         toolbar.addAction(self.action_validate)
 
     def _setup_status_bar(self):
@@ -468,6 +452,121 @@ class MainWindow(QMainWindow):
 
         self.refresh_views()
         self.outline.select_item(register)
+        self.project_changed.emit()
+
+    # Wrapper methods for context-aware insertion actions
+    def insert_array_before(self, reference_item):
+        """Insert a new register array before the reference item."""
+        if not self.current_project:
+            return
+
+        if isinstance(reference_item, Register):
+            reference_offset = reference_item.offset
+        elif isinstance(reference_item, RegisterArrayAccessor):
+            reference_offset = reference_item._base_offset
+        else:
+            return
+
+        # Similar logic to insert_register_before but for arrays
+        target_offset = max(0, reference_offset - 16)  # Arrays typically need more space
+
+        used_offsets = {reg.offset for reg in self.current_project.registers}
+        for array in self.current_project.register_arrays:
+            for i in range(array._count):
+                used_offsets.add(array._base_offset + i * array._stride)
+
+        if target_offset in used_offsets or target_offset < 0:
+            if reference_offset == 0:
+                # Shift everything forward
+                for reg in self.current_project.registers:
+                    reg.offset += 16
+                for array in self.current_project.register_arrays:
+                    array._base_offset += 16
+                new_offset = 0
+            else:
+                # Find gap or shift
+                new_offset = 0
+                sorted_offsets = sorted(used_offsets)
+                for offset in sorted_offsets:
+                    if offset >= reference_offset:
+                        break
+                    if offset - new_offset >= 16:
+                        break
+                    new_offset = offset + 4
+
+                if new_offset >= reference_offset:
+                    shift_amount = 16
+                    for reg in self.current_project.registers:
+                        if reg.offset >= reference_offset:
+                            reg.offset += shift_amount
+                    for array in self.current_project.register_arrays:
+                        if array._base_offset >= reference_offset:
+                            array._base_offset += shift_amount
+                    new_offset = reference_offset
+        else:
+            new_offset = target_offset
+
+        # Create the array
+        array = self.current_project.add_register_array(
+            f"array_{len(self.current_project.register_arrays)}",
+            new_offset,
+            4,  # Default count
+            4   # Default stride
+        )
+
+        self.refresh_views()
+        self.outline.select_item(array)
+        self.project_changed.emit()
+
+    def insert_array_after(self, reference_item):
+        """Insert a new register array after the reference item."""
+        if not self.current_project:
+            return
+
+        if isinstance(reference_item, Register):
+            reference_offset = reference_item.offset
+            target_offset = reference_offset + 4
+        elif isinstance(reference_item, RegisterArrayAccessor):
+            last_array_offset = reference_item._base_offset + ((reference_item._count - 1) * reference_item._stride)
+            target_offset = last_array_offset + 4
+        else:
+            return
+
+        used_offsets = {reg.offset for reg in self.current_project.registers}
+        for array in self.current_project.register_arrays:
+            for i in range(array._count):
+                used_offsets.add(array._base_offset + i * array._stride)
+
+        # Check if we need space for the new array (4 registers by default)
+        needed_space = 16  # 4 registers * 4 bytes each
+        space_available = True
+        for i in range(4):
+            if target_offset + (i * 4) in used_offsets:
+                space_available = False
+                break
+
+        if not space_available:
+            # Shift registers forward to make space
+            shift_amount = 16
+            for reg in self.current_project.registers:
+                if reg.offset >= target_offset:
+                    reg.offset += shift_amount
+            for array in self.current_project.register_arrays:
+                if array._base_offset >= target_offset:
+                    array._base_offset += shift_amount
+
+        new_offset = target_offset
+
+        # Create the array
+        array = self.current_project.add_register_array(
+            f"array_{len(self.current_project.register_arrays)}",
+            new_offset,
+            4,  # Default count
+            4   # Default stride
+        )
+
+        self.refresh_views()
+        self.outline.select_item(array)
         self.project_changed.emit()
 
     def remove_register(self, item_to_remove):
