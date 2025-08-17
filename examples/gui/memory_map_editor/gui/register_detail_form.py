@@ -5,12 +5,11 @@ Provides form-based editing of register and register array properties,
 including name, address, description, and bit field management.
 """
 
-import functools
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QFormLayout, QTabWidget,
     QLineEdit, QSpinBox, QComboBox, QTextEdit, QPushButton, QTableWidget,
     QTableWidgetItem, QHeaderView, QAbstractItemView, QMessageBox, QLabel,
-    QGroupBox
+    QGroupBox, QStyledItemDelegate
 )
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QFont, QColor
@@ -18,6 +17,35 @@ from PySide6.QtGui import QFont, QColor
 from .bit_field_visualizer import BitFieldVisualizerWidget
 from memory_map_core import MemoryMapProject
 from fpga_lib.core import Register, BitField, RegisterArrayAccessor
+
+
+class AccessTypeDelegate(QStyledItemDelegate):
+    """Custom delegate for access type column with dropdown."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.access_types = ['RO', 'WO', 'RW', 'RW1C']
+
+    def createEditor(self, parent, option, index):
+        """Create a combo box editor."""
+        combo = QComboBox(parent)
+        combo.addItems(self.access_types)
+        return combo
+
+    def setEditorData(self, editor, index):
+        """Set the current value in the editor."""
+        value = index.data(Qt.DisplayRole)
+        if value:
+            editor.setCurrentText(value.upper())
+
+    def setModelData(self, editor, model, index):
+        """Set the data from editor back to model."""
+        value = editor.currentText()
+        model.setData(index, value, Qt.EditRole)
+
+    def updateEditorGeometry(self, editor, option, index):
+        """Update editor geometry."""
+        editor.setGeometry(option.rect)
 
 
 
@@ -99,6 +127,10 @@ class RegisterDetailForm(QWidget):
         self.fields_table.setColumnWidth(1, 80)
         self.fields_table.setColumnWidth(2, 60)
         self.fields_table.setColumnWidth(3, 80)
+
+        # Set custom delegate for access type column (column 3)
+        self.access_delegate = AccessTypeDelegate(self)
+        self.fields_table.setItemDelegateForColumn(3, self.access_delegate)
 
         # Enable selection
         self.fields_table.setSelectionBehavior(QAbstractItemView.SelectRows)
@@ -234,16 +266,9 @@ class RegisterDetailForm(QWidget):
             width_item = QTableWidgetItem(str(field.width))
             self.fields_table.setItem(row, 2, width_item)
 
-            # Access - Use a persistent combo box for immediate usability
-            access_combo = QComboBox()
-            access_combo.addItems(['RO', 'WO', 'RW', 'RW1C'])
-            access_combo.setCurrentText(field.access.upper())
-
-            # Connect signal to handle changes using partial to avoid closure issues
-            access_combo.currentTextChanged.connect(
-                functools.partial(self._on_access_type_changed, field)
-            )
-            self.fields_table.setCellWidget(row, 3, access_combo)
+            # Access - Use delegate for dropdown
+            access_item = QTableWidgetItem(field.access.upper())
+            self.fields_table.setItem(row, 3, access_item)
 
             # Description
             desc_item = QTableWidgetItem(field.description)
@@ -717,12 +742,6 @@ class RegisterDetailForm(QWidget):
         # Refresh table
         self._update_form()
         self.field_changed.emit()
-
-    def _on_access_type_changed(self, field, text):
-        """Handle access type changes from combo box."""
-        if not self._updating and field:
-            field.access = text.lower()
-            self.field_changed.emit()
 
     def _on_field_cell_changed(self, row, column):
         """Handle changes to field table cells with validation."""
