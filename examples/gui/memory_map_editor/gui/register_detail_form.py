@@ -830,24 +830,37 @@ class RegisterDetailForm(QWidget):
         if current_row < 0:
             return
 
+        # Get the selected field name from the table
+        field_name_item = self.fields_table.item(current_row, 0)
+        if not field_name_item:
+            return
+        selected_field_name = field_name_item.text()
+
         # Get all bit fields sorted by offset
         fields_list = self._get_sorted_fields()
         if len(fields_list) < 2:
             return  # Need at least 2 fields to move
 
-        # Find the field in the sorted list that corresponds to the selected row
-        if current_row >= len(fields_list):
-            return
+        # Find the selected field in the sorted list by name
+        selected_field = None
+        selected_index = -1
+        for i, field in enumerate(fields_list):
+            if field.name == selected_field_name:
+                selected_field = field
+                selected_index = i
+                break
 
-        selected_field = fields_list[current_row]
-        new_index = current_row + direction
+        if selected_field is None:
+            return  # Selected field not found
+
+        new_index = selected_index + direction
 
         # Check bounds
         if new_index < 0 or new_index >= len(fields_list):
             return
 
         # Remove the field from its current position and insert at new position
-        fields_list.pop(current_row)
+        fields_list.pop(selected_index)
         fields_list.insert(new_index, selected_field)
 
         # Recalculate offsets for the reordered fields
@@ -884,18 +897,27 @@ class RegisterDetailForm(QWidget):
         if not field_name_item:
             return
 
-        field_name = field_name_item.text()
         fields_list = self._get_sorted_fields()
 
-        # Find the field object
-        field = None
-        for f in fields_list:
-            if f.name == field_name:
-                field = f
-                break
+        # Get the current name in the table (might be new name being typed)
+        current_table_name = field_name_item.text()
 
-        if not field:
-            return
+        # For name changes (column 0), we need special handling since the name might be mid-edit
+        if column == 0:
+            # Find the field that corresponds to this table row
+            # The table is ordered by offset (same as fields_list)
+            if row >= len(fields_list):
+                return
+            field = fields_list[row]
+        else:
+            # For other columns, find field by current name in the field object
+            field = None
+            for f in fields_list:
+                if f.name == current_table_name:
+                    field = f
+                    break
+            if not field:
+                return
 
         try:
             # Handle different column edits
@@ -919,6 +941,9 @@ class RegisterDetailForm(QWidget):
                         if old_name in self.current_item._fields:
                             del self.current_item._fields[old_name]
                         self.current_item._fields[new_name] = field
+                    elif isinstance(self.current_item, RegisterArrayAccessor):
+                        # For arrays, the field template is already updated since we modified the field object
+                        pass
 
             elif column == 1:  # Bits (bit range like [7:0] or [5])
                 bits_item = self.fields_table.item(row, 1)
@@ -1102,6 +1127,10 @@ class RegisterDetailForm(QWidget):
                 self._update_form()
 
             self.field_changed.emit()
+
+            # Ensure the register's fields dictionary is synchronized
+            fields_list = self._get_sorted_fields()
+            self._update_item_fields(fields_list)
 
         except Exception as e:
             QMessageBox.warning(self, "Edit Error", f"Error updating field: {str(e)}")
