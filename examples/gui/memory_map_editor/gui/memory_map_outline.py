@@ -122,8 +122,9 @@ class MemoryMapOutline(QWidget):
         if not self.current_project:
             return
         
-        # Add registers
-        for register in self.current_project.registers:
+        # Add registers (sorted by offset for logical display order)
+        sorted_registers = sorted(self.current_project.registers, key=lambda r: r.offset)
+        for register in sorted_registers:
             item = QTreeWidgetItem([
                 register.name,
                 f"0x{register.offset:04X}",
@@ -132,8 +133,9 @@ class MemoryMapOutline(QWidget):
             item.setData(0, Qt.UserRole, register)
             self.tree.addTopLevelItem(item)
         
-        # Add register arrays
-        for array in self.current_project.register_arrays:
+        # Add register arrays (sorted by base offset for logical display order)
+        sorted_arrays = sorted(self.current_project.register_arrays, key=lambda a: a._base_offset)
+        for array in sorted_arrays:
             end_addr = array._base_offset + (array._count * array._stride) - 1
             item = QTreeWidgetItem([
                 array._name,
@@ -143,7 +145,7 @@ class MemoryMapOutline(QWidget):
             item.setData(0, Qt.UserRole, array)
             self.tree.addTopLevelItem(item)
         
-        # Sort by address
+        # Sort by address (this will mix registers and arrays by address)
         self.tree.sortItems(1, Qt.AscendingOrder)
         
         # Select first item if available

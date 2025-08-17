@@ -9,7 +9,7 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QFormLayout, QTabWidget,
     QLineEdit, QSpinBox, QComboBox, QTextEdit, QPushButton, QTableWidget,
     QTableWidgetItem, QHeaderView, QAbstractItemView, QMessageBox, QLabel,
-    QGroupBox
+    QGroupBox, QStyledItemDelegate
 )
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QFont, QColor
@@ -17,6 +17,35 @@ from PySide6.QtGui import QFont, QColor
 from .bit_field_visualizer import BitFieldVisualizerWidget
 from memory_map_core import MemoryMapProject
 from fpga_lib.core import Register, BitField, RegisterArrayAccessor
+
+
+class AccessTypeDelegate(QStyledItemDelegate):
+    """Custom delegate for access type column with dropdown."""
+    
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.access_types = ['RO', 'WO', 'RW', 'RW1C']
+    
+    def createEditor(self, parent, option, index):
+        """Create a combo box editor."""
+        combo = QComboBox(parent)
+        combo.addItems(self.access_types)
+        return combo
+    
+    def setEditorData(self, editor, index):
+        """Set the current value in the editor."""
+        value = index.data(Qt.DisplayRole)
+        if value:
+            editor.setCurrentText(value.upper())
+    
+    def setModelData(self, editor, model, index):
+        """Set the data from editor back to model."""
+        value = editor.currentText()
+        model.setData(index, value, Qt.EditRole)
+    
+    def updateEditorGeometry(self, editor, option, index):
+        """Update editor geometry."""
+        editor.setGeometry(option.rect)
 
 
 class RegisterDetailForm(QWidget):
@@ -98,6 +127,10 @@ class RegisterDetailForm(QWidget):
         self.fields_table.setColumnWidth(2, 60)
         self.fields_table.setColumnWidth(3, 80)
 
+        # Set custom delegate for access type column (column 3)
+        self.access_delegate = AccessTypeDelegate(self)
+        self.fields_table.setItemDelegateForColumn(3, self.access_delegate)
+
         # Enable selection
         self.fields_table.setSelectionBehavior(QAbstractItemView.SelectRows)
         fields_layout.addWidget(self.fields_table)
@@ -109,14 +142,12 @@ class RegisterDetailForm(QWidget):
         self.insert_before_btn = QPushButton("Insert Before")
         self.insert_after_btn = QPushButton("Insert After")
         self.remove_field_btn = QPushButton("Remove Field")
-        self.edit_field_btn = QPushButton("Edit Field")
         self.recalc_offsets_btn = QPushButton("Recalculate Offsets")
 
         field_buttons_layout.addWidget(self.add_field_btn)
         field_buttons_layout.addWidget(self.insert_before_btn)
         field_buttons_layout.addWidget(self.insert_after_btn)
         field_buttons_layout.addWidget(self.remove_field_btn)
-        field_buttons_layout.addWidget(self.edit_field_btn)
         field_buttons_layout.addWidget(self.recalc_offsets_btn)
         field_buttons_layout.addStretch()
 
@@ -143,7 +174,6 @@ class RegisterDetailForm(QWidget):
         self.insert_before_btn.clicked.connect(lambda: self._insert_field('before'))
         self.insert_after_btn.clicked.connect(lambda: self._insert_field('after'))
         self.remove_field_btn.clicked.connect(self._remove_field)
-        self.edit_field_btn.clicked.connect(self._edit_field)
         self.recalc_offsets_btn.clicked.connect(self._recalculate_offsets)
 
         self.fields_table.cellChanged.connect(self._on_field_cell_changed)
@@ -235,7 +265,7 @@ class RegisterDetailForm(QWidget):
             width_item = QTableWidgetItem(str(field.width))
             self.fields_table.setItem(row, 2, width_item)
 
-            # Access
+            # Access - Use delegate for dropdown
             access_item = QTableWidgetItem(field.access.upper())
             self.fields_table.setItem(row, 3, access_item)
 
@@ -712,12 +742,6 @@ class RegisterDetailForm(QWidget):
         self._update_form()
         self.field_changed.emit()
 
-    def _edit_field(self):
-        """Edit the selected bit field."""
-        # For now, fields are edited directly in the table
-        # This could be enhanced with a dedicated field editor dialog
-        pass
-
     def _on_field_cell_changed(self, row, column):
         """Handle changes to field table cells with validation."""
         if self._updating:
@@ -932,4 +956,3 @@ class RegisterDetailForm(QWidget):
         self.insert_before_btn.setEnabled(has_selection)
         self.insert_after_btn.setEnabled(has_selection)
         self.remove_field_btn.setEnabled(has_selection)
-        self.edit_field_btn.setEnabled(has_selection)

@@ -341,10 +341,12 @@ class MainWindow(QMainWindow):
             
         if isinstance(reference_item, Register):
             # Insert before a regular register
-            target_offset = max(0, reference_item.offset - 4)
+            reference_offset = reference_item.offset
+            target_offset = max(0, reference_offset - 4)
         elif isinstance(reference_item, RegisterArrayAccessor):
             # Insert before a register array
-            target_offset = max(0, reference_item._base_offset - 4)
+            reference_offset = reference_item._base_offset
+            target_offset = max(0, reference_offset - 4)
         else:
             return
             
@@ -360,16 +362,29 @@ class MainWindow(QMainWindow):
             new_offset -= 4
         
         if new_offset < 0:
-            # If no space before, use the next available after
-            new_offset = target_offset + 4
+            # If no space before, find first available offset
+            new_offset = 0
             while new_offset in used_offsets:
                 new_offset += 4
         
-        register = self.current_project.add_register(
-            f"register_{len(self.current_project.registers)}",
-            new_offset,
-            "New register (inserted before)"
+        # Create the register directly instead of using add_register
+        register = Register(
+            name=f"register_{len(self.current_project.registers)}",
+            offset=new_offset,
+            bus=self.current_project._bus,
+            fields=[],
+            description="New register (inserted before)"
         )
+        
+        # Insert at the correct position in the list
+        insert_index = 0
+        for i, existing_reg in enumerate(self.current_project.registers):
+            if existing_reg.offset > new_offset:
+                insert_index = i
+                break
+            insert_index = i + 1
+        
+        self.current_project.registers.insert(insert_index, register)
         
         self.refresh_views()
         self.outline.select_item(register)
@@ -382,10 +397,12 @@ class MainWindow(QMainWindow):
             
         if isinstance(reference_item, Register):
             # Insert after a regular register
-            target_offset = reference_item.offset + 4
+            reference_offset = reference_item.offset
+            target_offset = reference_offset + 4
         elif isinstance(reference_item, RegisterArrayAccessor):
             # Insert after a register array (after its last element)
-            target_offset = reference_item._base_offset + (reference_item._count * reference_item._stride)
+            reference_offset = reference_item._base_offset + (reference_item._count * reference_item._stride)
+            target_offset = reference_offset
         else:
             return
             
@@ -400,11 +417,23 @@ class MainWindow(QMainWindow):
         while new_offset in used_offsets:
             new_offset += 4
         
-        register = self.current_project.add_register(
-            f"register_{len(self.current_project.registers)}",
-            new_offset,
-            "New register (inserted after)"
+        # Create the register directly
+        register = Register(
+            name=f"register_{len(self.current_project.registers)}",
+            offset=new_offset,
+            bus=self.current_project._bus,
+            fields=[],
+            description="New register (inserted after)"
         )
+        
+        # Insert at the correct position in the list
+        insert_index = len(self.current_project.registers)  # Default to end
+        for i, existing_reg in enumerate(self.current_project.registers):
+            if existing_reg.offset > new_offset:
+                insert_index = i
+                break
+        
+        self.current_project.registers.insert(insert_index, register)
         
         self.refresh_views()
         self.outline.select_item(register)
