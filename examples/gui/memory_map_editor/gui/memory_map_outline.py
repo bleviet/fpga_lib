@@ -123,6 +123,9 @@ class MemoryMapOutline(QWidget):
 
     def refresh(self):
         """Refresh the tree view with current project data."""
+        # Remember the currently selected item before clearing
+        current_selection = self.get_selected_item()
+
         self.tree.clear()
 
         if not self.current_project:
@@ -154,8 +157,22 @@ class MemoryMapOutline(QWidget):
         # Sort by address (this will mix registers and arrays by address)
         self.tree.sortItems(1, Qt.AscendingOrder)
 
-        # Select first item if available
-        if self.tree.topLevelItemCount() > 0:
+        # Try to restore the previous selection, otherwise select first item
+        if current_selection and self.tree.topLevelItemCount() > 0:
+            # Try to find and select the previously selected item
+            selection_restored = False
+            for i in range(self.tree.topLevelItemCount()):
+                item = self.tree.topLevelItem(i)
+                if item.data(0, Qt.UserRole) == current_selection:
+                    self.tree.setCurrentItem(item)
+                    selection_restored = True
+                    break
+
+            # If we couldn't restore selection, select first item
+            if not selection_restored:
+                self.tree.setCurrentItem(self.tree.topLevelItem(0))
+        elif self.tree.topLevelItemCount() > 0:
+            # No previous selection, select first item
             self.tree.setCurrentItem(self.tree.topLevelItem(0))
 
     def select_item(self, memory_item):

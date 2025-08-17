@@ -11,7 +11,7 @@ from PySide6.QtWidgets import (
     QTableWidgetItem, QHeaderView, QAbstractItemView, QMessageBox, QLabel,
     QGroupBox, QStyledItemDelegate
 )
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Qt, Signal, QEvent
 from PySide6.QtGui import QFont, QColor
 
 from .bit_field_visualizer import BitFieldVisualizerWidget
@@ -67,6 +67,7 @@ class RegisterDetailForm(QWidget):
         self.current_project = None
         self.current_item = None
         self._updating = False  # Prevent recursive updates
+        self._last_description = ""  # Track description changes
 
         self._setup_ui()
         self._connect_signals()
@@ -168,8 +169,8 @@ class RegisterDetailForm(QWidget):
         self.address_spin.valueChanged.connect(self._on_address_changed)
         self.count_spin.valueChanged.connect(self._on_count_changed)
         self.stride_spin.valueChanged.connect(self._on_stride_changed)
-        # Keep textChanged for description as it's a larger text area
-        self.description_edit.textChanged.connect(self._on_description_changed)
+        # Use focusOutEvent for description to avoid focus loss on every keystroke
+        self.description_edit.installEventFilter(self)
 
         self.add_field_btn.clicked.connect(self._add_field)
         self.insert_before_btn.clicked.connect(lambda: self._insert_field('before'))
@@ -179,6 +180,16 @@ class RegisterDetailForm(QWidget):
 
         self.fields_table.cellChanged.connect(self._on_field_cell_changed)
         self.fields_table.itemSelectionChanged.connect(self._on_field_selection_changed)
+
+    def eventFilter(self, obj, event):
+        """Handle events for widgets with custom behavior."""
+        if obj == self.description_edit and event.type() == QEvent.Type.FocusOut:
+            # Only handle description changes if the content actually changed
+            current_description = self.description_edit.toPlainText()
+            if current_description != self._last_description:
+                self._on_description_changed()
+                self._last_description = current_description
+        return super().eventFilter(obj, event)
 
     def set_project(self, project: MemoryMapProject):
         """Set the current project."""
@@ -214,6 +225,7 @@ class RegisterDetailForm(QWidget):
         self.count_spin.setValue(1)
         self.stride_spin.setValue(4)
         self.description_edit.clear()
+        self._last_description = ""  # Reset description tracking
         self.fields_table.setRowCount(0)
 
     def _load_register(self, register: Register):
@@ -221,6 +233,7 @@ class RegisterDetailForm(QWidget):
         self.name_edit.setText(register.name)
         self.address_spin.setValue(register.offset)
         self.description_edit.setPlainText(register.description)
+        self._last_description = register.description  # Track initial description
         self._load_bit_fields(register._fields)
 
     def _load_register_array(self, array: RegisterArrayAccessor):
@@ -229,7 +242,9 @@ class RegisterDetailForm(QWidget):
         self.address_spin.setValue(array._base_offset)
         self.count_spin.setValue(array._count)
         self.stride_spin.setValue(array._stride)
-        self.description_edit.setPlainText(f"Register array with {array._count} entries")
+        array_description = f"Register array with {array._count} entries"
+        self.description_edit.setPlainText(array_description)
+        self._last_description = array_description  # Track initial description
 
         # Load field template
         fields_dict = {field.name: field for field in array._field_template}
