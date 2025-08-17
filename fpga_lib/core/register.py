@@ -202,6 +202,21 @@ class Register:
         value = value & 0xFFFFFFFF
         self._bus.write_word(self.offset, value)
 
+    @property
+    def reset_value(self) -> int:
+        """
+        Calculate the full reset value of the register from its bit fields.
+
+        Returns:
+            The calculated 32-bit reset value based on field reset values
+        """
+        total_reset = 0
+        for field in self._fields.values():
+            if field.reset_value is not None:
+                # Shift the field's reset value to its proper position and OR it
+                total_reset |= (field.reset_value << field.offset)
+        return total_reset
+
     def read_field(self, field_name: str) -> int:
         """
         Read a specific bit field from the register.

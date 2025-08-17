@@ -108,6 +108,12 @@ class RegisterDetailForm(QWidget):
         self.description_edit.setMaximumHeight(60)
         register_layout.addRow("Description:", self.description_edit)
 
+        # Calculated reset value (read-only)
+        self.reset_value_edit = QLineEdit()
+        self.reset_value_edit.setReadOnly(True)
+        self.reset_value_edit.setPlaceholderText("Calculated from bit fields")
+        register_layout.addRow("Reset Value:", self.reset_value_edit)
+
         layout.addWidget(self.register_group)
 
         # Bit fields group
@@ -116,9 +122,9 @@ class RegisterDetailForm(QWidget):
 
         # Bit fields table
         self.fields_table = QTableWidget()
-        self.fields_table.setColumnCount(5)
+        self.fields_table.setColumnCount(6)
         self.fields_table.setHorizontalHeaderLabels([
-            "Name", "Bits", "Width", "Access", "Description"
+            "Name", "Bits", "Width", "Access", "Reset", "Description"
         ])
 
         # Set column widths
@@ -128,6 +134,7 @@ class RegisterDetailForm(QWidget):
         self.fields_table.setColumnWidth(1, 80)
         self.fields_table.setColumnWidth(2, 60)
         self.fields_table.setColumnWidth(3, 80)
+        self.fields_table.setColumnWidth(4, 60)
 
         # Set custom delegate for access type column (column 3)
         self.access_delegate = AccessTypeDelegate(self)
@@ -248,6 +255,7 @@ class RegisterDetailForm(QWidget):
         self.stride_spin.setValue(4)
         self.description_edit.clear()
         self._last_description = ""  # Reset description tracking
+        self.reset_value_edit.clear()
         self.fields_table.setRowCount(0)
 
     def _load_register(self, register: Register):
@@ -257,6 +265,7 @@ class RegisterDetailForm(QWidget):
         self.description_edit.setPlainText(register.description)
         self._last_description = register.description  # Track initial description
         self._load_bit_fields(register._fields)
+        self._update_reset_value_display()
 
     def _load_register_array(self, array: RegisterArrayAccessor):
         """Load register array data into the form."""
@@ -268,9 +277,18 @@ class RegisterDetailForm(QWidget):
         self.description_edit.setPlainText(array_description)
         self._last_description = array_description  # Track initial description
 
-        # Load field template
+        # Load field template - arrays don't show reset values since each instance is separate
         fields_dict = {field.name: field for field in array._field_template}
         self._load_bit_fields(fields_dict)
+        self.reset_value_edit.setText("N/A (Array)")
+
+    def _update_reset_value_display(self):
+        """Update the calculated reset value display."""
+        if isinstance(self.current_item, Register):
+            reset_value = self.current_item.reset_value
+            self.reset_value_edit.setText(f"0x{reset_value:08X}")
+        else:
+            self.reset_value_edit.setText("")
 
     def _load_bit_fields(self, fields_dict):
         """Load bit fields into the table, sorted by offset."""
@@ -307,9 +325,14 @@ class RegisterDetailForm(QWidget):
             access_item = QTableWidgetItem(field.access.upper())
             self.fields_table.setItem(row, 3, access_item)
 
+            # Reset value
+            reset_text = str(field.reset_value) if field.reset_value is not None else "0"
+            reset_item = QTableWidgetItem(reset_text)
+            self.fields_table.setItem(row, 4, reset_item)
+
             # Description
             desc_item = QTableWidgetItem(field.description)
-            self.fields_table.setItem(row, 4, desc_item)
+            self.fields_table.setItem(row, 5, desc_item)
 
             # Check for overlaps or gaps and highlight if needed
             self._highlight_field_issues(row, field, fields_list)
@@ -435,7 +458,7 @@ class RegisterDetailForm(QWidget):
 
         # Create a default field
         field_name = self._generate_unique_field_name()
-        new_field = BitField(field_name, next_offset, 1, "rw", "New field")
+        new_field = BitField(field_name, next_offset, 1, "rw", "New field", reset_value=0)
 
         # Validate the field fits (should always pass, but double-check)
         is_valid, error_msg = self._validate_field_fits(new_field)
@@ -448,6 +471,7 @@ class RegisterDetailForm(QWidget):
 
         # Refresh table and emit signal
         self._update_form()
+        self._update_reset_value_display()
         self.field_changed.emit()
 
     def _insert_field(self, position='after'):
@@ -497,7 +521,7 @@ class RegisterDetailForm(QWidget):
             if selected_index == 0:
                 # Insert at the very beginning
                 # Create the new field with offset 0
-                new_field = BitField(new_field_name, 0, 1, "rw", "New field")
+                new_field = BitField(new_field_name, 0, 1, "rw", "New field", reset_value=0)
 
                 # Add the field first
                 self._add_field_to_item(new_field)
@@ -513,7 +537,7 @@ class RegisterDetailForm(QWidget):
                 prev_field = fields_list[selected_index - 1]
                 insert_offset = prev_field.offset + prev_field.width
 
-                new_field = BitField(new_field_name, insert_offset, 1, "rw", "New field")
+                new_field = BitField(new_field_name, insert_offset, 1, "rw", "New field", reset_value=0)
 
                 # Add the field
                 self._add_field_to_item(new_field)
@@ -527,7 +551,7 @@ class RegisterDetailForm(QWidget):
         else:  # after
             insert_offset = selected_field.offset + selected_field.width
 
-            new_field = BitField(new_field_name, insert_offset, 1, "rw", "New field")
+            new_field = BitField(new_field_name, insert_offset, 1, "rw", "New field", reset_value=0)
 
             # Add the field
             self._add_field_to_item(new_field)
@@ -552,6 +576,7 @@ class RegisterDetailForm(QWidget):
 
         # Refresh table and emit signal
         self._update_form()
+        self._update_reset_value_display()
         self.field_changed.emit()
 
     def _recalculate_offsets(self):
@@ -783,6 +808,7 @@ class RegisterDetailForm(QWidget):
 
         # Refresh table
         self._update_form()
+        self._update_reset_value_display()
         self.field_changed.emit()
 
     def _move_field_up(self):
@@ -835,6 +861,9 @@ class RegisterDetailForm(QWidget):
 
         # Refresh the form and maintain selection on the moved field
         self._update_form()
+
+        # Update reset value display
+        self._update_reset_value_display()
 
         # Select the moved field at its new position
         for row in range(self.fields_table.rowCount()):
@@ -1038,8 +1067,33 @@ class RegisterDetailForm(QWidget):
                         return
                     field.access = new_access
 
-            elif column == 4:  # Description
-                desc_item = self.fields_table.item(row, 4)
+            elif column == 4:  # Reset value
+                reset_item = self.fields_table.item(row, 4)
+                if reset_item:
+                    try:
+                        reset_text = reset_item.text().strip()
+                        if reset_text == "" or reset_text.lower() == "none":
+                            field.reset_value = None
+                        else:
+                            new_reset = int(reset_text)
+                            max_value = (1 << field.width) - 1
+                            if new_reset < 0 or new_reset > max_value:
+                                QMessageBox.warning(self, "Invalid Reset Value",
+                                                   f"Reset value must be between 0 and {max_value} for a {field.width}-bit field.")
+                                self._update_form()  # Revert changes
+                                return
+                            field.reset_value = new_reset
+
+                        # Update the reset value display
+                        self._update_reset_value_display()
+
+                    except ValueError:
+                        QMessageBox.warning(self, "Invalid Reset Value", "Reset value must be a valid integer.")
+                        self._update_form()  # Revert changes
+                        return
+
+            elif column == 5:  # Description
+                desc_item = self.fields_table.item(row, 5)
                 if desc_item:
                     field.description = desc_item.text()
 
