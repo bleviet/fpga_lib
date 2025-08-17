@@ -196,22 +196,22 @@ discover:
 	@echo "  Documentation:    docs/"
 	@echo ""
 	@echo "🐍 EXECUTABLE SCRIPTS:"
-	@find ./examples -name "*.py" -type f | sort | while read file; do \
+	@find ./examples -name "*.py" -type f -not -path "*/.venv/*" | sort | while read file; do \
 		echo "  $$file"; \
 		head -n 10 "$$file" | grep -E '""".*"""' | head -1 | sed 's/"""//g' | sed 's/^/    /'; \
 	done
 	@echo ""
 	@echo "🧪 TEST FILES:"
-	@find . -name "test_*.py" -not -path "./.pytest_cache/*" | sort | while read file; do \
+	@find . -name "test_*.py" -not -path "./.pytest_cache/*" -not -path "*/.venv/*" | sort | while read file; do \
 		echo "  $$file"; \
 	done
 	@echo ""
 	@echo "📚 DEMO SCRIPTS:"
-	@find . -name "*demo*.py" -not -path "./.pytest_cache/*" | sort
+	@find . -name "*demo*.py" -not -path "./.pytest_cache/*" -not -path "*/.venv/*" | sort
 
 list-tests:
 	@echo "=== ALL TEST FUNCTIONS ==="
-	@find . -name "test_*.py" -not -path "./.pytest_cache/*" | sort | while read file; do \
+	@find . -name "test_*.py" -not -path "./.pytest_cache/*" -not -path "*/.venv/*" | sort | while read file; do \
 		echo ""; \
 		echo "📁 $$file:"; \
 		python -m pytest --collect-only "$$file" 2>/dev/null | grep -E "test_[a-zA-Z0-9_]*" | sed 's/^/  /' || echo "  (No tests found)"; \
@@ -219,7 +219,7 @@ list-tests:
 
 list-scripts:
 	@echo "=== ALL PYTHON SCRIPTS WITH DESCRIPTIONS ==="
-	@find . -name "*.py" -not -path "./.pytest_cache/*" -not -path "./__pycache__/*" | sort | while read file; do \
+	@find . -name "*.py" -not -path "./.pytest_cache/*" -not -path "./__pycache__/*" -not -path "*/.venv/*" | sort | while read file; do \
 		echo ""; \
 		echo "📄 $$file"; \
 		head -n 15 "$$file" | grep -A 10 '"""' | grep -B 10 '"""' | grep -v '"""' | head -3 | sed 's/^/  /' || echo "  (No description available)"; \
@@ -229,17 +229,17 @@ workspace-info:
 	@echo "=== COMPLETE WORKSPACE INFORMATION ==="
 	@echo ""
 	@echo "📊 STATISTICS:"
-	@echo "  Total Python files: $$(find . -name '*.py' -not -path './.pytest_cache/*' -not -path './__pycache__/*' | wc -l)"
-	@echo "  Test files:         $$(find . -name 'test_*.py' | wc -l)"
-	@echo "  Example scripts:    $$(find ./examples -name '*.py' -type f | wc -l)"
-	@echo "  Core modules:       $$(find ./fpga_lib -name '*.py' -not -name 'test_*' | wc -l)"
+	@echo "  Total Python files: $$(find . -name '*.py' -not -path './.pytest_cache/*' -not -path './__pycache__/*' -not -path '*/.venv/*' | wc -l)"
+	@echo "  Test files:         $$(find . -name 'test_*.py' -not -path '*/.venv/*' | wc -l)"
+	@echo "  Example scripts:    $$(find ./examples -name '*.py' -type f -not -path '*/.venv/*' | wc -l)"
+	@echo "  Core modules:       $$(find ./fpga_lib -name '*.py' -not -name 'test_*' -not -path '*/.venv/*' | wc -l)"
 	@echo ""
 	@echo "📁 MODULE BREAKDOWN:"
-	@echo "  Core tests:         $$(find ./fpga_lib/tests/core -name 'test_*.py' | wc -l) files"
-	@echo "  Parser tests:       $$(find ./fpga_lib/tests/parser -name 'test_*.py' | wc -l) files"
-	@echo "  Generator tests:    $$(find ./fpga_lib/tests/generator -name 'test_*.py' | wc -l) files"
-	@echo "  GPIO examples:      $$(find ./examples/gpio -name '*.py' | wc -l) files"
-	@echo "  Register examples:  $$(find ./examples/register -name '*.py' | wc -l) files"
+	@echo "  Core tests:         $$(find ./fpga_lib/tests/core -name 'test_*.py' -not -path '*/.venv/*' | wc -l) files"
+	@echo "  Parser tests:       $$(find ./fpga_lib/tests/parser -name 'test_*.py' -not -path '*/.venv/*' | wc -l) files"
+	@echo "  Generator tests:    $$(find ./fpga_lib/tests/generator -name 'test_*.py' -not -path '*/.venv/*' | wc -l) files"
+	@echo "  GPIO examples:      $$(find ./examples/gpio -name '*.py' -not -path '*/.venv/*' | wc -l) files"
+	@echo "  Register examples:  $$(find ./examples/register -name '*.py' -not -path '*/.venv/*' | wc -l) files"
 
 test-collect:
 	@echo "=== DISCOVERABLE TESTS (WITHOUT RUNNING) ==="
@@ -257,7 +257,7 @@ test-summary:
 
 run-examples:
 	@echo "=== RUNNING ALL EXAMPLE SCRIPTS ==="
-	@find ./examples -name "*.py" -type f | sort | while read script; do \
+	@find ./examples -name "*.py" -type f -not -path "*/.venv/*" | sort | while read script; do \
 		echo ""; \
 		echo "🚀 Running $$script..."; \
 		echo ""; \
