@@ -12,7 +12,7 @@ from PySide6.QtWidgets import (
     QGroupBox, QStyledItemDelegate
 )
 from PySide6.QtCore import Qt, Signal, QEvent
-from PySide6.QtGui import QFont, QColor
+from PySide6.QtGui import QFont, QColor, QShortcut, QKeySequence
 
 from .bit_field_visualizer import BitFieldVisualizerWidget
 from memory_map_core import MemoryMapProject
@@ -146,10 +146,21 @@ class RegisterDetailForm(QWidget):
         self.remove_field_btn = QPushButton("Remove Field")
         self.recalc_offsets_btn = QPushButton("Recalculate Offsets")
 
+        # Move up/down buttons for bit field reordering
+        self.move_field_up_btn = QPushButton("⬆ Up")
+        self.move_field_up_btn.setToolTip("Move Selected Field Up (Alt+Up)")
+        self.move_field_up_btn.setMaximumWidth(60)
+
+        self.move_field_down_btn = QPushButton("⬇ Down")
+        self.move_field_down_btn.setToolTip("Move Selected Field Down (Alt+Down)")
+        self.move_field_down_btn.setMaximumWidth(60)
+
         field_buttons_layout.addWidget(self.add_field_btn)
         field_buttons_layout.addWidget(self.insert_before_btn)
         field_buttons_layout.addWidget(self.insert_after_btn)
         field_buttons_layout.addWidget(self.remove_field_btn)
+        field_buttons_layout.addWidget(self.move_field_up_btn)
+        field_buttons_layout.addWidget(self.move_field_down_btn)
         field_buttons_layout.addWidget(self.recalc_offsets_btn)
         field_buttons_layout.addStretch()
 
@@ -176,7 +187,18 @@ class RegisterDetailForm(QWidget):
         self.insert_before_btn.clicked.connect(lambda: self._insert_field('before'))
         self.insert_after_btn.clicked.connect(lambda: self._insert_field('after'))
         self.remove_field_btn.clicked.connect(self._remove_field)
+        self.move_field_up_btn.clicked.connect(self._move_field_up)
+        self.move_field_down_btn.clicked.connect(self._move_field_down)
         self.recalc_offsets_btn.clicked.connect(self._recalculate_offsets)
+
+        # Keyboard shortcuts for bit field move up/down - widget-specific context
+        self.move_field_up_shortcut = QShortcut(QKeySequence("Alt+Up"), self.fields_table)
+        self.move_field_up_shortcut.setContext(Qt.WidgetShortcut)
+        self.move_field_up_shortcut.activated.connect(self._move_field_up)
+
+        self.move_field_down_shortcut = QShortcut(QKeySequence("Alt+Down"), self.fields_table)
+        self.move_field_down_shortcut.setContext(Qt.WidgetShortcut)
+        self.move_field_down_shortcut.activated.connect(self._move_field_down)
 
         self.fields_table.cellChanged.connect(self._on_field_cell_changed)
         self.fields_table.itemSelectionChanged.connect(self._on_field_selection_changed)
@@ -332,6 +354,11 @@ class RegisterDetailForm(QWidget):
         """Enable or disable all form controls."""
         self.register_group.setEnabled(enabled)
         self.fields_group.setEnabled(enabled)
+
+        if not enabled:
+            # Explicitly disable move buttons when controls are disabled
+            self.move_field_up_btn.setEnabled(False)
+            self.move_field_down_btn.setEnabled(False)
 
     def _set_array_controls_visible(self, visible: bool):
         """Show or hide array-specific controls."""
@@ -758,6 +785,66 @@ class RegisterDetailForm(QWidget):
         self._update_form()
         self.field_changed.emit()
 
+    def _move_field_up(self):
+        """Move the selected bit field up in the list and recalculate offsets."""
+        self._move_field(-1)
+
+    def _move_field_down(self):
+        """Move the selected bit field down in the list and recalculate offsets."""
+        self._move_field(1)
+
+    def _move_field(self, direction):
+        """
+        Move the selected bit field up or down in the list.
+
+        Args:
+            direction: -1 for up, 1 for down
+        """
+        current_row = self.fields_table.currentRow()
+        if current_row < 0:
+            return
+
+        # Get all bit fields sorted by offset
+        fields_list = self._get_sorted_fields()
+        if len(fields_list) < 2:
+            return  # Need at least 2 fields to move
+
+        # Find the field in the sorted list that corresponds to the selected row
+        if current_row >= len(fields_list):
+            return
+
+        selected_field = fields_list[current_row]
+        new_index = current_row + direction
+
+        # Check bounds
+        if new_index < 0 or new_index >= len(fields_list):
+            return
+
+        # Remove the field from its current position and insert at new position
+        fields_list.pop(current_row)
+        fields_list.insert(new_index, selected_field)
+
+        # Recalculate offsets for the reordered fields
+        current_offset = 0
+        for field in fields_list:
+            field.offset = current_offset
+            current_offset += field.width
+
+        # Update the item with the new field order
+        self._update_item_fields(fields_list)
+
+        # Refresh the form and maintain selection on the moved field
+        self._update_form()
+
+        # Select the moved field at its new position
+        for row in range(self.fields_table.rowCount()):
+            field_name_item = self.fields_table.item(row, 0)
+            if field_name_item and field_name_item.text() == selected_field.name:
+                self.fields_table.selectRow(row)
+                break
+
+        self.field_changed.emit()
+
     def _on_field_cell_changed(self, row, column):
         """Handle changes to field table cells with validation."""
         if self._updating:
@@ -968,7 +1055,18 @@ class RegisterDetailForm(QWidget):
 
     def _on_field_selection_changed(self):
         """Handle field table selection changes."""
-        has_selection = self.fields_table.currentRow() >= 0
+        current_row = self.fields_table.currentRow()
+        has_selection = current_row >= 0
+
         self.insert_before_btn.setEnabled(has_selection)
         self.insert_after_btn.setEnabled(has_selection)
         self.remove_field_btn.setEnabled(has_selection)
+
+        # Enable move buttons based on position
+        if has_selection:
+            row_count = self.fields_table.rowCount()
+            self.move_field_up_btn.setEnabled(current_row > 0)
+            self.move_field_down_btn.setEnabled(current_row < row_count - 1)
+        else:
+            self.move_field_up_btn.setEnabled(False)
+            self.move_field_down_btn.setEnabled(False)

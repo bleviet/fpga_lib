@@ -140,11 +140,13 @@ class MemoryMapOutline(QWidget):
         self.move_up_btn.clicked.connect(self._move_up_clicked)
         self.move_down_btn.clicked.connect(self._move_down_clicked)
 
-        # Keyboard shortcuts for move up/down
-        self.move_up_shortcut = QShortcut(QKeySequence("Alt+Up"), self)
+        # Keyboard shortcuts for move up/down - widget-specific context
+        self.move_up_shortcut = QShortcut(QKeySequence("Alt+Up"), self.tree)
+        self.move_up_shortcut.setContext(Qt.WidgetShortcut)
         self.move_up_shortcut.activated.connect(self._move_up_clicked)
 
-        self.move_down_shortcut = QShortcut(QKeySequence("Alt+Down"), self)
+        self.move_down_shortcut = QShortcut(QKeySequence("Alt+Down"), self.tree)
+        self.move_down_shortcut.setContext(Qt.WidgetShortcut)
         self.move_down_shortcut.activated.connect(self._move_down_clicked)
 
     def set_project(self, project: MemoryMapProject):
