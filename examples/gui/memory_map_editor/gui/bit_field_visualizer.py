@@ -28,12 +28,15 @@ class BitFieldVisualizerWidget(QWidget):
         self.field_colors = {}
 
         # Visual parameters
-        self.bit_width = 20
-        self.bit_height = 40
-        self.margin = 10
-        self.label_height = 60
+        self.bit_width = 30
+        self.bit_height = 50
+        self.margin = 60  # Increased margin for labels
+        self.label_height = 80
+        self.bit_number_height = 25
+        self.reset_value_height = 25
 
-        self.setMinimumHeight(self.bit_height + self.label_height + 2 * self.margin)
+        total_height = self.bit_number_height + self.bit_height + self.label_height + 2 * self.margin
+        self.setMinimumHeight(total_height)
         self.setMinimumWidth(32 * self.bit_width + 2 * self.margin)
 
     def set_register(self, register):
@@ -76,14 +79,14 @@ class BitFieldVisualizerWidget(QWidget):
             self._draw_empty_state(painter)
             return
 
-        # Draw bit boxes
+        # Draw bit numbers at the top
+        self._draw_bit_numbers(painter)
+
+        # Draw bit boxes with reset values
         self._draw_bit_boxes(painter)
 
-        # Draw field labels
+        # Draw field labels at the bottom
         self._draw_field_labels(painter)
-
-        # Draw bit numbers
-        self._draw_bit_numbers(painter)
 
     def _draw_empty_state(self, painter):
         """Draw empty state message."""
@@ -99,7 +102,7 @@ class BitFieldVisualizerWidget(QWidget):
         painter.drawText(x, y, text)
 
     def _draw_bit_boxes(self, painter):
-        """Draw the 32-bit register as individual bit boxes."""
+        """Draw the 32-bit register as individual bit boxes with reset values."""
         if not hasattr(self.current_register, '_fields'):
             return
 
@@ -120,118 +123,182 @@ class BitFieldVisualizerWidget(QWidget):
                     field_bit_index = bit_pos - field.offset
                     reset_bits[bit_pos] = (field.reset_value >> field_bit_index) & 1
 
-        # Draw each bit box
+        # Draw each bit box (from bit 31 to 0, left to right)
         for bit in range(32):
+            actual_bit = 31 - bit  # Map display position to actual bit number
             x = self.margin + bit * self.bit_width
-            y = self.margin
+            y = self.margin + self.bit_number_height
 
             rect = QRect(x, y, self.bit_width, self.bit_height)
 
             # Determine color
-            if overlaps[bit]:
+            if overlaps[actual_bit]:
                 # Red for overlaps
                 color = QColor(255, 100, 100)
-            elif bit_fields[bit] is not None:
+            elif bit_fields[actual_bit] is not None:
                 # Field color
-                field_name = bit_fields[bit]
+                field_name = bit_fields[actual_bit]
                 color = self.field_colors.get(field_name, QColor(200, 200, 200))
             else:
-                # Gray for unused bits
-                color = QColor(240, 240, 240)
+                # Light gray for unused bits
+                color = QColor(250, 250, 250)
 
             # Draw box
             painter.fillRect(rect, QBrush(color))
             painter.setPen(QPen(QColor(64, 64, 64)))
             painter.drawRect(rect)
 
-            # Draw bit number and reset value
-            painter.setPen(QPen(QColor(0, 0, 0)))
-            font = QFont()
-            font.setPointSize(7)
-            painter.setFont(font)
-
-            # Draw bit number in upper part
-            upper_rect = QRect(x, y, self.bit_width, self.bit_height // 2)
-            painter.drawText(upper_rect, Qt.AlignCenter, str(bit))
-
-            # Draw reset value in lower part if field has reset value
-            if bit_fields[bit] is not None:
-                lower_rect = QRect(x, y + self.bit_height // 2, self.bit_width, self.bit_height // 2)
-                reset_font = QFont()
-                reset_font.setPointSize(10)
-                reset_font.setBold(True)
-                painter.setFont(reset_font)
+            # Draw reset value prominently in the center of the box
+            if bit_fields[actual_bit] is not None:
+                painter.setPen(QPen(QColor(0, 0, 0)))
+                font = QFont()
+                font.setPointSize(14)
+                font.setBold(True)
+                painter.setFont(font)
 
                 # Use different color for reset value
-                if reset_bits[bit] == 1:
-                    painter.setPen(QPen(QColor(0, 100, 0)))  # Green for 1
+                if reset_bits[actual_bit] == 1:
+                    painter.setPen(QPen(QColor(0, 120, 0)))  # Green for 1
                 else:
                     painter.setPen(QPen(QColor(100, 100, 100)))  # Gray for 0
 
-                painter.drawText(lower_rect, Qt.AlignCenter, str(reset_bits[bit]))
+                painter.drawText(rect, Qt.AlignCenter, str(reset_bits[actual_bit]))
+            else:
+                # Show 0 for unused bits in light gray
+                painter.setPen(QPen(QColor(180, 180, 180)))
+                font = QFont()
+                font.setPointSize(12)
+                painter.setFont(font)
+                painter.drawText(rect, Qt.AlignCenter, "0")
+
+        # Draw a "Reset:" label
+        painter.setPen(QPen(QColor(0, 0, 0)))
+        font = QFont()
+        font.setPointSize(10)
+        font.setBold(True)
+        painter.setFont(font)
+
+        reset_label_rect = QRect(5, y + self.bit_height // 2 - 10, 50, 20)
+        painter.drawText(reset_label_rect, Qt.AlignCenter | Qt.AlignVCenter, "Reset:")
 
     def _draw_field_labels(self, painter):
-        """Draw field name labels below the bit boxes."""
+        """Draw field name labels below the bit boxes with right-aligned names and proper connecting lines."""
         if not hasattr(self.current_register, '_fields'):
             return
 
+        # Base Y position for labels
+        label_start_y = self.margin + self.bit_number_height + self.bit_height + 30
+
+        # Sort fields by their offset in ascending order (lowest offset first)
+        sorted_fields = sorted(self.current_register._fields.items(),
+                             key=lambda x: x[1].offset)
+
+        # Calculate label positions to avoid overlaps
+        label_positions = []
+        current_y = label_start_y
+        vertical_spacing = 25
+
+        for field_name, field in sorted_fields:
+            # Calculate field position and width (accounting for MSB-first display)
+            start_bit = field.offset
+            end_bit = min(field.offset + field.width - 1, 31)
+
+            # Convert to display positions (31-bit maps to position 0)
+            start_pos = 31 - end_bit
+            end_pos = 31 - start_bit
+
+            field_center_x = self.margin + start_pos * self.bit_width + ((end_pos - start_pos + 1) * self.bit_width) // 2
+
+            label_positions.append((field_name, field, field_center_x, current_y, start_bit, end_bit))
+            current_y += vertical_spacing
+
+        # Draw field labels and connecting lines
         painter.setPen(QPen(QColor(0, 0, 0)))
         font = QFont()
         font.setPointSize(9)
         font.setBold(True)
         painter.setFont(font)
 
-        label_y = self.margin + self.bit_height + 15
+        # Right edge for label alignment - move labels much closer to arrows
+        label_right_x = self.margin + 32 * self.bit_width + 80  # Reduced from 150
+        bits_bottom_y = self.margin + self.bit_number_height + self.bit_height
 
-        for field_name, field in self.current_register._fields.items():
-            # Calculate field position and width
-            start_bit = field.offset
-            end_bit = min(field.offset + field.width - 1, 31)
+        for i, (field_name, field, field_center_x, label_y, start_bit, end_bit) in enumerate(label_positions):
+            # Draw field name aligned to the right, positioned close to arrow
+            label_width = 80  # Reduced from 140
+            label_rect = QRect(label_right_x - label_width, label_y - 10, label_width, 20)
+            painter.drawText(label_rect, Qt.AlignRight | Qt.AlignVCenter, field_name)
 
-            start_x = self.margin + start_bit * self.bit_width
-            end_x = self.margin + (end_bit + 1) * self.bit_width
-            width = end_x - start_x
+            # Draw connecting lines exactly like the diagram
+            painter.setPen(QPen(QColor(128, 128, 128), 1))
 
-            # Draw field label
-            label_rect = QRect(start_x, label_y, width, 20)
-            painter.drawText(label_rect, Qt.AlignCenter, field_name)
+            # Each field has its own horizontal level at the label height
+            horizontal_line_y = label_y - 5
 
-            # Draw connecting line
-            center_x = start_x + width // 2
-            painter.setPen(QPen(QColor(128, 128, 128)))
-            painter.drawLine(center_x, self.margin + self.bit_height, center_x, label_y)
+            # 1. Vertical line straight down from bit center to the field's horizontal level
+            painter.drawLine(field_center_x, bits_bottom_y, field_center_x, horizontal_line_y)
 
-            # Draw field range
+            # 2. Horizontal line from the vertical drop point to closer to the label
+            horizontal_end_x = label_right_x - label_width - 15  # More space for arrow
+            painter.drawLine(field_center_x, horizontal_line_y, horizontal_end_x, horizontal_line_y)
+
+            # 3. Draw a proper arrow pointing to the label
+            arrow_start_x = horizontal_end_x
+            arrow_end_x = label_right_x - label_width - 3
+
+            # Main arrow line
+            painter.drawLine(arrow_start_x, horizontal_line_y, arrow_end_x, horizontal_line_y)
+
+            # Arrow head (small triangle)
+            arrow_size = 3
+            painter.drawLine(arrow_end_x, horizontal_line_y,
+                           arrow_end_x - arrow_size, horizontal_line_y - arrow_size)
+            painter.drawLine(arrow_end_x, horizontal_line_y,
+                           arrow_end_x - arrow_size, horizontal_line_y + arrow_size)
+
+            # Draw field range below the name
             painter.setPen(QPen(QColor(64, 64, 64)))
             if field.width == 1:
                 range_text = f"[{field.offset}]"
             else:
                 range_text = f"[{end_bit}:{start_bit}]"
 
-            range_rect = QRect(start_x, label_y + 20, width, 15)
+            range_rect = QRect(label_right_x - label_width, label_y + 5, label_width, 15)
             font.setBold(False)
             font.setPointSize(8)
             painter.setFont(font)
-            painter.drawText(range_rect, Qt.AlignCenter, range_text)
+            painter.drawText(range_rect, Qt.AlignRight | Qt.AlignVCenter, range_text)
+
+            # Reset font for next field
+            font.setBold(True)
+            font.setPointSize(9)
+            painter.setFont(font)
 
     def _draw_bit_numbers(self, painter):
         """Draw bit numbers at the top of the visualization."""
-        painter.setPen(QPen(QColor(64, 64, 64)))
+        painter.setPen(QPen(QColor(0, 0, 0)))
         font = QFont()
-        font.setPointSize(8)
+        font.setPointSize(10)
+        font.setBold(True)
         painter.setFont(font)
 
-        for bit in range(32):
-            x = self.margin + bit * self.bit_width
-            y = self.margin - 5
+        # Draw "Bit:" label
+        label_rect = QRect(5, self.margin, 50, self.bit_number_height)
+        painter.drawText(label_rect, Qt.AlignCenter | Qt.AlignVCenter, "Bit:")
 
-            rect = QRect(x, y - 15, self.bit_width, 15)
-            painter.drawText(rect, Qt.AlignCenter, str(bit))
+        # Draw bit numbers from 31 down to 0 (MSB to LSB)
+        for bit in range(32):
+            display_bit = 31 - bit  # Show from 31 to 0
+            x = self.margin + bit * self.bit_width
+            y = self.margin
+
+            rect = QRect(x, y, self.bit_width, self.bit_number_height)
+            painter.drawText(rect, Qt.AlignCenter, str(display_bit))
 
     def sizeHint(self):
         """Return the preferred size for this widget."""
-        width = 32 * self.bit_width + 2 * self.margin
-        height = self.bit_height + self.label_height + 2 * self.margin
+        width = 32 * self.bit_width + 2 * self.margin + 120  # Reduced extra space
+        height = self.bit_number_height + self.bit_height + self.label_height + 2 * self.margin + 100  # Extra height for multiple label levels
         return QSize(width, height)
 
 
