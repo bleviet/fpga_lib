@@ -182,7 +182,7 @@ class BitFieldVisualizerWidget(QWidget):
         painter.drawText(reset_label_rect, Qt.AlignCenter | Qt.AlignVCenter, "Reset:")
 
     def _draw_field_labels(self, painter):
-        """Draw field name labels below the bit boxes with right-aligned names and proper connecting lines."""
+        """Draw field name labels below the bit boxes with smart positioning for many fields."""
         if not hasattr(self.current_register, '_fields'):
             return
 
@@ -193,12 +193,21 @@ class BitFieldVisualizerWidget(QWidget):
         sorted_fields = sorted(self.current_register._fields.items(),
                              key=lambda x: x[1].offset)
 
-        # Calculate label positions to avoid overlaps
-        label_positions = []
-        current_y = label_start_y
-        vertical_spacing = 25
+        # Smart layout: if too many fields, use multiple columns
+        max_visible_rows = 8  # Maximum rows before starting new column
+        fields_per_column = min(len(sorted_fields), max_visible_rows)
+        num_columns = (len(sorted_fields) + fields_per_column - 1) // fields_per_column
 
-        for field_name, field in sorted_fields:
+        # Calculate label positions for multi-column layout
+        label_positions = []
+        vertical_spacing = 25
+        column_width = 120  # Width allocated per column
+
+        for i, (field_name, field) in enumerate(sorted_fields):
+            # Determine which column and row this field should be in
+            column = i // fields_per_column
+            row = i % fields_per_column
+
             # Calculate field position and width (accounting for MSB-first display)
             start_bit = field.offset
             end_bit = min(field.offset + field.width - 1, 31)
@@ -209,8 +218,14 @@ class BitFieldVisualizerWidget(QWidget):
 
             field_center_x = self.margin + start_pos * self.bit_width + ((end_pos - start_pos + 1) * self.bit_width) // 2
 
-            label_positions.append((field_name, field, field_center_x, current_y, start_bit, end_bit))
-            current_y += vertical_spacing
+            # Calculate label Y position based on row
+            label_y = label_start_y + row * vertical_spacing
+
+            # Calculate label X position based on column
+            base_label_x = self.margin + 32 * self.bit_width + 20  # Start closer to register
+            label_right_x = base_label_x + (column + 1) * column_width
+
+            label_positions.append((field_name, field, field_center_x, label_y, start_bit, end_bit, label_right_x, column))
 
         # Draw field labels and connecting lines
         painter.setPen(QPen(QColor(0, 0, 0)))
@@ -219,18 +234,22 @@ class BitFieldVisualizerWidget(QWidget):
         font.setBold(True)
         painter.setFont(font)
 
-        # Right edge for label alignment - move labels much closer to arrows
-        label_right_x = self.margin + 32 * self.bit_width + 80  # Reduced from 150
         bits_bottom_y = self.margin + self.bit_number_height + self.bit_height
 
-        for i, (field_name, field, field_center_x, label_y, start_bit, end_bit) in enumerate(label_positions):
+        for i, (field_name, field, field_center_x, label_y, start_bit, end_bit, label_right_x, column) in enumerate(label_positions):
             # Draw field name aligned to the right, positioned close to arrow
-            label_width = 80  # Reduced from 140
+            label_width = 80
             label_rect = QRect(label_right_x - label_width, label_y - 10, label_width, 20)
             painter.drawText(label_rect, Qt.AlignRight | Qt.AlignVCenter, field_name)
 
-            # Draw connecting lines exactly like the diagram
-            painter.setPen(QPen(QColor(128, 128, 128), 1))
+            # Draw connecting lines with different colors for different columns
+            line_colors = [
+                QColor(128, 128, 128),  # Gray for first column
+                QColor(100, 100, 180),  # Blue for second column
+                QColor(120, 150, 120),  # Green for third column
+                QColor(180, 120, 100),  # Brown for fourth column
+            ]
+            painter.setPen(QPen(line_colors[column % len(line_colors)], 1))
 
             # Each field has its own horizontal level at the label height
             horizontal_line_y = label_y - 5
@@ -297,8 +316,14 @@ class BitFieldVisualizerWidget(QWidget):
 
     def sizeHint(self):
         """Return the preferred size for this widget."""
-        width = 32 * self.bit_width + 2 * self.margin + 120  # Reduced extra space
-        height = self.bit_number_height + self.bit_height + self.label_height + 2 * self.margin + 100  # Extra height for multiple label levels
+        # Calculate width based on number of fields and columns needed
+        num_fields = len(self.current_register._fields) if self.current_register and hasattr(self.current_register, '_fields') else 0
+        max_visible_rows = 8
+        num_columns = max(1, (num_fields + max_visible_rows - 1) // max_visible_rows)
+        column_width = 120
+
+        width = 32 * self.bit_width + 2 * self.margin + (num_columns * column_width) + 40
+        height = self.bit_number_height + self.bit_height + self.label_height + 2 * self.margin + 50
         return QSize(width, height)
 
 
