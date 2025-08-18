@@ -15,6 +15,7 @@ from PySide6.QtCore import Qt, Signal, QEvent
 from PySide6.QtGui import QFont, QColor, QShortcut, QKeySequence
 
 from .bit_field_visualizer import BitFieldVisualizerWidget
+from examples.gui.memory_map_editor.debug_mode import debug_manager, DebugValue
 from memory_map_core import MemoryMapProject
 from fpga_lib.core import Register, BitField, RegisterArrayAccessor
 
@@ -87,32 +88,36 @@ class RegisterDetailForm(QWidget):
 
         # Address/Offset
         self.address_spin = QSpinBox()
-        self.address_spin.setRange(0, 0x7FFFFFFF)  # Use signed 32-bit max to avoid overflow
+        self.address_spin.setRange(0, 0x7FFFFFFF)
         self.address_spin.setDisplayIntegerBase(16)
         self.address_spin.setPrefix("0x")
         register_layout.addRow("Address:", self.address_spin)
 
         # Array-specific properties
-        self.count_spin = QSpinBox()
-        self.count_spin.setRange(1, 1024)
+        self.count_spin = QSpinBox(); self.count_spin.setRange(1, 1024)
         self.count_label = QLabel("Count:")
         register_layout.addRow(self.count_label, self.count_spin)
 
-        self.stride_spin = QSpinBox()
-        self.stride_spin.setRange(1, 256)
+        self.stride_spin = QSpinBox(); self.stride_spin.setRange(1, 256)
         self.stride_label = QLabel("Stride:")
         register_layout.addRow(self.stride_label, self.stride_spin)
 
         # Description
-        self.description_edit = QTextEdit()
-        self.description_edit.setMaximumHeight(60)
+        self.description_edit = QTextEdit(); self.description_edit.setMaximumHeight(60)
         register_layout.addRow("Description:", self.description_edit)
 
-        # Calculated reset value (read-only)
-        self.reset_value_edit = QLineEdit()
-        self.reset_value_edit.setReadOnly(True)
+    # Reset + Live values
+        reset_live_row = QHBoxLayout()
+        self.reset_value_edit = QLineEdit(); self.reset_value_edit.setReadOnly(True)
         self.reset_value_edit.setPlaceholderText("Calculated from bit fields")
-        register_layout.addRow("Reset Value:", self.reset_value_edit)
+        self.live_value_edit = QLineEdit()
+        self.live_value_edit.editingFinished.connect(self._on_live_register_value_changed)
+        self.live_value_edit.setPlaceholderText("Live (debug)")
+        self.live_value_edit.setToolTip("Current live value from active debug set if available")
+        reset_live_row.addWidget(self.reset_value_edit)
+        reset_live_row.addWidget(QLabel("Live:"))
+        reset_live_row.addWidget(self.live_value_edit)
+        register_layout.addRow("Reset Value:", reset_live_row)
 
         layout.addWidget(self.register_group)
 
@@ -120,64 +125,47 @@ class RegisterDetailForm(QWidget):
         self.fields_group = QGroupBox("Bit Fields")
         fields_layout = QVBoxLayout(self.fields_group)
 
-        # Bit fields table
+        # Table
         self.fields_table = QTableWidget()
-        self.fields_table.setColumnCount(6)
+        self.fields_table.setColumnCount(7)
         self.fields_table.setHorizontalHeaderLabels([
-            "Name", "Bits", "Width", "Access", "Reset", "Description"
+            "Name", "Bits", "Width", "Access", "Reset", "Live", "Description"
         ])
-
-        # Set column widths
-        header = self.fields_table.horizontalHeader()
-        header.setStretchLastSection(True)
+        header = self.fields_table.horizontalHeader(); header.setStretchLastSection(True)
         self.fields_table.setColumnWidth(0, 100)
         self.fields_table.setColumnWidth(1, 80)
         self.fields_table.setColumnWidth(2, 60)
         self.fields_table.setColumnWidth(3, 80)
         self.fields_table.setColumnWidth(4, 60)
+        self.fields_table.setColumnWidth(5, 60)
 
-        # Set custom delegate for access type column (column 3)
         self.access_delegate = AccessTypeDelegate(self)
         self.fields_table.setItemDelegateForColumn(3, self.access_delegate)
-
-        # Enable selection
         self.fields_table.setSelectionBehavior(QAbstractItemView.SelectRows)
         fields_layout.addWidget(self.fields_table)
 
         # Field buttons
         field_buttons_layout = QHBoxLayout()
-
         self.add_field_btn = QPushButton("Add Field")
         self.insert_before_btn = QPushButton("Insert Before")
         self.insert_after_btn = QPushButton("Insert After")
         self.remove_field_btn = QPushButton("Remove Field")
         self.recalc_offsets_btn = QPushButton("Recalculate Offsets")
-
-        # Move up/down buttons for bit field reordering
-        self.move_field_up_btn = QPushButton("⬆ Up")
+        self.move_field_up_btn = QPushButton("⬆ Up"); self.move_field_up_btn.setMaximumWidth(60)
         self.move_field_up_btn.setToolTip("Move Selected Field Up (Alt+Up)")
-        self.move_field_up_btn.setMaximumWidth(60)
-
-        self.move_field_down_btn = QPushButton("⬇ Down")
+        self.move_field_down_btn = QPushButton("⬇ Down"); self.move_field_down_btn.setMaximumWidth(60)
         self.move_field_down_btn.setToolTip("Move Selected Field Down (Alt+Down)")
-        self.move_field_down_btn.setMaximumWidth(60)
-
-        field_buttons_layout.addWidget(self.add_field_btn)
-        field_buttons_layout.addWidget(self.insert_before_btn)
-        field_buttons_layout.addWidget(self.insert_after_btn)
-        field_buttons_layout.addWidget(self.remove_field_btn)
-        field_buttons_layout.addWidget(self.move_field_up_btn)
-        field_buttons_layout.addWidget(self.move_field_down_btn)
-        field_buttons_layout.addWidget(self.recalc_offsets_btn)
+        for btn in [self.add_field_btn, self.insert_before_btn, self.insert_after_btn, self.remove_field_btn,
+                    self.move_field_up_btn, self.move_field_down_btn, self.recalc_offsets_btn]:
+            field_buttons_layout.addWidget(btn)
         field_buttons_layout.addStretch()
-
         fields_layout.addLayout(field_buttons_layout)
         layout.addWidget(self.fields_group)
 
-        # Initially hide array-specific controls
-        self._set_array_controls_visible(False)
+    # Removed periodic live update timer: live values are static user-entered comparison values.
 
-        # Disable all controls initially
+        # Initial state
+        self._set_array_controls_visible(False)
         self._set_controls_enabled(False)
 
     def _connect_signals(self):
@@ -264,8 +252,42 @@ class RegisterDetailForm(QWidget):
         self.address_spin.setValue(register.offset)
         self.description_edit.setPlainText(register.description)
         self._last_description = register.description  # Track initial description
+        # Ensure live values default to reset values before populating table so live column can show them.
+        self._ensure_live_defaults(register)
         self._load_bit_fields(register._fields)
         self._update_reset_value_display()
+        # Populate live column cells immediately
+        self.refresh_live_display()
+
+    def _ensure_live_defaults(self, register: Register):
+        """Populate live (debug) values with reset defaults if not already defined.
+
+        This runs when a register is loaded. It will NOT overwrite existing
+        user-entered live values. Live values mirror reset only by default.
+        """
+        current_set = debug_manager.get_current_debug_set()
+        if current_set is None:
+            current_set = debug_manager.create_debug_set("default")
+
+        reg_name = register.name
+        reg_live_obj = current_set.get_register_value(reg_name)
+
+        # Determine if we need to initialize: no register live value or value is None
+        if reg_live_obj is None or reg_live_obj.value is None:
+            # Use register.reset_value as baseline
+            reset_val = register.reset_value
+            current_set.set_register_value(reg_name, DebugValue(reset_val))
+
+        # For each field, if no live field value set, copy reset
+        for field_name, field in register._fields.items():
+            existing_field_live = current_set.get_field_value(reg_name, field_name)
+            if not existing_field_live or existing_field_live.value is None:
+                # If reset_value is None treat as 0 for live default
+                fv = field.reset_value if field.reset_value is not None else 0
+                current_set.set_field_value(reg_name, field_name, DebugValue(fv))
+
+        # Emit change so visualizer reflects initial live = reset
+        self.field_changed.emit()
 
     def _load_register_array(self, array: RegisterArrayAccessor):
         """Load register array data into the form."""
@@ -287,54 +309,40 @@ class RegisterDetailForm(QWidget):
         if isinstance(self.current_item, Register):
             reset_value = self.current_item.reset_value
             self.reset_value_edit.setText(f"0x{reset_value:08X}")
+            # Update live display (no auto-sync; live is user-entered)
+            self._update_live_value_display()
         else:
             self.reset_value_edit.setText("")
+            self.live_value_edit.setText("")
 
     def _load_bit_fields(self, fields_dict):
         """Load bit fields into the table, sorted by offset."""
-        # Convert to list and sort by offset
-        if isinstance(fields_dict, dict):
-            fields_list = list(fields_dict.values())
-        else:
-            fields_list = list(fields_dict)
-
-        # Sort by offset
+        fields_list = list(fields_dict.values()) if isinstance(fields_dict, dict) else list(fields_dict)
         fields_list.sort(key=lambda f: f.offset)
-
         self.fields_table.setRowCount(len(fields_list))
-
+        current_set = debug_manager.get_current_debug_set()
         for row, field in enumerate(fields_list):
-            # Name
-            name_item = QTableWidgetItem(field.name)
-            self.fields_table.setItem(row, 0, name_item)
-
-            # Bits representation
+            self.fields_table.setItem(row, 0, QTableWidgetItem(field.name))
             if field.width == 1:
                 bits_text = f"[{field.offset}]"
             else:
                 high_bit = field.offset + field.width - 1
                 bits_text = f"[{high_bit}:{field.offset}]"
-            bits_item = QTableWidgetItem(bits_text)
-            self.fields_table.setItem(row, 1, bits_item)
-
-            # Width
-            width_item = QTableWidgetItem(str(field.width))
-            self.fields_table.setItem(row, 2, width_item)
-
-            # Access - Use delegate for dropdown
-            access_item = QTableWidgetItem(field.access.upper())
-            self.fields_table.setItem(row, 3, access_item)
-
-            # Reset value
-            reset_text = str(field.reset_value) if field.reset_value is not None else "0"
-            reset_item = QTableWidgetItem(reset_text)
-            self.fields_table.setItem(row, 4, reset_item)
-
-            # Description
-            desc_item = QTableWidgetItem(field.description)
-            self.fields_table.setItem(row, 5, desc_item)
-
-            # Check for overlaps or gaps and highlight if needed
+            self.fields_table.setItem(row, 1, QTableWidgetItem(bits_text))
+            self.fields_table.setItem(row, 2, QTableWidgetItem(str(field.width)))
+            self.fields_table.setItem(row, 3, QTableWidgetItem(field.access.upper()))
+            reset_val = field.reset_value if field.reset_value is not None else 0
+            self.fields_table.setItem(row, 4, QTableWidgetItem(f"0x{reset_val:X}"))
+            # Determine initial live value (after defaults ensured)
+            live_text = ""
+            if isinstance(self.current_item, Register) and current_set:
+                reg_name = self.current_item.name
+                field_dbg = current_set.get_field_value(reg_name, field.name)
+                if field_dbg and field_dbg.value is not None:
+                    live_text = f"0x{field_dbg.value:X}"
+            live_item = QTableWidgetItem(live_text)  # editable for live field value
+            self.fields_table.setItem(row, 5, live_item)
+            self.fields_table.setItem(row, 6, QTableWidgetItem(field.description))
             self._highlight_field_issues(row, field, fields_list)
 
     def _highlight_field_issues(self, row, field, fields_list):
@@ -372,6 +380,55 @@ class RegisterDetailForm(QWidget):
                         item = self.fields_table.item(row, col)
                         if item:
                             item.setBackground(QColor(255, 255, 200))  # Light yellow for gaps
+
+    def _update_live_value_display(self):
+        """Update overall live register value line edit."""
+        if not isinstance(self.current_item, Register):
+            self.live_value_edit.setText("")
+            return
+        # Live value is user-entered static comparison value; derive from current debug set if present
+        current_set = debug_manager.get_current_debug_set()
+        reg_name = self.current_item.name
+        reg_val_obj = current_set.get_register_value(reg_name) if current_set else None
+        if reg_val_obj and reg_val_obj.value is not None:
+            self.live_value_edit.setText(f"0x{reg_val_obj.value:08X}")
+        else:
+            self.live_value_edit.setText("")
+
+    def refresh_live_display(self):
+        """Refresh displayed live values from debug set once (no polling)."""
+        if not isinstance(self.current_item, Register):
+            return
+        current_set = debug_manager.get_current_debug_set()
+        reg_name = self.current_item.name if self.current_item else None
+        reg_val_obj = current_set.get_register_value(reg_name) if current_set and reg_name else None
+        reg_value = reg_val_obj.value if reg_val_obj and reg_val_obj.value is not None else None
+        # If no live value captured yet, default to reset and recalc
+        if current_set and (reg_val_obj is None or reg_value is None):
+            self._ensure_live_defaults(self.current_item)
+            reg_val_obj = current_set.get_register_value(reg_name)
+            reg_value = reg_val_obj.value if reg_val_obj and reg_val_obj.value is not None else None
+
+        if reg_value is not None:
+            for row in range(self.fields_table.rowCount()):
+                name_item = self.fields_table.item(row, 0)
+                live_item = self.fields_table.item(row, 5)
+                if not name_item or not live_item:
+                    continue
+                field = self.current_item._fields.get(name_item.text())
+                if field:
+                    # Use field debug value if explicitly set; else derive from register value (already sync'd)
+                    field_dbg = current_set.get_field_value(reg_name, field.name) if current_set else None
+                    if field_dbg and field_dbg.value is not None:
+                        field_val = field_dbg.value
+                    else:
+                        mask = (1 << field.width) - 1
+                        field_val = (reg_value >> field.offset) & mask
+                    hex_width = (field.width + 3) // 4
+                    live_item.setText(f"0x{field_val:0{hex_width}X}")
+            self.live_value_edit.setText(f"0x{reg_value:08X}")
+        # Trigger visualizer update
+        self.field_changed.emit()
 
     def _set_controls_enabled(self, enabled: bool):
         """Enable or disable all form controls."""
@@ -1117,8 +1174,48 @@ class RegisterDetailForm(QWidget):
                         self._update_form()  # Revert changes
                         return
 
-            elif column == 5:  # Description
-                desc_item = self.fields_table.item(row, 5)
+            elif column == 5:  # Live value edit
+                # User edited a live field value
+                live_item = self.fields_table.item(row, 5)
+                if live_item and isinstance(self.current_item, Register):
+                    reg_name = self.current_item.name
+                    current_set = debug_manager.get_current_debug_set()
+                    if current_set is None:
+                        # Auto-create a default set if none exists
+                        current_set = debug_manager.create_debug_set("default")
+                    raw_text = live_item.text().strip()
+                    if raw_text == "":
+                        # Clear field debug value
+                        # Leave existing register value intact (will dominate display)
+                        field_debugs = current_set.field_values.get(reg_name, {})
+                        if field.name in field_debugs:
+                            del field_debugs[field.name]
+                        # Recompute composed register value from remaining field values
+                        composed = debug_manager.calculate_register_value_from_fields(reg_name, self.current_item)
+                        if composed is not None:
+                            current_set.set_register_value(reg_name, DebugValue(composed))
+                        self.refresh_live_display()
+                    else:
+                        try:
+                            dbg_val = DebugValue.from_string(raw_text)
+                            max_field_val = (1 << field.width) - 1
+                            if dbg_val.value is None or dbg_val.value < 0 or dbg_val.value > max_field_val:
+                                raise ValueError(f"Value must be 0..{max_field_val} for a {field.width}-bit field")
+                            current_set.set_field_value(reg_name, field.name, dbg_val)
+                            # Recalculate whole register value from all field debug values
+                            composed = debug_manager.calculate_register_value_from_fields(reg_name, self.current_item)
+                            if composed is not None:
+                                current_set.set_register_value(reg_name, DebugValue(composed))
+                            self.refresh_live_display()
+                            self.field_changed.emit()  # trigger visualizer repaint
+                        except ValueError as ve:
+                            QMessageBox.warning(self, "Invalid Live Field Value", str(ve))
+                            # Revert display
+                            self.refresh_live_display()
+                            return
+
+            elif column == 6:  # Description
+                desc_item = self.fields_table.item(row, 6)
                 if desc_item:
                     field.description = desc_item.text()
 
@@ -1153,3 +1250,36 @@ class RegisterDetailForm(QWidget):
         else:
             self.move_field_up_btn.setEnabled(False)
             self.move_field_down_btn.setEnabled(False)
+
+    def _on_live_register_value_changed(self):
+        """Handle editing of the overall live register value line edit."""
+        if self._updating or not isinstance(self.current_item, Register):
+            return
+        reg_name = self.current_item.name
+        current_set = debug_manager.get_current_debug_set()
+        if current_set is None:
+            current_set = debug_manager.create_debug_set("default")
+        raw_text = self.live_value_edit.text().strip()
+        if raw_text == "":
+            # Clear register debug value and derived field values
+            if reg_name in current_set.register_values:
+                del current_set.register_values[reg_name]
+            if reg_name in current_set.field_values:
+                del current_set.field_values[reg_name]
+            self.refresh_live_display()
+            return
+        try:
+            dbg_val = DebugValue.from_string(raw_text)
+            if dbg_val.value is None or dbg_val.value < 0 or dbg_val.value > 0xFFFFFFFF:
+                raise ValueError("Value must be 0..0xFFFFFFFF")
+            # Store register value
+            current_set.set_register_value(reg_name, dbg_val)
+            # Decompose into field values
+            debug_manager.update_field_values_from_register(reg_name, self.current_item, dbg_val.value)
+            self.refresh_live_display()
+            self.field_changed.emit()  # ensure visualizer updates
+        except ValueError as ve:
+            QMessageBox.warning(self, "Invalid Live Register Value", str(ve))
+            # Revert displayed value
+            self.refresh_live_display()
+            return

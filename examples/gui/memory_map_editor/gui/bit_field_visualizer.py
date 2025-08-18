@@ -11,6 +11,7 @@ from PySide6.QtGui import QPainter, QPen, QBrush, QColor, QFont, QFontMetrics
 
 from memory_map_core import MemoryMapProject
 from fpga_lib.core import Register, RegisterArrayAccessor, BitField
+from examples.gui.memory_map_editor.debug_mode import debug_manager
 
 
 class BitFieldVisualizerWidget(QWidget):
@@ -29,21 +30,49 @@ class BitFieldVisualizerWidget(QWidget):
 
         # Visual parameters
         self.bit_width = 30
-        self.bit_height = 50
+        self.bit_height = 50  # Height for each row (reset or live)
         self.margin = 60  # Increased margin for labels
         self.label_height = 80
         self.bit_number_height = 25
         self.reset_value_height = 25
+        self.debug_mode_enabled = True
 
-        total_height = self.bit_number_height + self.bit_height + self.label_height + 2 * self.margin
+        self._update_size_parameters()
+
+    def _update_size_parameters(self):
+        """Update size parameters based on debug mode."""
+        if self.debug_mode_enabled:
+            # In debug mode, we need space for two rows plus labels
+            total_height = self.bit_number_height + (2 * self.bit_height) + self.label_height + 2 * self.margin + 40
+        else:
+            # Normal mode
+            total_height = self.bit_number_height + self.bit_height + self.label_height + 2 * self.margin
+
         self.setMinimumHeight(total_height)
         self.setMinimumWidth(32 * self.bit_width + 2 * self.margin)
 
     def set_register(self, register):
         """Set the register to visualize."""
         self.current_register = register
+        # Sync debug mode state with global manager on each register set
+        try:
+            self.set_debug_mode(debug_manager.debug_mode_enabled)
+        except Exception:
+            pass
         self._generate_field_colors()
         self.update()
+
+    def set_debug_mode(self, enabled):
+        """Enable or disable debug mode visualization."""
+        if self.debug_mode_enabled != enabled:
+            self.debug_mode_enabled = enabled
+            self._update_size_parameters()
+            self.update()  # Trigger repaint
+            self.updateGeometry()  # Update size hint
+
+    def toggle_debug_mode(self):
+        """Toggle debug mode on/off."""
+        self.set_debug_mode(not self.debug_mode_enabled)
 
     def _generate_field_colors(self):
         """Generate distinct colors for each bit field."""
@@ -102,7 +131,7 @@ class BitFieldVisualizerWidget(QWidget):
         painter.drawText(x, y, text)
 
     def _draw_bit_boxes(self, painter):
-        """Draw the 32-bit register as individual bit boxes with reset values."""
+        """Draw the 32-bit register as individual bit boxes with reset values and optional debug comparison."""
         if not hasattr(self.current_register, '_fields'):
             return
 
@@ -110,6 +139,10 @@ class BitFieldVisualizerWidget(QWidget):
         bit_fields = [None] * 32
         overlaps = [False] * 32
         reset_bits = [0] * 32  # Track reset value for each bit
+        live_bits = [0] * 32   # Track live debug value for each bit
+
+        # Get register name for debug comparison
+        register_name = getattr(self.current_register, 'name', 'unknown_register')
 
         # Map bits to fields and detect overlaps
         for field_name, field in self.current_register._fields.items():
@@ -123,55 +156,140 @@ class BitFieldVisualizerWidget(QWidget):
                     field_bit_index = bit_pos - field.offset
                     reset_bits[bit_pos] = (field.reset_value >> field_bit_index) & 1
 
+        # Get debug differences if in debug mode
+        debug_differences = []
+        if self.debug_mode_enabled:
+            # Calculate reset value for comparison
+            reset_value = 0
+            for field in self.current_register._fields.values():
+                if field.reset_value is not None:
+                    reset_value |= (field.reset_value << field.offset)
+
+            debug_differences = debug_manager.compare_register_bits(register_name, self.current_register, reset_value)
+
+            # Get live values for display
+            current_set = debug_manager.get_current_debug_set()
+            if current_set:
+                live_value_obj = current_set.get_register_value(register_name)
+                if live_value_obj and live_value_obj.value is not None:
+                    live_value = live_value_obj.value
+                    for bit_pos in range(32):
+                        live_bits[bit_pos] = (live_value >> bit_pos) & 1
+                else:
+                    # No live value yet; mirror reset bits so live row shows defaults instead of zeros
+                    for bit_pos in range(32):
+                        live_bits[bit_pos] = reset_bits[bit_pos]
+
         # Draw each bit box (from bit 31 to 0, left to right)
         for bit in range(32):
             actual_bit = 31 - bit  # Map display position to actual bit number
             x = self.margin + bit * self.bit_width
-            y = self.margin + self.bit_number_height
 
-            rect = QRect(x, y, self.bit_width, self.bit_height)
-
-            # Determine color
-            if overlaps[actual_bit]:
-                # Red for overlaps
-                color = QColor(255, 100, 100)
-            elif bit_fields[actual_bit] is not None:
-                # Field color
-                field_name = bit_fields[actual_bit]
-                color = self.field_colors.get(field_name, QColor(200, 200, 200))
+            if self.debug_mode_enabled:
+                # Two-row mode: reset on top, live on bottom
+                self._draw_debug_bit_box(painter, x, actual_bit, bit_fields, overlaps, reset_bits, live_bits, debug_differences)
             else:
-                # Light gray for unused bits
-                color = QColor(250, 250, 250)
+                # Normal mode: single row
+                self._draw_normal_bit_box(painter, x, actual_bit, bit_fields, overlaps, reset_bits)
 
-            # Draw box
-            painter.fillRect(rect, QBrush(color))
-            painter.setPen(QPen(QColor(64, 64, 64)))
-            painter.drawRect(rect)
+        # Draw labels
+        if self.debug_mode_enabled:
+            self._draw_debug_labels(painter)
+        else:
+            self._draw_normal_labels(painter)
 
-            # Draw reset value prominently in the center of the box
-            if bit_fields[actual_bit] is not None:
-                painter.setPen(QPen(QColor(0, 0, 0)))
-                font = QFont()
-                font.setPointSize(14)
-                font.setBold(True)
-                painter.setFont(font)
+    def _draw_normal_bit_box(self, painter, x, actual_bit, bit_fields, overlaps, reset_bits):
+        """Draw a single bit box in normal mode."""
+        y = self.margin + self.bit_number_height
+        rect = QRect(x, y, self.bit_width, self.bit_height)
 
-                # Use different color for reset value
-                if reset_bits[actual_bit] == 1:
-                    painter.setPen(QPen(QColor(0, 120, 0)))  # Green for 1
-                else:
-                    painter.setPen(QPen(QColor(100, 100, 100)))  # Gray for 0
+        # Determine color
+        if overlaps[actual_bit]:
+            color = QColor(255, 100, 100)  # Red for overlaps
+        elif bit_fields[actual_bit] is not None:
+            field_name = bit_fields[actual_bit]
+            color = self.field_colors.get(field_name, QColor(200, 200, 200))
+        else:
+            color = QColor(250, 250, 250)  # Light gray for unused bits
 
-                painter.drawText(rect, Qt.AlignCenter, str(reset_bits[actual_bit]))
+        # Draw box
+        painter.fillRect(rect, QBrush(color))
+        painter.setPen(QPen(QColor(64, 64, 64)))
+        painter.drawRect(rect)
+
+        # Draw reset value
+        if bit_fields[actual_bit] is not None:
+            painter.setPen(QPen(QColor(0, 120, 0) if reset_bits[actual_bit] == 1 else QColor(100, 100, 100)))
+            font = QFont()
+            font.setPointSize(14)
+            font.setBold(True)
+            painter.setFont(font)
+            painter.drawText(rect, Qt.AlignCenter, str(reset_bits[actual_bit]))
+        else:
+            painter.setPen(QPen(QColor(180, 180, 180)))
+            font = QFont()
+            font.setPointSize(12)
+            painter.setFont(font)
+            painter.drawText(rect, Qt.AlignCenter, "0")
+
+    def _draw_debug_bit_box(self, painter, x, actual_bit, bit_fields, overlaps, reset_bits, live_bits, debug_differences):
+        """Draw a two-row bit box in debug mode."""
+        y_reset = self.margin + self.bit_number_height
+        y_live = y_reset + self.bit_height
+
+        # Determine base color
+        if overlaps[actual_bit]:
+            base_color = QColor(255, 100, 100)  # Red for overlaps
+        elif bit_fields[actual_bit] is not None:
+            field_name = bit_fields[actual_bit]
+            base_color = self.field_colors.get(field_name, QColor(200, 200, 200))
+        else:
+            base_color = QColor(250, 250, 250)  # Light gray for unused bits
+
+        # Draw reset row (top)
+        reset_rect = QRect(x, y_reset, self.bit_width, self.bit_height)
+        painter.fillRect(reset_rect, QBrush(base_color))
+        painter.setPen(QPen(QColor(64, 64, 64)))
+        painter.drawRect(reset_rect)
+
+        # Draw live row (bottom) - highlight if different
+        live_rect = QRect(x, y_live, self.bit_width, self.bit_height)
+        if actual_bit < len(debug_differences) and debug_differences[actual_bit]:
+            # Highlight differences with bright yellow
+            painter.fillRect(live_rect, QBrush(QColor(255, 255, 0)))
+        else:
+            painter.fillRect(live_rect, QBrush(base_color))
+        painter.setPen(QPen(QColor(64, 64, 64)))
+        painter.drawRect(live_rect)
+
+        # Draw reset value text
+        if bit_fields[actual_bit] is not None:
+            painter.setPen(QPen(QColor(0, 120, 0) if reset_bits[actual_bit] == 1 else QColor(100, 100, 100)))
+        else:
+            painter.setPen(QPen(QColor(180, 180, 180)))
+
+        font = QFont()
+        font.setPointSize(12)
+        font.setBold(True)
+        painter.setFont(font)
+        painter.drawText(reset_rect, Qt.AlignCenter, str(reset_bits[actual_bit]))
+
+        # Draw live value text
+        live_bit_value = live_bits[actual_bit] if actual_bit < len(live_bits) else 0
+        if bit_fields[actual_bit] is not None:
+            # Use red for differences, green/gray for normal
+            if actual_bit < len(debug_differences) and debug_differences[actual_bit]:
+                painter.setPen(QPen(QColor(200, 0, 0)))  # Red for differences
             else:
-                # Show 0 for unused bits in light gray
-                painter.setPen(QPen(QColor(180, 180, 180)))
-                font = QFont()
-                font.setPointSize(12)
-                painter.setFont(font)
-                painter.drawText(rect, Qt.AlignCenter, "0")
+                painter.setPen(QPen(QColor(0, 120, 0) if live_bit_value == 1 else QColor(100, 100, 100)))
+        else:
+            painter.setPen(QPen(QColor(180, 180, 180)))
 
-        # Draw a "Reset:" label
+        painter.drawText(live_rect, Qt.AlignCenter, str(live_bit_value))
+
+    def _draw_normal_labels(self, painter):
+        """Draw the normal single-row labels."""
+        y = self.margin + self.bit_number_height
         painter.setPen(QPen(QColor(0, 0, 0)))
         font = QFont()
         font.setPointSize(10)
@@ -181,13 +299,35 @@ class BitFieldVisualizerWidget(QWidget):
         reset_label_rect = QRect(5, y + self.bit_height // 2 - 10, 50, 20)
         painter.drawText(reset_label_rect, Qt.AlignCenter | Qt.AlignVCenter, "Reset:")
 
+    def _draw_debug_labels(self, painter):
+        """Draw the two-row debug mode labels."""
+        y_reset = self.margin + self.bit_number_height
+        y_live = y_reset + self.bit_height
+
+        painter.setPen(QPen(QColor(0, 0, 0)))
+        font = QFont()
+        font.setPointSize(10)
+        font.setBold(True)
+        painter.setFont(font)
+
+        # Reset label
+        reset_label_rect = QRect(5, y_reset + self.bit_height // 2 - 10, 50, 20)
+        painter.drawText(reset_label_rect, Qt.AlignCenter | Qt.AlignVCenter, "Reset:")
+
+        # Live label
+        live_label_rect = QRect(5, y_live + self.bit_height // 2 - 10, 50, 20)
+        painter.drawText(live_label_rect, Qt.AlignCenter | Qt.AlignVCenter, "Live:")
+
     def _draw_field_labels(self, painter):
         """Draw field name labels below the bit boxes with smart positioning for many fields."""
         if not hasattr(self.current_register, '_fields'):
             return
 
-        # Base Y position for labels
-        label_start_y = self.margin + self.bit_number_height + self.bit_height + 30
+        # Base Y position for labels (depends on debug mode)
+        if self.debug_mode_enabled:
+            label_start_y = self.margin + self.bit_number_height + (self.bit_height * 2) + 30  # Two rows
+        else:
+            label_start_y = self.margin + self.bit_number_height + self.bit_height + 30  # Single row
 
         # Sort fields by their offset in ascending order (lowest offset first)
         sorted_fields = sorted(self.current_register._fields.items(),
@@ -234,7 +374,11 @@ class BitFieldVisualizerWidget(QWidget):
         font.setBold(True)
         painter.setFont(font)
 
-        bits_bottom_y = self.margin + self.bit_number_height + self.bit_height
+        # Calculate bottom Y position of bit boxes (depends on debug mode)
+        if self.debug_mode_enabled:
+            bits_bottom_y = self.margin + self.bit_number_height + (self.bit_height * 2)  # Two rows
+        else:
+            bits_bottom_y = self.margin + self.bit_number_height + self.bit_height  # Single row
 
         for i, (field_name, field, field_center_x, label_y, start_bit, end_bit, label_right_x, column) in enumerate(label_positions):
             # Draw field name aligned to the right, positioned close to arrow
@@ -323,7 +467,15 @@ class BitFieldVisualizerWidget(QWidget):
         column_width = 120
 
         width = 32 * self.bit_width + 2 * self.margin + (num_columns * column_width) + 40
-        height = self.bit_number_height + self.bit_height + self.label_height + 2 * self.margin + 50
+
+        # Calculate height based on debug mode
+        if self.debug_mode_enabled:
+            # Two-row mode: account for reset + live rows
+            height = self.bit_number_height + (self.bit_height * 2) + self.label_height + 2 * self.margin + 50
+        else:
+            # Normal mode: single row
+            height = self.bit_number_height + self.bit_height + self.label_height + 2 * self.margin + 50
+
         return QSize(width, height)
 
 
@@ -406,6 +558,24 @@ class BitFieldVisualizer(QWidget):
 
         legend_layout.addStretch()
         layout.addLayout(legend_layout)
+
+    # --- Pass-through convenience API so external code can treat this as the visualizer ---
+    def set_register(self, register):
+        self.visualizer.set_register(register)
+
+    def set_debug_mode(self, enabled: bool):
+        self.visualizer.set_debug_mode(enabled)
+
+    def toggle_debug_mode(self):
+        self.visualizer.toggle_debug_mode()
+
+    @property
+    def debug_mode_enabled(self):  # read-only property for convenience
+        return self.visualizer.debug_mode_enabled
+
+    def update(self):  # ensure both wrapper and inner widget repaint
+        self.visualizer.update()
+        super().update()
 
     def set_project(self, project: MemoryMapProject):
         """Set the current project."""
