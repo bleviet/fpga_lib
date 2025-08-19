@@ -3,170 +3,170 @@ description: "Gigabit Ethernet MAC controller with configuration registers"
 base_address: 0x60000000
 
 registers:
-    - name: mac_config
-      offset: 0x00
-      description: "MAC configuration register"
-      fields:
-          - name: enable_tx
-            bit: 0
-            access: rw
-            description: "Enable transmission"
-          - name: enable_rx
-            bit: 1
-            access: rw
-            description: "Enable reception"
-          - name: duplex_mode
-            bit: 2
-            access: rw
-            description: "Full duplex mode"
-          - name: speed
-            bits: "[4:3]"
-            access: rw
-            description: "Link speed (00=10M, 01=100M, 10=1G)"
-          - name: loopback
-            bit: 5
-            access: rw
-            description: "Loopback mode"
-          - name: auto_pad
-            bit: 6
-            access: rw
-            description: "Automatic padding"
-          - name: crc_enable
-            bit: 7
-            access: rw
-            description: "CRC generation/checking"
+  - name: mac_config
+    offset: 0x00
+    description: "MAC configuration register"
+    fields:
+      - name: enable_tx
+        bit: 0
+        access: rw
+        description: "Enable transmission"
+      - name: enable_rx
+        bit: 1
+        access: rw
+        description: "Enable reception"
+      - name: duplex_mode
+        bit: 2
+        access: rw
+        description: "Full duplex mode"
+      - name: speed
+        bits: "[4:3]"
+        access: rw
+        description: "Link speed (00=10M, 01=100M, 10=1G)"
+      - name: loopback
+        bit: 5
+        access: rw
+        description: "Loopback mode"
+      - name: auto_pad
+        bit: 6
+        access: rw
+        description: "Automatic padding"
+      - name: crc_enable
+        bit: 7
+        access: rw
+        description: "CRC generation/checking"
 
-    - name: mac_status
-      offset: 0x04
-      description: "MAC status register"
-      fields:
-          - name: link_up
-            bit: 0
-            access: ro
-            description: "Link status"
-          - name: tx_active
-            bit: 1
-            access: ro
-            description: "Transmission active"
-          - name: rx_active
-            bit: 2
-            access: ro
-            description: "Reception active"
-          - name: speed_detected
-            bits: "[4:3]"
-            access: ro
-            description: "Detected link speed"
-          - name: duplex_detected
-            bit: 5
-            access: ro
-            description: "Detected duplex mode"
+  - name: mac_status
+    offset: 0x04
+    description: "MAC status register"
+    fields:
+      - name: link_up
+        bit: 0
+        access: ro
+        description: "Link status"
+      - name: tx_active
+        bit: 1
+        access: ro
+        description: "Transmission active"
+      - name: rx_active
+        bit: 2
+        access: ro
+        description: "Reception active"
+      - name: speed_detected
+        bits: "[4:3]"
+        access: ro
+        description: "Detected link speed"
+      - name: duplex_detected
+        bit: 5
+        access: ro
+        description: "Detected duplex mode"
 
-    - name: mac_address_low
-      offset: 0x08
-      description: "MAC address lower 32 bits"
-      fields:
-          - name: address
-            bits: "[31:0]"
-            access: rw
-            description: "MAC address bits [31:0]"
+  - name: mac_address_low
+    offset: 0x08
+    description: "MAC address lower 32 bits"
+    fields:
+      - name: address
+        bits: "[31:0]"
+        access: rw
+        description: "MAC address bits [31:0]"
 
-    - name: mac_address_high
-      offset: 0x0C
-      description: "MAC address upper 16 bits"
-      fields:
-          - name: address
-            bits: "[15:0]"
-            access: rw
-            description: "MAC address bits [47:32]"
-          - name: valid
-            bit: 31
-            access: rw
-            description: "MAC address valid"
+  - name: mac_address_high
+    offset: 0x0C
+    description: "MAC address upper 16 bits"
+    fields:
+      - name: address
+        bits: "[15:0]"
+        access: rw
+        description: "MAC address bits [47:32]"
+      - name: valid
+        bit: 31
+        access: rw
+        description: "MAC address valid"
 
-    - name: interrupt_status
-      offset: 0x10
-      description: "Interrupt status register"
-      fields:
-          - name: tx_complete
-            bit: 0
-            access: rw1c
-            description: "Transmission complete"
-          - name: rx_complete
-            bit: 1
-            access: rw1c
-            description: "Reception complete"
-          - name: tx_error
-            bit: 2
-            access: rw1c
-            description: "Transmission error"
-          - name: rx_error
-            bit: 3
-            access: rw1c
-            description: "Reception error"
-          - name: link_change
-            bit: 4
-            access: rw1c
-            description: "Link status change"
+  - name: interrupt_status
+    offset: 0x10
+    description: "Interrupt status register"
+    fields:
+      - name: tx_complete
+        bit: 0
+        access: rw1c
+        description: "Transmission complete"
+      - name: rx_complete
+        bit: 1
+        access: rw1c
+        description: "Reception complete"
+      - name: tx_error
+        bit: 2
+        access: rw1c
+        description: "Transmission error"
+      - name: rx_error
+        bit: 3
+        access: rw1c
+        description: "Reception error"
+      - name: link_change
+        bit: 4
+        access: rw1c
+        description: "Link status change"
 
-    - name: interrupt_enable
-      offset: 0x14
-      description: "Interrupt enable register"
-      fields:
-          - name: tx_complete_en
-            bit: 0
-            access: rw
-            description: "Enable TX complete interrupt"
-          - name: rx_complete_en
-            bit: 1
-            access: rw
-            description: "Enable RX complete interrupt"
-          - name: tx_error_en
-            bit: 2
-            access: rw
-            description: "Enable TX error interrupt"
-          - name: rx_error_en
-            bit: 3
-            access: rw
-            description: "Enable RX error interrupt"
-          - name: link_change_en
-            bit: 4
-            access: rw
-            description: "Enable link change interrupt"
+  - name: interrupt_enable
+    offset: 0x14
+    description: "Interrupt enable register"
+    fields:
+      - name: tx_complete_en
+        bit: 0
+        access: rw
+        description: "Enable TX complete interrupt"
+      - name: rx_complete_en
+        bit: 1
+        access: rw
+        description: "Enable RX complete interrupt"
+      - name: tx_error_en
+        bit: 2
+        access: rw
+        description: "Enable TX error interrupt"
+      - name: rx_error_en
+        bit: 3
+        access: rw
+        description: "Enable RX error interrupt"
+      - name: link_change_en
+        bit: 4
+        access: rw
+        description: "Enable link change interrupt"
 
-    - name: rx_buffers
-      offset: 0x1000
-      count: 16
-      stride: 8
-      description: "RX buffer descriptors"
-      fields:
-          - name: buffer_addr
-            bits: "[31:0]"
-            access: rw
-            description: "Buffer address"
-          - name: buffer_size
-            bits: "[15:0]"
-            access: rw
-            description: "Buffer size (at offset +4)"
-          - name: status
-            bits: "[31:16]"
-            access: ro
-            description: "Buffer status flags"
+  - name: rx_buffers
+    offset: 0x1000
+    count: 16
+    stride: 8
+    description: "RX buffer descriptors"
+    fields:
+      - name: buffer_addr
+        bits: "[31:0]"
+        access: rw
+        description: "Buffer address"
+      - name: buffer_size
+        bits: "[15:0]"
+        access: rw
+        description: "Buffer size (at offset +4)"
+      - name: status
+        bits: "[31:16]"
+        access: ro
+        description: "Buffer status flags"
 
-    - name: tx_buffers
-      offset: 0x2000
-      count: 16
-      stride: 8
-      description: "TX buffer descriptors"
-      fields:
-          - name: buffer_addr
-            bits: "[31:0]"
-            access: rw
-            description: "Buffer address"
-          - name: buffer_size
-            bits: "[15:0]"
-            access: rw
-            description: "Buffer size (at offset +4)"
-          - name: control
-            bits: "[31:16]"
-            access: rw
-            description: "Buffer control flags"
+  - name: tx_buffers
+    offset: 0x2000
+    count: 16
+    stride: 8
+    description: "TX buffer descriptors"
+    fields:
+      - name: buffer_addr
+        bits: "[31:0]"
+        access: rw
+        description: "Buffer address"
+      - name: buffer_size
+        bits: "[15:0]"
+        access: rw
+        description: "Buffer size (at offset +4)"
+      - name: control
+        bits: "[31:16]"
+        access: rw
+        description: "Buffer control flags"
