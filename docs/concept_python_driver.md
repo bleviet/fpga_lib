@@ -54,6 +54,7 @@ TOML is excellent for configuration files, but it's less intuitive for represent
 registers:
   - name: control
     offset: 0x00
+    width: 32 # Register width in bits. Defaults to 32 if omitted.
     description: "Main control register for the core."
     fields:
       - name: enable
@@ -71,6 +72,7 @@ registers:
 
   - name: status
     offset: 0x04
+    width: 32
     description: "Status register for the core."
     fields:
       - name: ready
@@ -84,6 +86,7 @@ registers:
 
   - name: data_in
     offset: 0x08
+    width: 128 # Example of a wider-than-default register
     description: "Input data FIFO."
     fields: # This register has no bit-fields, it's accessed as a whole
 
@@ -122,7 +125,7 @@ from enum import Enum, auto
 
 # --- Data Models (explained in next section) ---
 class Access(Enum):
-    RO = auto(); RW = auto(); WO = auto()
+    RO = auto(); RW = auto(); WO = auto(); RW1C = auto()
 
 @dataclass
 class BitField:
@@ -142,11 +145,12 @@ def _parse_bits(bits_def):
 
 class RegisterArrayAccessor:
     """Provides indexed access to a block of registers."""
-    def __init__(self, base_offset, count, stride, field_template, bus_interface):
+    def __init__(self, base_offset, count, stride, width, field_template, bus_interface):
         self._bus = bus_interface
         self._base_offset = base_offset
         self._count = count
         self._stride = stride
+        self._width = width
         self._field_template = field_template # The list of BitField objects
 
     def __getitem__(self, index):
@@ -160,6 +164,7 @@ class RegisterArrayAccessor:
         return Register(
             name=f"item[{index}]",
             offset=item_offset,
+            width=self._width,
             bus_interface=self._bus,
             fields=self._field_template
         )
@@ -184,12 +189,15 @@ def load_from_yaml(yaml_path: str, bus_interface: AbstractBusInterface):
                 access=Access[field_info.get('access', 'rw').upper()]
             ))
         
+        reg_width = reg_info.get('width', 32) # Default to 32-bit registers
+
         # Check if this is a register array
         if 'count' in reg_info:
             accessor = RegisterArrayAccessor(
                 base_offset=reg_info['offset'],
                 count=reg_info['count'],
-                stride=reg_info.get('stride', 4), # Default to 4-byte stride
+                stride=reg_info.get('stride', reg_width // 8), # Default stride to register width
+                width=reg_width,
                 field_template=fields,
                 bus_interface=bus_interface
             )
@@ -198,6 +206,7 @@ def load_from_yaml(yaml_path: str, bus_interface: AbstractBusInterface):
             register = Register(
                 name=reg_info['name'],
                 offset=reg_info['offset'],
+                width=reg_width,
                 bus_interface=bus_interface,
                 fields=fields
             )
@@ -234,19 +243,20 @@ class BitField:
     access: Access = Access.RW
 
 class Register:
-    def __init__(self, name, offset, bus_interface, fields: list[BitField]):
+    def __init__(self, name, offset, width, bus_interface, fields: list[BitField]):
         self._name = name
         self._offset = offset
+        self._width = width
         self._bus = bus_interface
         self._fields = {f.name: f for f in fields}
 
     def read(self):
         """Reads the entire register value."""
-        return self._bus.read_word(self._offset)
+        return self._bus.read_word(self._offset, self._width)
 
     def write(self, value: int):
         """Writes a value to the entire register."""
-        self._bus.write_word(self._offset, value)
+        self._bus.write_word(self._offset, value, self._width)
 
     def __getattr__(self, name: str):
         if name not in self._fields:
@@ -283,13 +293,13 @@ from abc import ABC, abstractmethod
 
 class AbstractBusInterface(ABC):
     @abstractmethod
-    def read_word(self, address: int) -> int:
-        """Reads a single word from the given address."""
+    def read_word(self, address: int, width: int) -> int:
+        """Reads a single word of a given width (in bits) from the given address."""
         raise NotImplementedError
 
     @abstractmethod
-    def write_word(self, address: int, data: int) -> None:
-        """Writes a single word to the given address."""
+    def write_word(self, address: int, data: int, width: int) -> None:
+        """Writes a single word of a given width (in bits) to the given address."""
         raise NotImplementedError
 ```
 
@@ -306,11 +316,27 @@ class CocotbBus(AbstractBusInterface):
     def __init__(self, dut, bus_name, clock):
         self._axi_driver = Axi4LiteBus.from_entity(dut, bus_name, clock)
 
-    async def read_word(self, address: int) -> int:
+    async def read_word(self, address: int, width: int) -> int:
+        # Note: AXI4-Lite is typically 32-bit. Wider reads would require a different bus or protocol.
+        # This implementation would need to be adapted for non-32-bit buses.
+        if width > 32:
+            # Perform multiple reads for wider registers
+            num_reads = (width + 31) // 32
+            val = 0
+            for i in range(num_reads):
+                word = await self._axi_driver.read(address + i * 4)
+                val |= int(word) << (i * 32)
+            return val
         val = await self._axi_driver.read(address)
         return int(val)
 
-    async def write_word(self, address: int, data: int) -> None:
+    async def write_word(self, address: int, data: int, width: int) -> None:
+        if width > 32:
+            num_writes = (width + 31) // 32
+            for i in range(num_writes):
+                word = (data >> (i * 32)) & 0xFFFFFFFF
+                await self._axi_driver.write(address + i * 4, word)
+            return
         await self._axi_driver.write(address, data)
 ```
 
@@ -323,11 +349,17 @@ class JtagBus(AbstractBusInterface):
     def __init__(self, xsdb_session):
         self._xsdb = xsdb_session
 
-    def read_word(self, address: int) -> int:
-        return self._xsdb.read_mem(address, 1)[0]
+    def read_word(self, address: int, width: int) -> int:
+        # JTAG memory access might also have width limitations.
+        # This is a simplified example.
+        num_bytes = (width + 7) // 8
+        data_bytes = self._xsdb.read_mem(address, num_bytes)
+        return int.from_bytes(data_bytes, 'little')
 
-    def write_word(self, address: int, data: int) -> None:
-        self._xsdb.write_mem(address, [data])
+    def write_word(self, address: int, data: int, width: int) -> None:
+        num_bytes = (width + 7) // 8
+        data_bytes = data.to_bytes(num_bytes, 'little')
+        self._xsdb.write_mem(address, list(data_bytes))
 ```
 
 -----
