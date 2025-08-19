@@ -14,6 +14,37 @@ Manually defining registers and bit-fields in Python for a complex IP core is te
 
 This approach decouples the hardware specification from the driver's implementation. The driver will dynamically construct itself based on the contents of this file.
 
+### Why YAML?
+
+Of course. YAML was chosen because it strikes the best balance between **human readability** and its ability to naturally represent the **nested structure** of a hardware memory map.
+
+The primary goal of this file is to be a "single source of truth" that is easy for engineers to read, understand, and, if necessary, edit by hand.
+
+* ✨ Superior Readability: YAML's syntax is minimal and uses indentation to denote structure. This makes the file look clean and almost like a document outline, which is perfect for describing a hierarchy of registers and their bit fields.
+
+* ✍️ Natural for Nested Lists: The core structure is a "list of registers," where each register contains a "list of bit fields." This pattern maps perfectly and intuitively to YAML's indented list format.
+
+* 💬 Essential Comment Support: Hardware design requires documentation. YAML's first-class support for comments (`#`) is crucial for adding descriptions and notes directly within the map, which is a major advantage.
+
+#### Comparison with TOML and JSON
+
+Here’s a direct comparison for this specific use case:
+
+##### Why Not JSON?
+
+The biggest reason is its **lack of support for comments**. For a file that serves as documentation, this is a significant drawback. Additionally, JSON's syntax is much noisier with required braces, quotes, and commas, making it more tedious to read and write manually compared to YAML.
+
+##### Why Not TOML?
+
+TOML is excellent for configuration files, but it's less intuitive for representing a **deeply nested list of complex objects**, which is exactly what a memory map is. Defining an array of registers, each with its own array of fields, can become syntactically awkward and visually disconnected in TOML. YAML’s simple indented structure keeps the definition of a register and its fields grouped together more cleanly.
+
+| Feature | YAML | TOML | JSON |
+| :--- | :--- | :--- | :--- |
+| **Human Readability** | ✅ **Excellent** | ✅ Good | 🆗 Okay |
+| **Comment Support** | ✅ Yes | ✅ Yes | ❌ **No** |
+| **Nested Lists/Objects** | ✅ **Very Natural** | 🆗 Awkward | ✅ Natural |
+
+
 #### Example Memory Map (`ip_core_map.yaml`)
 
 ```yaml
