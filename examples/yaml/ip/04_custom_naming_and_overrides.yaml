@@ -1,0 +1,34 @@
+# file: examples/yaml/ip/04_custom_naming_and_overrides.yaml
+meta:
+  vendor: company.com
+  name: CustomNamer
+  version: "1.2.0"
+  description: "Demonstrates advanced naming and port map overrides."
+
+interfaces:
+  ports:
+    - { name: core_clk, direction: in, width: 1 }
+    - { name: core_reset, direction: in, width: 1 } # Active-high reset
+
+  busInterfaces:
+    - name: AVALON_MM_IF
+      descriptor: avalon_mm_slave
+      naming:
+        prefix: avs_ # Custom prefix for all generated signals
+      portMap:
+        clk: core_clk
+        reset: core_reset # Map logical 'reset' to 'core_reset'
+
+    - name: DEBUG_STREAM
+      descriptor: axi4_stream_master
+      count: 2
+      portMap:
+        ACLK: core_clk
+        ARESETn: core_reset # Note: AXI reset is active-low, but mapped to active-high physical port
+        TDATA: debug_stream_{index}_data # Custom name for TDATA with index
+        TVALID: debug_stream_{index}_valid
+
+fileSets:
+  - name: RTL
+    files:
+      - "rtl/custom_namer.vhd"

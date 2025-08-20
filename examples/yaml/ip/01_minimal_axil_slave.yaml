@@ -1,0 +1,25 @@
+# file: examples/yaml/ip/01_minimal_axil_slave.yaml
+meta:
+  vendor: company.com
+  name: MinimalAXILSlave
+  version: "1.0.0"
+  description: "A minimal IP with a single AXI4-Lite slave interface for control registers."
+
+interfaces:
+  ports:
+    - { name: sys_clk, direction: in, width: 1 }
+    - { name: sys_resetn, direction: in, width: 1 }
+
+  busInterfaces:
+    - name: S_AXI_CTRL
+      descriptor: axi4_lite_slave
+      portMap:
+        ACLK: sys_clk
+        ARESETn: sys_resetn
+      memoryMap:
+        file: "../memory_maps/simple_regs.yaml"
+
+fileSets:
+  - name: RTL
+    files:
+      - "rtl/minimal_axil_slave.vhd"

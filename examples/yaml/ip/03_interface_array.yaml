@@ -1,0 +1,28 @@
+# file: examples/yaml/ip/03_interface_array.yaml
+meta:
+  vendor: company.com
+  name: InterfaceArray
+  version: "1.0.0"
+  description: "An IP with an array of four AXI4-Stream slave interfaces."
+
+interfaces:
+  ports:
+    - { name: sys_clk, direction: in, width: 1 }
+    - { name: sys_resetn, direction: in, width: 1 }
+
+  busInterfaces:
+    - name: S_AXIS_CHANNELS
+      descriptor: axi4_stream_slave
+      count: 4
+      naming:
+        prefix: s_axis_ch
+      portMap:
+        ACLK: sys_clk
+        ARESETn: sys_resetn
+        # TDATA will be prefixed automatically: s_axis_ch_0_tdata, s_axis_ch_1_tdata, etc.
+
+fileSets:
+  - name: RTL
+    files:
+      - "rtl/interface_array.vhd"
+      - "rtl/axi_stream_slave_if.vhd"

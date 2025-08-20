@@ -1,0 +1,42 @@
+# file: examples/yaml/ip/02_multi_bus_custom_ports.yaml
+meta:
+  vendor: company.com
+  name: MultiBusCustomPorts
+  version: "1.1.0"
+  description: "An IP with both AXI4-Lite and AXI4-Stream interfaces, plus custom GPIO ports."
+
+parameters:
+  - { name: GPIO_WIDTH, type: integer, value: 16 }
+  - { name: AXIS_DATA_WIDTH, type: integer, value: 64 }
+
+interfaces:
+  ports:
+    - { name: sys_clk, direction: in, width: 1 }
+    - { name: sys_resetn, direction: in, width: 1 }
+    - { name: gpio_out, direction: out, width: "${GPIO_WIDTH}" }
+    - { name: status_in, direction: in, width: 8 }
+
+  busInterfaces:
+    - name: S_AXI_CTRL
+      descriptor: axi4_lite_slave
+      portMap:
+        ACLK: sys_clk
+        ARESETn: sys_resetn
+      memoryMap:
+        file: "../memory_maps/simple_regs.yaml"
+
+    - name: M_AXIS_DATA
+      descriptor: axi4_stream_master
+      naming:
+        prefix: m_axis_
+      portMap:
+        ACLK: sys_clk
+        ARESETn: sys_resetn
+        TDATA: m_axis_tdata # Explicitly map TDATA, though it matches default
+
+fileSets:
+  - name: RTL
+    files:
+      - "rtl/multi_bus_custom_ports.vhd"
+      - "rtl/axi_lite_if.vhd"
+      - "rtl/axi_stream_master_if.vhd"

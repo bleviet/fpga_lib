@@ -1,0 +1,48 @@
+# file: examples/yaml/memory_maps/simple_regs.yaml
+map_name: SimpleRegisters
+description: "A basic memory map with a few control and status registers."
+address_width: 32
+data_width: 32
+
+registers:
+  - name: CTRL
+    offset: "0x00"
+    description: "Control Register"
+    fields:
+      - name: GO
+        bits: 0
+        access: RW
+        description: "Start operation"
+      - name: IE
+        bits: 1
+        access: RW
+        description: "Interrupt Enable"
+
+  - name: STATUS
+    offset: "0x04"
+    description: "Status Register"
+    fields:
+      - name: DONE
+        bits: 0
+        access: RO
+        description: "Operation complete"
+      - name: BUSY
+        bits: 1
+        access: RO
+        description: "Core is busy"
+
+  - name: DATA_IN
+    offset: "0x08"
+    description: "Input data register"
+    access: WO # Write-only
+    fields:
+      - name: VALUE
+        bits: "31:0"
+
+  - name: DATA_OUT
+    offset: "0x0C"
+    description: "Output data register"
+    access: RO # Read-only
+    fields:
+      - name: VALUE
+        bits: "31:0"

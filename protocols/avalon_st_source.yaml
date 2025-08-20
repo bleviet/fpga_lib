@@ -1,0 +1,24 @@
+# Default Avalon Streaming Source (Master) Descriptor
+protocol: Avalon-ST
+mode: source
+defaultPrefix: m_avst_
+
+logicalSignals:
+  mandatory:
+    - { name: clk, width: 1, direction: in }
+    - { name: reset, width: 1, direction: in }
+    - { name: data, width: DATA_WIDTH, direction: out }
+    - { name: valid, width: 1, direction: out }
+    - { name: ready, width: 1, direction: in }
+  optional:
+    - { name: empty, width: EMPTY_WIDTH, direction: out }
+    - { name: sop, width: 1, direction: out }
+    - { name: eop, width: 1, direction: out }
+    - { name: error, width: ERROR_WIDTH, direction: out }
+    - { name: channel, width: CHAN_WIDTH, direction: out }
+
+defaults:
+  DATA_WIDTH: 32
+  EMPTY_WIDTH: 2
+  ERROR_WIDTH: 1
+  CHAN_WIDTH: 1

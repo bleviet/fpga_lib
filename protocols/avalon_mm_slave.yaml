@@ -1,0 +1,23 @@
+# Default Avalon Memory Mapped Slave Descriptor
+protocol: Avalon-MM
+mode: slave
+defaultPrefix: s_avmm_
+
+logicalSignals:
+  mandatory:
+    - { name: clk, width: 1, direction: in }
+    - { name: reset, width: 1, direction: in }
+    - { name: address, width: ADDR_WIDTH, direction: in }
+    - { name: writedata, width: DATA_WIDTH, direction: in }
+    - { name: readdata, width: DATA_WIDTH, direction: out }
+    - { name: write, width: 1, direction: in }
+    - { name: read, width: 1, direction: in }
+  optional:
+    - { name: byteenable, width: "DATA_WIDTH/8", direction: in }
+    - { name: chipselect, width: 1, direction: in }
+    - { name: waitrequest, width: 1, direction: out }
+    - { name: irq, width: 1, direction: out }
+
+defaults:
+  ADDR_WIDTH: 32
+  DATA_WIDTH: 32

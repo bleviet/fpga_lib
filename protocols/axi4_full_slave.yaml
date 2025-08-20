@@ -1,0 +1,73 @@
+# Default AXI4-Full Slave Descriptor
+protocol: AXI4-Full
+mode: slave
+defaultPrefix: s_axi_
+
+logicalSignals:
+  mandatory:
+    # Common
+    - { name: ACLK, width: 1, direction: in }
+    - { name: ARESETn, width: 1, direction: in }
+    # Write Address Channel
+    - { name: AWADDR, width: ADDR_WIDTH, direction: in }
+    - { name: AWVALID, width: 1, direction: in }
+    - { name: AWREADY, width: 1, direction: out }
+    - { name: AWLEN, width: 8, direction: in }
+    - { name: AWSIZE, width: 3, direction: in }
+    - { name: AWBURST, width: 2, direction: in }
+    # Write Data Channel
+    - { name: WDATA, width: DATA_WIDTH, direction: in }
+    - { name: WSTRB, width: "DATA_WIDTH/8", direction: in }
+    - { name: WVALID, width: 1, direction: in }
+    - { name: WREADY, width: 1, direction: out }
+    - { name: WLAST, width: 1, direction: in }
+    # Write Response Channel
+    - { name: BRESP, width: 2, direction: out }
+    - { name: BVALID, width: 1, direction: out }
+    - { name: BREADY, width: 1, direction: in }
+    # Read Address Channel
+    - { name: ARADDR, width: ADDR_WIDTH, direction: in }
+    - { name: ARVALID, width: 1, direction: in }
+    - { name: ARREADY, width: 1, direction: out }
+    - { name: ARLEN, width: 8, direction: in }
+    - { name: ARSIZE, width: 3, direction: in }
+    - { name: ARBURST, width: 2, direction: in }
+    # Read Data Channel
+    - { name: RDATA, width: DATA_WIDTH, direction: out }
+    - { name: RRESP, width: 2, direction: out }
+    - { name: RVALID, width: 1, direction: out }
+    - { name: RREADY, width: 1, direction: in }
+    - { name: RLAST, width: 1, direction: out }
+  optional:
+    # QoS
+    - { name: AWQOS, width: 4, direction: in }
+    - { name: ARQOS, width: 4, direction: in }
+    # Protection
+    - { name: AWPROT, width: 3, direction: in }
+    - { name: ARPROT, width: 3, direction: in }
+    # Cache & Region
+    - { name: AWCACHE, width: 4, direction: in }
+    - { name: ARCACHE, width: 4, direction: in }
+    - { name: AWREGION, width: 4, direction: in }
+    - { name: ARREGION, width: 4, direction: in }
+    # Lock
+    - { name: AWLOCK, width: 1, direction: in }
+    - { name: ARLOCK, width: 1, direction: in }
+    # ID
+    - { name: AWID, width: ID_WIDTH, direction: in }
+    - { name: WID, width: ID_WIDTH, direction: in }
+    - { name: BID, width: ID_WIDTH, direction: out }
+    - { name: ARID, width: ID_WIDTH, direction: in }
+    - { name: RID, width: ID_WIDTH, direction: out }
+    # User
+    - { name: AWUSER, width: USER_WIDTH, direction: in }
+    - { name: WUSER, width: USER_WIDTH, direction: in }
+    - { name: BUSER, width: USER_WIDTH, direction: out }
+    - { name: ARUSER, width: USER_WIDTH, direction: in }
+    - { name: RUSER, width: USER_WIDTH, direction: out }
+
+defaults:
+  ADDR_WIDTH: 32
+  DATA_WIDTH: 32
+  ID_WIDTH: 4
+  USER_WIDTH: 1

@@ -1,0 +1,25 @@
+# Default AXI4-Stream Slave Descriptor
+protocol: AXI4-Stream
+mode: slave
+defaultPrefix: s_axis_
+
+logicalSignals:
+  mandatory:
+    - { name: ACLK, width: 1, direction: in }
+    - { name: ARESETn, width: 1, direction: in }
+    - { name: TDATA, width: DATA_WIDTH, direction: in }
+    - { name: TVALID, width: 1, direction: in }
+    - { name: TREADY, width: 1, direction: out }
+  optional:
+    - { name: TSTRB, width: "DATA_WIDTH/8", direction: in }
+    - { name: TKEEP, width: "DATA_WIDTH/8", direction: in }
+    - { name: TLAST, width: 1, direction: in }
+    - { name: TID, width: ID_WIDTH, direction: in }
+    - { name: TDEST, width: DEST_WIDTH, direction: in }
+    - { name: TUSER, width: USER_WIDTH, direction: in }
+
+defaults:
+  DATA_WIDTH: 32
+  ID_WIDTH: 4
+  DEST_WIDTH: 4
+  USER_WIDTH: 1

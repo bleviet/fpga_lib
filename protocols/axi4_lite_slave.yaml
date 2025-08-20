@@ -1,0 +1,33 @@
+# Default AXI4-Lite Slave Descriptor
+protocol: AXI4-Lite
+mode: slave
+defaultPrefix: s_axi_
+
+logicalSignals:
+  mandatory:
+    - { name: ACLK, width: 1, direction: in }
+    - { name: ARESETn, width: 1, direction: in }
+    - { name: AWADDR, width: ADDR_WIDTH, direction: in }
+    - { name: AWVALID, width: 1, direction: in }
+    - { name: AWREADY, width: 1, direction: out }
+    - { name: WDATA, width: DATA_WIDTH, direction: in }
+    - { name: WSTRB, width: "DATA_WIDTH/8", direction: in }
+    - { name: WVALID, width: 1, direction: in }
+    - { name: WREADY, width: 1, direction: out }
+    - { name: BRESP, width: 2, direction: out }
+    - { name: BVALID, width: 1, direction: out }
+    - { name: BREADY, width: 1, direction: in }
+    - { name: ARADDR, width: ADDR_WIDTH, direction: in }
+    - { name: ARVALID, width: 1, direction: in }
+    - { name: ARREADY, width: 1, direction: out }
+    - { name: RDATA, width: DATA_WIDTH, direction: out }
+    - { name: RRESP, width: 2, direction: out }
+    - { name: RVALID, width: 1, direction: out }
+    - { name: RREADY, width: 1, direction: in }
+  optional:
+    - { name: AWPROT, width: 3, direction: in }
+    - { name: ARPROT, width: 3, direction: in }
+
+defaults:
+  ADDR_WIDTH: 32
+  DATA_WIDTH: 32

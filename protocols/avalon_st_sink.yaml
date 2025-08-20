@@ -1,0 +1,24 @@
+# Default Avalon Streaming Sink (Slave) Descriptor
+protocol: Avalon-ST
+mode: sink
+defaultPrefix: s_avst_
+
+logicalSignals:
+  mandatory:
+    - { name: clk, width: 1, direction: in }
+    - { name: reset, width: 1, direction: in }
+    - { name: data, width: DATA_WIDTH, direction: in }
+    - { name: valid, width: 1, direction: in }
+    - { name: ready, width: 1, direction: out }
+  optional:
+    - { name: empty, width: EMPTY_WIDTH, direction: in }
+    - { name: sop, width: 1, direction: in }
+    - { name: eop, width: 1, direction: in }
+    - { name: error, width: ERROR_WIDTH, direction: in }
+    - { name: channel, width: CHAN_WIDTH, direction: in }
+
+defaults:
+  DATA_WIDTH: 32
+  EMPTY_WIDTH: 2
+  ERROR_WIDTH: 1
+  CHAN_WIDTH: 1

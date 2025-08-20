@@ -1,0 +1,19 @@
+# file: examples/yaml/protocols/my_custom_protocol.yaml
+protocol: MyCustomProtocol
+mode: slave
+defaultPrefix: custom_
+
+logicalSignals:
+  mandatory:
+    - { name: CLK, width: 1, direction: in }
+    - { name: RST, width: 1, direction: in }
+    - { name: ADDR, width: 16, direction: in }
+    - { name: WDATA, width: 32, direction: in }
+    - { name: RDATA, width: 32, direction: out }
+    - { name: WRITE_EN, width: 1, direction: in }
+    - { name: READ_EN, width: 1, direction: in }
+    - { name: READY, width: 1, direction: out }
+  optional:
+    - { name: IRQ, width: 1, direction: out }
+
+defaults: {}

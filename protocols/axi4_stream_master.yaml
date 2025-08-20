@@ -1,0 +1,25 @@
+# Default AXI4-Stream Master Descriptor
+protocol: AXI4-Stream
+mode: master
+defaultPrefix: m_axis_
+
+logicalSignals:
+  mandatory:
+    - { name: ACLK, width: 1, direction: in }
+    - { name: ARESETn, width: 1, direction: in }
+    - { name: TDATA, width: DATA_WIDTH, direction: out }
+    - { name: TVALID, width: 1, direction: out }
+    - { name: TREADY, width: 1, direction: in }
+  optional:
+    - { name: TSTRB, width: "DATA_WIDTH/8", direction: out }
+    - { name: TKEEP, width: "DATA_WIDTH/8", direction: out }
+    - { name: TLAST, width: 1, direction: out }
+    - { name: TID, width: ID_WIDTH, direction: out }
+    - { name: TDEST, width: DEST_WIDTH, direction: out }
+    - { name: TUSER, width: USER_WIDTH, direction: out }
+
+defaults:
+  DATA_WIDTH: 32
+  ID_WIDTH: 4
+  DEST_WIDTH: 4
+  USER_WIDTH: 1

@@ -1,0 +1,24 @@
+# Default Avalon Memory Mapped Master Descriptor
+protocol: Avalon-MM
+mode: master
+defaultPrefix: m_avmm_
+
+logicalSignals:
+  mandatory:
+    - { name: clk, width: 1, direction: in }
+    - { name: reset, width: 1, direction: in }
+    - { name: address, width: ADDR_WIDTH, direction: out }
+    - { name: writedata, width: DATA_WIDTH, direction: out }
+    - { name: readdata, width: DATA_WIDTH, direction: in }
+    - { name: write, width: 1, direction: out }
+    - { name: read, width: 1, direction: out }
+    - { name: waitrequest, width: 1, direction: in }
+  optional:
+    - { name: byteenable, width: "DATA_WIDTH/8", direction: out }
+    - { name: burstcount, width: BURST_WIDTH, direction: out }
+    - { name: readdatavalid, width: 1, direction: in }
+
+defaults:
+  ADDR_WIDTH: 32
+  DATA_WIDTH: 32
+  BURST_WIDTH: 1

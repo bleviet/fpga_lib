@@ -1,0 +1,23 @@
+# file: examples/yaml/ip/05_custom_descriptor.yaml
+meta:
+  vendor: company.com
+  name: CustomDescriptorIP
+  version: "1.0.0"
+  description: "An IP using a project-specific custom protocol descriptor."
+
+interfaces:
+  ports:
+    - { name: sys_clk, direction: in, width: 1 }
+    - { name: sys_resetn, direction: in, width: 1 }
+
+  busInterfaces:
+    - name: CUSTOM_BUS
+      descriptorFile: "../protocols/my_custom_protocol.yaml" # Path relative to blueprint
+      portMap:
+        CLK: sys_clk
+        RST: sys_resetn
+
+fileSets:
+  - name: RTL
+    files:
+      - "rtl/custom_descriptor_ip.vhd"
