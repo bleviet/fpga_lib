@@ -51,7 +51,7 @@ A bit field is an object in a register's `fields` list.
 | :------------ | :------- | :------- | :-------------------------------------------------------------------------- |
 | `name`        | `string` | Yes      | The name of the bit field, used for attribute access (e.g., `driver.control.enable`). |
 | `bit` / `bits`| `any`    | Yes      | The bit position(s). Use `bit: 0` for a single bit or `bits: [7:4]` for a multi-bit field. |
-| `access`      | `string` | No       | Access type. One of: `rw` (Read/Write), `ro` (Read-Only), `wo` (Write-Only), `rw1c` (Read/Write, 1 to Clear). Defaults to `rw`. |
+| `access`      | `string` | No       | Access type. One of: `rw` (Read/Write), `ro` (Read-Only), `wo` (Write-Only), `rw1c` (Read/Write, 1 to Clear), `w1sc` (Write 1, Self-Clearing). Defaults to `rw`. |
 | `reset`       | `integer`| No       | The default value of the field after a system reset. Must fit within the field's width. |
 | `description` | `string` | No       | A brief description of the bit field's purpose.                             |
 
