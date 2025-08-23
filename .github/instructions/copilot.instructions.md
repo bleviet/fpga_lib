@@ -9,12 +9,6 @@ Your primary goal is to produce code that is **clear, maintainable, and efficien
 
 ## 2\. Python Environment & Execution
 
-  - **Environment Activation**: All Python-related shell commands must be executed within the `dev` conda environment. When providing commands, prefix them appropriately, for example:
-    ```bash
-    conda run -n dev python my_script.py
-    conda run -n dev pytest
-    ```
-
 ## 3\. Python Code Quality & Style
 
   - **Formatting**: Strictly adhere to the **PEP 8** style guide. All code should be formatted as if by the **`black`** code formatter.

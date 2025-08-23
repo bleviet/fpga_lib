@@ -52,7 +52,7 @@ The ability to start from an existing memory map is crucial.
 2.  **Controller Action:** The Controller creates and shows a `QFileDialog`, filtering for `.yaml` files.
 3.  **File Selection:** The user selects a valid YAML file.
 4.  **Model Update:** The Controller passes the selected `file_path` to the `memory_map_core.load_from_yaml()` function. The core library handles the file reading, parsing, and populating its internal data objects. It then returns a fully populated memory map object.
-5.  **View Population:** The Controller receives the new data object from the Model. It then iterates through the data, clearing and populating the `QListWidget` (the outline) and other UI elements to reflect the contents of the file.
+5.  **View Population:** The Controller recei`ves the new data object from the Model. It then iterates through the data, clearing and populating the `QListWidget` (the outline) and other UI elements to reflect the contents of the file.
 
 #### **Saving Workflow**
 

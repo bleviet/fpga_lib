@@ -6,7 +6,7 @@ by importing and re-exporting classes from focused submodules.
 
 The register implementation is now split into several focused modules:
 - access_types: AccessType enum and validation
-- bit_field: BitField class with bit manipulation logic  
+- bit_field: BitField class with bit manipulation logic
 - bus_interface: AbstractBusInterface for bus abstraction
 - register_def: Pure Register dataclass definition
 - memory_map: MemoryMap and RegisterProxy for access
@@ -28,8 +28,8 @@ from .register_def import Register
 from .memory_map import MemoryMap, RegisterProxy
 from .array_accessor import RegisterArrayAccessor
 from .register_utils import (
-    validate_register_layout, 
-    generate_test_patterns, 
+    validate_register_layout,
+    generate_test_patterns,
     generate_register_documentation
 )
 
@@ -44,20 +44,20 @@ except ImportError:
 __all__ = [
     # Core classes
     'AccessType',
-    'BitField', 
+    'BitField',
     'Register',
     'MemoryMap',
     'RegisterProxy',
     'RegisterArrayAccessor',
     'AbstractBusInterface',
-    
+
     # Utility functions
     'validate_access_type',
     'get_valid_access_types',
     'validate_register_layout',
-    'generate_test_patterns', 
+    'generate_test_patterns',
     'generate_register_documentation',
-    
+
     # Optional dependency info
     'BITSTRING_AVAILABLE',
     'BitArray',
