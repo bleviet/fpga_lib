@@ -19,6 +19,7 @@ Your primary goal is to produce code that is **clear, maintainable, and efficien
 
   - **Formatting**: Strictly adhere to the **PEP 8** style guide. All code should be formatted as if by the **`black`** code formatter.
   - **Type Hinting**: All function and method signatures **must** include type hints. Variables should also be typed where it enhances clarity.
+  - **Dataclasses**: When creating a new class, always use the Python `@dataclass` decorator unless there is a clear reason to require custom initialization or behavior. This ensures clarity, immutability (if needed), and automatic method generation.
   - **Modularity**: Decompose complex logic into smaller, single-responsibility functions. Aim for functions that are easy to understand and test in isolation.
   - **Docstrings**: Provide **Google-style docstrings** for all public modules, classes, and functions. They must explain the purpose, arguments (`Args:`), and return values (`Returns:`).
   - **Imports**: Organize imports into three groups, separated by a blank line:
