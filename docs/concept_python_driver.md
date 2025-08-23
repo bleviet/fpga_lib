@@ -131,6 +131,7 @@ class Access(Enum):
 class BitField:
     # ... as defined in the next section
 
+@dataclass
 class Register:
     # ... as defined in the next section
 
@@ -143,38 +144,38 @@ def _parse_bits(bits_def):
         return low, (high - low + 1)
     raise ValueError(f"Invalid bit definition: {bits_def}")
 
+@dataclass
 class RegisterArrayAccessor:
     """Provides indexed access to a block of registers."""
-    def __init__(self, base_offset, count, stride, width, field_template, bus_interface):
-        self._bus = bus_interface
-        self._base_offset = base_offset
-        self._count = count
-        self._stride = stride
-        self._width = width
-        self._field_template = field_template # The list of BitField objects
+    bus_interface: AbstractBusInterface
+    base_offset: int
+    count: int
+    stride: int
+    width: int
+    field_template: list[BitField]
 
     def __getitem__(self, index):
-        if not (0 <= index < self._count):
-            raise IndexError(f"Index {index} out of bounds for array of size {self._count}")
+        if not (0 <= index < self.count):
+            raise IndexError(f"Index {index} out of bounds for array of size {self.count}")
         
         # Calculate the absolute address of the requested element
-        item_offset = self._base_offset + (index * self._stride)
+        item_offset = self.base_offset + (index * self.stride)
         
         # Create a Register object for this specific element on-the-fly
         return Register(
             name=f"item[{index}]",
             offset=item_offset,
-            width=self._width,
-            bus_interface=self._bus,
-            fields=self._field_template
+            width=self.width,
+            bus_interface=self.bus_interface,
+            fields=self.field_template
         )
 
     def __len__(self):
-        return self._count
+        return self.count
 
 def load_from_yaml(yaml_path: str, bus_interface: AbstractBusInterface):
     """Loads a register map from YAML and builds a driver object."""
-    driver = IpCoreDriver(bus_interface)
+    driver = IpCoreDriver(bus_interface=bus_interface)
     with open(yaml_path, 'r') as f:
         data = yaml.safe_load(f)
     
@@ -214,10 +215,10 @@ def load_from_yaml(yaml_path: str, bus_interface: AbstractBusInterface):
         
     return driver
 
+@dataclass
 class IpCoreDriver:
     """A container for all the register objects."""
-    def __init__(self, bus_interface):
-        self._bus = bus_interface
+    bus_interface: "AbstractBusInterface"
 ```
 
 ### Layer 2: The Core IP Driver and Data Models
@@ -242,27 +243,31 @@ class BitField:
     width: int
     access: Access = Access.RW
 
+@dataclass
 class Register:
-    def __init__(self, name, offset, width, bus_interface, fields: list[BitField]):
-        self._name = name
-        self._offset = offset
-        self._width = width
-        self._bus = bus_interface
-        self._fields = {f.name: f for f in fields}
+    name: str
+    offset: int
+    width: int
+    bus_interface: "AbstractBusInterface"
+    fields: list[BitField] = field(default_factory=list)
+    _fields_by_name: dict[str, BitField] = field(init=False, repr=False)
+
+    def __post_init__(self):
+        self._fields_by_name = {f.name: f for f in self.fields}
 
     def read(self):
         """Reads the entire register value."""
-        return self._bus.read_word(self._offset, self._width)
+        return self.bus_interface.read_word(self.offset, self.width)
 
     def write(self, value: int):
         """Writes a value to the entire register."""
-        self._bus.write_word(self._offset, value, self._width)
+        self.bus_interface.write_word(self.offset, value, self.width)
 
     def __getattr__(self, name: str):
-        if name not in self._fields:
-            raise AttributeError(f"Register '{self._name}' has no bit-field named '{name}'")
+        if name not in self._fields_by_name:
+            raise AttributeError(f"Register '{self.name}' has no bit-field named '{name}'")
         
-        field = self._fields[name]
+        field = self._fields_by_name[name]
         mask = ((1 << field.width) - 1) << field.offset
 
         def getter(_):
