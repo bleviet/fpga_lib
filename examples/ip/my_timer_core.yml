@@ -1,0 +1,110 @@
+# components/my_timer_core.yml
+#
+# Main component definition for the timer core.
+# This is the "root" file your generator script should parse.
+apiVersion: my-ip-schema/v2.3
+
+vlnv:
+    vendor: "my-company.com"
+    library: "processing"
+    name: "my_timer_core"
+    version: "1.2.0"
+
+description: "A 4-channel, 32-bit configurable timer IP with a separate register clock domain and local RAM."
+
+# Top-level clock definitions
+clocks:
+    - name: "SYS_CLK" # Logical name for association
+      physicalPort: "i_clk_sys" # Verilog port name
+      direction: "in"
+      frequency: "100MHz"
+      description: "Main system clock for timer logic"
+
+    - name: "REG_CLK"
+      physicalPort: "i_clk_reg"
+      direction: "in"
+      frequency: "50MHz"
+      description: "Slower clock for the AXI-Lite register interface"
+
+# Top-level reset definitions
+resets:
+    - name: "SYS_RST"
+      physicalPort: "i_rst_n_sys"
+      direction: "in"
+      polarity: "activeLow" # Polarity is explicitly defined
+      description: "Main system reset, active low"
+
+    - name: "REG_RST"
+      physicalPort: "i_rst_p_reg"
+      direction: "in"
+      polarity: "activeHigh" # Can be active high
+      description: "Register interface reset, active high"
+
+# Top-level 'data' or 'control' ports
+ports:
+    - name: "o_irq"
+      physicalPort: "o_global_irq" # Names can be different
+      direction: "out"
+      description: "Global interrupt request output (OR of all channels)"
+
+# Location of the reusable bus library
+useBusLibrary: "../common/bus_definitions.yml"
+
+busInterfaces:
+    - name: "S_AXI_LITE" # Logical name of this interface
+      type: "AXI4L_SLAVE" # Type from the bus library
+
+      # --- Port Mapping ---
+      physicalPrefix: "s_axi_" # Generator creates "s_axi_awaddr", "s_axi_wdata", etc.
+
+      # --- Clock/Reset Association ---
+      associatedClock: "REG_CLK" # Links to the 'REG_CLK' defined above
+      associatedReset: "REG_RST"
+
+      # --- Memory Map Link ---
+      memoryMapRef: "CSR_MAP" # Links to the memory map name
+
+      # --- Optional Port Usage ---
+      useOptionalPorts:
+          - "AWPROT" # We choose to use this optional signal
+          - "ARPROT" # We choose to use this optional signal
+
+# Import the memory map from its separate file
+memoryMaps:
+    import: "my_timer_core.memmap.yml"
+
+# Component-level generics/parameters
+parameters:
+    - name: "NUM_CHANNELS"
+      value: 4
+      dataType: "integer"
+      description: "Number of timer channels (default 4)"
+
+    - name: "AXI_ADDR_WIDTH"
+      value: 32
+      dataType: "integer"
+
+fileSets:
+    # Option 1: Inline definition ("direct reference")
+    # This fileSet is defined right here.
+    - name: "RTL_Sources"
+      description: "All Verilog source files for synthesis."
+      # List of files in this set
+      files:
+          - path: "rtl/my_timer_core_top.v"
+            type: "verilog" # Generator maps this to 'verilogSource'
+          - path: "rtl/my_timer_channel.v"
+            type: "verilog"
+          - path: "rtl/my_timer_axi_if.v"
+            type: "verilog"
+
+    # Option 2: Importing a common fileSet
+    # The generator will load the file and insert the fileSet here.
+    - import: "../common/c_api.fileset.yml"
+
+    # You can have as many as you need
+    - name: "Documentation"
+      description: "Datasheet and register map"
+      files:
+          - path: "doc/my_timer_core_datasheet.pdf"
+            type: "pdf" # Generator maps this to 'document' or similar
