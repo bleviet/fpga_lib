@@ -103,6 +103,8 @@ class RegisterDetailForm(QWidget):
         self.access_delegate = AccessTypeDelegate(self)
         self.fields_table.setItemDelegateForColumn(3, self.access_delegate)
         self.fields_table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        # Make vertical header start from 0 instead of 1
+        self.fields_table.verticalHeader().setSectionResizeMode(QHeaderView.Fixed)
         fields_layout.addWidget(self.fields_table)
 
         # Field buttons
@@ -353,6 +355,11 @@ class RegisterDetailForm(QWidget):
         fields_list = list(fields_dict.values()) if isinstance(fields_dict, dict) else list(fields_dict)
         fields_list.sort(key=lambda f: f.offset)
         self.fields_table.setRowCount(len(fields_list))
+        
+        # Set vertical header labels to start from 0
+        vertical_labels = [str(i) for i in range(len(fields_list))]
+        self.fields_table.setVerticalHeaderLabels(vertical_labels)
+        
         current_set = debug_manager.get_current_debug_set()
         for row, field in enumerate(fields_list):
             self.fields_table.setItem(row, 0, QTableWidgetItem(field.name))
