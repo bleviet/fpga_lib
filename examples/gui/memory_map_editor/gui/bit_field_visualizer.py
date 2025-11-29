@@ -319,35 +319,30 @@ class BitFieldVisualizerWidget(QWidget):
         painter.drawText(live_label_rect, Qt.AlignCenter | Qt.AlignVCenter, "Live:")
 
     def _draw_field_labels(self, painter):
-        """Draw field name labels below the bit boxes with smart positioning for many fields."""
+        """Draw field name labels below the bit boxes with straight lines and rotated text."""
         if not hasattr(self.current_register, '_fields'):
             return
 
         # Base Y position for labels (depends on debug mode)
         if self.debug_mode_enabled:
-            label_start_y = self.margin + self.bit_number_height + (self.bit_height * 2) + 30  # Two rows
+            bits_bottom_y = self.margin + self.bit_number_height + (self.bit_height * 2)  # Two rows
         else:
-            label_start_y = self.margin + self.bit_number_height + self.bit_height + 30  # Single row
+            bits_bottom_y = self.margin + self.bit_number_height + self.bit_height  # Single row
 
         # Sort fields by their offset in ascending order (lowest offset first)
         sorted_fields = sorted(self.current_register._fields.items(),
                              key=lambda x: x[1].offset)
 
-        # Smart layout: if too many fields, use multiple columns
-        max_visible_rows = 8  # Maximum rows before starting new column
-        fields_per_column = min(len(sorted_fields), max_visible_rows)
-        num_columns = (len(sorted_fields) + fields_per_column - 1) // fields_per_column
+        # Calculate label positions
+        painter.setPen(QPen(QColor(0, 0, 0)))
+        font = QFont()
+        font.setPointSize(9)
+        font.setBold(True)
+        painter.setFont(font)
 
-        # Calculate label positions for multi-column layout
-        label_positions = []
-        vertical_spacing = 25
-        column_width = 120  # Width allocated per column
+        fm = QFontMetrics(font)
 
-        for i, (field_name, field) in enumerate(sorted_fields):
-            # Determine which column and row this field should be in
-            column = i // fields_per_column
-            row = i % fields_per_column
-
+        for field_name, field in sorted_fields:
             # Calculate field position and width (accounting for MSB-first display)
             start_bit = field.offset
             end_bit = min(field.offset + field.width - 1, 31)
@@ -358,84 +353,42 @@ class BitFieldVisualizerWidget(QWidget):
 
             field_center_x = self.margin + start_pos * self.bit_width + ((end_pos - start_pos + 1) * self.bit_width) // 2
 
-            # Calculate label Y position based on row
-            label_y = label_start_y + row * vertical_spacing
+            # Draw a straight vertical line down from the bit box
+            line_length = 50  # Length of the vertical line
+            line_end_y = bits_bottom_y + line_length
 
-            # Calculate label X position based on column
-            base_label_x = self.margin + 32 * self.bit_width + 20  # Start closer to register
-            label_right_x = base_label_x + (column + 1) * column_width
+            painter.setPen(QPen(QColor(100, 100, 100), 1))
+            painter.drawLine(field_center_x, bits_bottom_y, field_center_x, line_end_y)
 
-            label_positions.append((field_name, field, field_center_x, label_y, start_bit, end_bit, label_right_x, column))
-
-        # Draw field labels and connecting lines
-        painter.setPen(QPen(QColor(0, 0, 0)))
-        font = QFont()
-        font.setPointSize(9)
-        font.setBold(True)
-        painter.setFont(font)
-
-        # Calculate bottom Y position of bit boxes (depends on debug mode)
-        if self.debug_mode_enabled:
-            bits_bottom_y = self.margin + self.bit_number_height + (self.bit_height * 2)  # Two rows
-        else:
-            bits_bottom_y = self.margin + self.bit_number_height + self.bit_height  # Single row
-
-        for i, (field_name, field, field_center_x, label_y, start_bit, end_bit, label_right_x, column) in enumerate(label_positions):
-            # Draw field name aligned to the right, positioned close to arrow
-            label_width = 80
-            label_rect = QRect(label_right_x - label_width, label_y - 10, label_width, 20)
-            painter.drawText(label_rect, Qt.AlignRight | Qt.AlignVCenter, field_name)
-
-            # Draw connecting lines with different colors for different columns
-            line_colors = [
-                QColor(128, 128, 128),  # Gray for first column
-                QColor(100, 100, 180),  # Blue for second column
-                QColor(120, 150, 120),  # Green for third column
-                QColor(180, 120, 100),  # Brown for fourth column
-            ]
-            painter.setPen(QPen(line_colors[column % len(line_colors)], 1))
-
-            # Each field has its own horizontal level at the label height
-            horizontal_line_y = label_y - 5
-
-            # 1. Vertical line straight down from bit center to the field's horizontal level
-            painter.drawLine(field_center_x, bits_bottom_y, field_center_x, horizontal_line_y)
-
-            # 2. Horizontal line from the vertical drop point to closer to the label
-            horizontal_end_x = label_right_x - label_width - 15  # More space for arrow
-            painter.drawLine(field_center_x, horizontal_line_y, horizontal_end_x, horizontal_line_y)
-
-            # 3. Draw a proper arrow pointing to the label
-            arrow_start_x = horizontal_end_x
-            arrow_end_x = label_right_x - label_width - 3
-
-            # Main arrow line
-            painter.drawLine(arrow_start_x, horizontal_line_y, arrow_end_x, horizontal_line_y)
-
-            # Arrow head (small triangle)
-            arrow_size = 3
-            painter.drawLine(arrow_end_x, horizontal_line_y,
-                           arrow_end_x - arrow_size, horizontal_line_y - arrow_size)
-            painter.drawLine(arrow_end_x, horizontal_line_y,
-                           arrow_end_x - arrow_size, horizontal_line_y + arrow_size)
-
-            # Draw field range below the name
-            painter.setPen(QPen(QColor(64, 64, 64)))
+            # Prepare text with field name and bit range
             if field.width == 1:
-                range_text = f"[{field.offset}]"
+                label_text = f"{field_name} [{field.offset}]"
             else:
-                range_text = f"[{end_bit}:{start_bit}]"
+                label_text = f"{field_name} [{end_bit}:{start_bit}]"
 
-            range_rect = QRect(label_right_x - label_width, label_y + 5, label_width, 15)
-            font.setBold(False)
-            font.setPointSize(8)
-            painter.setFont(font)
-            painter.drawText(range_rect, Qt.AlignRight | Qt.AlignVCenter, range_text)
+            # Measure text dimensions
+            text_width = fm.horizontalAdvance(label_text)
+            text_height = fm.height()
 
-            # Reset font for next field
-            font.setBold(True)
-            font.setPointSize(9)
-            painter.setFont(font)
+            # Save the painter state before rotation
+            painter.save()
+
+            # Rotate text 30 degrees counter-clockwise around the end point of the line
+            # The tip of the line should touch the last character of the label
+            painter.translate(field_center_x, line_end_y)
+            painter.rotate(-30)  # Negative for counter-clockwise
+
+            # Position text so its bottom-right corner (end of text) is at the rotation point
+            # We need to shift the text to the left by its width and down slightly
+            text_x = -text_width
+            text_y = text_height // 2  # Center vertically around the line tip
+
+            # Draw the rotated text
+            painter.setPen(QPen(QColor(0, 0, 0)))
+            painter.drawText(text_x, text_y, label_text)
+
+            # Restore painter state
+            painter.restore()
 
     def _draw_bit_numbers(self, painter):
         """Draw bit numbers at the top of the visualization."""
@@ -460,21 +413,16 @@ class BitFieldVisualizerWidget(QWidget):
 
     def sizeHint(self):
         """Return the preferred size for this widget."""
-        # Calculate width based on number of fields and columns needed
-        num_fields = len(self.current_register._fields) if self.current_register and hasattr(self.current_register, '_fields') else 0
-        max_visible_rows = 8
-        num_columns = max(1, (num_fields + max_visible_rows - 1) // max_visible_rows)
-        column_width = 120
+        # Simple width calculation based on 32 bits plus margins
+        width = 32 * self.bit_width + 2 * self.margin
 
-        width = 32 * self.bit_width + 2 * self.margin + (num_columns * column_width) + 40
-
-        # Calculate height based on debug mode
+        # Calculate height based on debug mode and label space
         if self.debug_mode_enabled:
-            # Two-row mode: account for reset + live rows
-            height = self.bit_number_height + (self.bit_height * 2) + self.label_height + 2 * self.margin + 50
+            # Two-row mode: account for reset + live rows plus label space
+            height = self.bit_number_height + (self.bit_height * 2) + self.label_height + 2 * self.margin + 80
         else:
-            # Normal mode: single row
-            height = self.bit_number_height + self.bit_height + self.label_height + 2 * self.margin + 50
+            # Normal mode: single row plus label space
+            height = self.bit_number_height + self.bit_height + self.label_height + 2 * self.margin + 80
 
         return QSize(width, height)
 

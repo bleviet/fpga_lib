@@ -9,12 +9,12 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QFormLayout, QTabWidget,
     QLineEdit, QSpinBox, QComboBox, QTextEdit, QPushButton, QTableWidget,
     QTableWidgetItem, QHeaderView, QAbstractItemView, QMessageBox, QLabel,
-    QGroupBox, QStyledItemDelegate
+    QGroupBox, QStyledItemDelegate, QSplitter
 )
 from PySide6.QtCore import Qt, Signal, QEvent
 from PySide6.QtGui import QFont, QColor, QShortcut, QKeySequence
 
-from .bit_field_visualizer import BitFieldVisualizerWidget
+from .bit_field_visualizer import BitFieldVisualizerWidget, BitFieldVisualizer
 from examples.gui.memory_map_editor.debug_mode import debug_manager, DebugValue
 from memory_map_core import MemoryMapProject
 from fpga_lib.core import Register, BitField, RegisterArrayAccessor
@@ -78,7 +78,66 @@ class RegisterDetailForm(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(5, 5, 5, 5)
 
-        # Register properties group
+        # Create horizontal splitter for bit fields (left) and properties (right)
+        self.main_splitter = QSplitter(Qt.Horizontal)
+        layout.addWidget(self.main_splitter)
+
+        # Bit fields group (left panel - 1/3 width)
+        self.fields_group = QGroupBox("Bit Fields")
+        fields_layout = QVBoxLayout(self.fields_group)
+
+        # Table
+        self.fields_table = QTableWidget()
+        self.fields_table.setColumnCount(7)
+        self.fields_table.setHorizontalHeaderLabels([
+            "Name", "Bits", "Width", "Access", "Reset", "Live", "Description"
+        ])
+        header = self.fields_table.horizontalHeader(); header.setStretchLastSection(True)
+        self.fields_table.setColumnWidth(0, 100)
+        self.fields_table.setColumnWidth(1, 80)
+        self.fields_table.setColumnWidth(2, 60)
+        self.fields_table.setColumnWidth(3, 80)
+        self.fields_table.setColumnWidth(4, 60)
+        self.fields_table.setColumnWidth(5, 60)
+
+        self.access_delegate = AccessTypeDelegate(self)
+        self.fields_table.setItemDelegateForColumn(3, self.access_delegate)
+        self.fields_table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        fields_layout.addWidget(self.fields_table)
+
+        # Field buttons
+        field_buttons_layout = QHBoxLayout()
+        self.add_field_btn = QPushButton("Add")
+        self.add_field_btn.setToolTip("Add Field")
+        self.insert_before_btn = QPushButton("Before")
+        self.insert_before_btn.setToolTip("Insert Before")
+        self.insert_after_btn = QPushButton("After")
+        self.insert_after_btn.setToolTip("Insert After")
+        self.remove_field_btn = QPushButton("Remove")
+        self.remove_field_btn.setToolTip("Remove Field")
+        self.move_field_up_btn = QPushButton("⬆")
+        self.move_field_up_btn.setMaximumWidth(40)
+        self.move_field_up_btn.setToolTip("Move Selected Field Up (Alt+Up)")
+        self.move_field_down_btn = QPushButton("⬇")
+        self.move_field_down_btn.setMaximumWidth(40)
+        self.move_field_down_btn.setToolTip("Move Selected Field Down (Alt+Down)")
+
+        for btn in [self.add_field_btn, self.insert_before_btn, self.insert_after_btn,
+                    self.remove_field_btn, self.move_field_up_btn, self.move_field_down_btn]:
+            field_buttons_layout.addWidget(btn)
+        field_buttons_layout.addStretch()
+        fields_layout.addLayout(field_buttons_layout)
+
+        # Recalculate button on separate row for better layout
+        recalc_layout = QHBoxLayout()
+        self.recalc_offsets_btn = QPushButton("Recalculate Offsets")
+        recalc_layout.addWidget(self.recalc_offsets_btn)
+        recalc_layout.addStretch()
+        fields_layout.addLayout(recalc_layout)
+
+        self.main_splitter.addWidget(self.fields_group)
+
+        # Register properties group (right panel - 2/3 width)
         self.register_group = QGroupBox("Properties")
         register_layout = QFormLayout(self.register_group)
 
@@ -119,48 +178,20 @@ class RegisterDetailForm(QWidget):
         reset_live_row.addWidget(self.live_value_edit)
         register_layout.addRow("Reset Value:", reset_live_row)
 
-        layout.addWidget(self.register_group)
+        # Create a widget to hold properties and bit visualizer vertically
+        right_panel_widget = QWidget()
+        right_panel_layout = QVBoxLayout(right_panel_widget)
+        right_panel_layout.setContentsMargins(0, 0, 0, 0)
+        right_panel_layout.addWidget(self.register_group)
 
-        # Bit fields group
-        self.fields_group = QGroupBox("Bit Fields")
-        fields_layout = QVBoxLayout(self.fields_group)
+        # Add bit field visualizer below properties
+        self.bit_visualizer = BitFieldVisualizer()
+        right_panel_layout.addWidget(self.bit_visualizer)
 
-        # Table
-        self.fields_table = QTableWidget()
-        self.fields_table.setColumnCount(7)
-        self.fields_table.setHorizontalHeaderLabels([
-            "Name", "Bits", "Width", "Access", "Reset", "Live", "Description"
-        ])
-        header = self.fields_table.horizontalHeader(); header.setStretchLastSection(True)
-        self.fields_table.setColumnWidth(0, 100)
-        self.fields_table.setColumnWidth(1, 80)
-        self.fields_table.setColumnWidth(2, 60)
-        self.fields_table.setColumnWidth(3, 80)
-        self.fields_table.setColumnWidth(4, 60)
-        self.fields_table.setColumnWidth(5, 60)
+        self.main_splitter.addWidget(right_panel_widget)
 
-        self.access_delegate = AccessTypeDelegate(self)
-        self.fields_table.setItemDelegateForColumn(3, self.access_delegate)
-        self.fields_table.setSelectionBehavior(QAbstractItemView.SelectRows)
-        fields_layout.addWidget(self.fields_table)
-
-        # Field buttons
-        field_buttons_layout = QHBoxLayout()
-        self.add_field_btn = QPushButton("Add Field")
-        self.insert_before_btn = QPushButton("Insert Before")
-        self.insert_after_btn = QPushButton("Insert After")
-        self.remove_field_btn = QPushButton("Remove Field")
-        self.recalc_offsets_btn = QPushButton("Recalculate Offsets")
-        self.move_field_up_btn = QPushButton("⬆ Up"); self.move_field_up_btn.setMaximumWidth(60)
-        self.move_field_up_btn.setToolTip("Move Selected Field Up (Alt+Up)")
-        self.move_field_down_btn = QPushButton("⬇ Down"); self.move_field_down_btn.setMaximumWidth(60)
-        self.move_field_down_btn.setToolTip("Move Selected Field Down (Alt+Down)")
-        for btn in [self.add_field_btn, self.insert_before_btn, self.insert_after_btn, self.remove_field_btn,
-                    self.move_field_up_btn, self.move_field_down_btn, self.recalc_offsets_btn]:
-            field_buttons_layout.addWidget(btn)
-        field_buttons_layout.addStretch()
-        fields_layout.addLayout(field_buttons_layout)
-        layout.addWidget(self.fields_group)
+        # Set splitter proportions: 1/3 for bit fields, 2/3 for properties+visualizer
+        self.main_splitter.setSizes([333, 667])  # Proportional to 1:2 ratio
 
     # Removed periodic live update timer: live values are static user-entered comparison values.
 
@@ -211,11 +242,13 @@ class RegisterDetailForm(QWidget):
     def set_project(self, project: MemoryMapProject):
         """Set the current project."""
         self.current_project = project
+        self.bit_visualizer.set_project(project)
 
     def set_current_item(self, item):
         """Set the currently selected memory map item."""
         self.current_item = item
         self._update_form()
+        self.bit_visualizer.set_current_item(item)
 
     def _update_form(self):
         """Update form fields based on current item."""
@@ -335,12 +368,17 @@ class RegisterDetailForm(QWidget):
             self.fields_table.setItem(row, 4, QTableWidgetItem(f"0x{reset_val:X}"))
             # Determine initial live value (after defaults ensured)
             live_text = ""
+            live_val = None
             if isinstance(self.current_item, Register) and current_set:
                 reg_name = self.current_item.name
                 field_dbg = current_set.get_field_value(reg_name, field.name)
                 if field_dbg and field_dbg.value is not None:
-                    live_text = f"0x{field_dbg.value:X}"
+                    live_val = field_dbg.value
+                    live_text = f"0x{live_val:X}"
             live_item = QTableWidgetItem(live_text)  # editable for live field value
+            # Highlight in green if live differs from reset
+            if live_val is not None and live_val != reset_val:
+                live_item.setBackground(QColor(144, 238, 144))  # Light green
             self.fields_table.setItem(row, 5, live_item)
             self.fields_table.setItem(row, 6, QTableWidgetItem(field.description))
             self._highlight_field_issues(row, field, fields_list)
@@ -413,6 +451,7 @@ class RegisterDetailForm(QWidget):
             for row in range(self.fields_table.rowCount()):
                 name_item = self.fields_table.item(row, 0)
                 live_item = self.fields_table.item(row, 5)
+                reset_item = self.fields_table.item(row, 4)
                 if not name_item or not live_item:
                     continue
                 field = self.current_item._fields.get(name_item.text())
@@ -426,6 +465,13 @@ class RegisterDetailForm(QWidget):
                         field_val = (reg_value >> field.offset) & mask
                     hex_width = (field.width + 3) // 4
                     live_item.setText(f"0x{field_val:0{hex_width}X}")
+
+                    # Highlight in green if live differs from reset
+                    reset_val = field.reset_value if field.reset_value is not None else 0
+                    if field_val != reset_val:
+                        live_item.setBackground(QColor(144, 238, 144))  # Light green
+                    else:
+                        live_item.setBackground(QColor(255, 255, 255))  # White (default)
             self.live_value_edit.setText(f"0x{reg_value:08X}")
         # Trigger visualizer update
         self.field_changed.emit()
@@ -1223,6 +1269,7 @@ class RegisterDetailForm(QWidget):
             if column in [1, 2]:  # Bits or Width changed
                 self._update_form()
 
+            self.bit_visualizer.refresh()
             self.field_changed.emit()
 
             # Ensure the register's fields dictionary is synchronized

@@ -8,10 +8,11 @@ Coordinates between different UI components.
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QSplitter,
     QMenuBar, QMenu, QToolBar, QStatusBar, QMessageBox, QFileDialog,
-    QLabel, QPushButton, QApplication
+    QLabel, QPushButton, QApplication, QSlider, QDialog, QDialogButtonBox,
+    QFormLayout, QSpinBox, QComboBox
 )
-from PySide6.QtCore import Qt, Signal, QTimer
-from PySide6.QtGui import QAction, QKeySequence, QIcon
+from PySide6.QtCore import Qt, Signal, QTimer, QSettings
+from PySide6.QtGui import QAction, QKeySequence, QIcon, QFont
 from pathlib import Path
 
 from .memory_map_outline import MemoryMapOutline
@@ -19,6 +20,71 @@ from .register_detail_form import RegisterDetailForm
 from .bit_field_visualizer import BitFieldVisualizer
 from memory_map_core import MemoryMapProject, load_from_yaml, save_to_yaml, create_new_project
 from fpga_lib.core import Register, RegisterArrayAccessor
+
+
+class ScalingDialog(QDialog):
+    """Dialog for adjusting application text size and scaling."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Display Settings")
+        self.setMinimumWidth(400)
+
+        layout = QFormLayout(self)
+
+        # Font size adjustment
+        self.font_size_spin = QSpinBox()
+        self.font_size_spin.setRange(8, 24)
+        self.font_size_spin.setSuffix(" pt")
+        current_font = QApplication.font()
+        self.font_size_spin.setValue(current_font.pointSize())
+        layout.addRow("Text Size:", self.font_size_spin)
+
+        # UI scale factor
+        self.scale_combo = QComboBox()
+        self.scale_combo.addItems(["75%", "100%", "125%", "150%", "175%", "200%"])
+        self.scale_combo.setCurrentText("100%")
+        layout.addRow("UI Scale:", self.scale_combo)
+
+        # Preview label
+        self.preview_label = QLabel("Preview: The quick brown fox jumps over the lazy dog")
+        self.preview_label.setWordWrap(True)
+        layout.addRow("Preview:", self.preview_label)
+
+        # Connect signals for live preview
+        self.font_size_spin.valueChanged.connect(self._update_preview)
+        self.scale_combo.currentTextChanged.connect(self._update_preview)
+
+        # Buttons
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.Ok | QDialogButtonBox.Cancel | QDialogButtonBox.RestoreDefaults
+        )
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+        buttons.button(QDialogButtonBox.RestoreDefaults).clicked.connect(self._restore_defaults)
+        layout.addRow(buttons)
+
+        self._update_preview()
+
+    def _update_preview(self):
+        """Update the preview label with current settings."""
+        font = QFont()
+        font.setPointSize(self.font_size_spin.value())
+        self.preview_label.setFont(font)
+
+    def _restore_defaults(self):
+        """Restore default settings."""
+        self.font_size_spin.setValue(10)
+        self.scale_combo.setCurrentText("100%")
+
+    def get_font_size(self):
+        """Get the selected font size."""
+        return self.font_size_spin.value()
+
+    def get_scale_factor(self):
+        """Get the selected scale factor as a float."""
+        scale_text = self.scale_combo.currentText().rstrip('%')
+        return float(scale_text) / 100.0
 
 
 class MainWindow(QMainWindow):
@@ -33,6 +99,10 @@ class MainWindow(QMainWindow):
         self.current_project = None
         self.current_file_path = None
 
+        # Load saved settings
+        self.settings = QSettings("FPGALib", "MemoryMapEditor")
+        self._load_display_settings()
+
         self._setup_ui()
         self._setup_menu_bar()
         self._setup_toolbar()
@@ -46,6 +116,28 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("FPGA Memory Map Editor")
         self.setMinimumSize(1200, 800)
         self.resize(1400, 900)
+
+    def _load_display_settings(self):
+        """Load and apply saved display settings."""
+        # Load font size
+        font_size = self.settings.value("display/font_size", 10, type=int)
+        self._apply_font_size(font_size)
+
+        # Load and apply scale factor
+        scale_factor = self.settings.value("display/scale_factor", 1.0, type=float)
+        self._apply_scale_factor(scale_factor)
+
+    def _apply_font_size(self, font_size):
+        """Apply font size to the application."""
+        app_font = QApplication.font()
+        app_font.setPointSize(font_size)
+        QApplication.setFont(app_font)
+
+    def _apply_scale_factor(self, scale_factor):
+        """Apply scale factor to the application."""
+        # Note: Scale factor changes require application restart to take full effect
+        # We store it for the next launch
+        pass
 
     def _setup_ui(self):
         """Set up the main user interface layout."""
@@ -67,23 +159,9 @@ class MainWindow(QMainWindow):
         self.outline.setMaximumWidth(500)
         self.main_splitter.addWidget(self.outline)
 
-        # Right pane: Detail view with vertical splitter
-        right_widget = QWidget()
-        right_layout = QVBoxLayout(right_widget)
-        right_layout.setContentsMargins(0, 0, 0, 0)
-
-        # Detail form and bit field visualizer
+        # Right pane: Detail view (now includes bit visualizer internally)
         self.detail_form = RegisterDetailForm()
-        self.bit_visualizer = BitFieldVisualizer()
-
-        # Right pane splitter
-        self.right_splitter = QSplitter(Qt.Vertical)
-        self.right_splitter.addWidget(self.detail_form)
-        self.right_splitter.addWidget(self.bit_visualizer)
-        self.right_splitter.setSizes([400, 300])
-
-        right_layout.addWidget(self.right_splitter)
-        self.main_splitter.addWidget(right_widget)
+        self.main_splitter.addWidget(self.detail_form)
 
         # Set splitter proportions
         self.main_splitter.setSizes([350, 850])
@@ -154,6 +232,37 @@ class MainWindow(QMainWindow):
         self.action_refresh.triggered.connect(self.refresh_views)
         view_menu.addAction(self.action_refresh)
 
+        view_menu.addSeparator()
+
+        # Zoom In
+        self.action_zoom_in = QAction("Zoom &In", self)
+        self.action_zoom_in.setShortcut(QKeySequence.ZoomIn)
+        self.action_zoom_in.setStatusTip("Increase text size")
+        self.action_zoom_in.triggered.connect(self.zoom_in)
+        view_menu.addAction(self.action_zoom_in)
+
+        # Zoom Out
+        self.action_zoom_out = QAction("Zoom &Out", self)
+        self.action_zoom_out.setShortcut(QKeySequence.ZoomOut)
+        self.action_zoom_out.setStatusTip("Decrease text size")
+        self.action_zoom_out.triggered.connect(self.zoom_out)
+        view_menu.addAction(self.action_zoom_out)
+
+        # Reset Zoom
+        self.action_zoom_reset = QAction("&Reset Zoom", self)
+        self.action_zoom_reset.setShortcut(QKeySequence("Ctrl+0"))
+        self.action_zoom_reset.setStatusTip("Reset text size to default")
+        self.action_zoom_reset.triggered.connect(self.zoom_reset)
+        view_menu.addAction(self.action_zoom_reset)
+
+        view_menu.addSeparator()
+
+        # Display Settings
+        self.action_display_settings = QAction("&Display Settings...", self)
+        self.action_display_settings.setStatusTip("Adjust text size and UI scaling")
+        self.action_display_settings.triggered.connect(self.show_display_settings)
+        view_menu.addAction(self.action_display_settings)
+
         # Help menu
         help_menu = menubar.addMenu("&Help")
 
@@ -175,6 +284,13 @@ class MainWindow(QMainWindow):
 
         toolbar.addAction(self.action_validate)
 
+        toolbar.addSeparator()
+
+        # Add zoom controls to toolbar
+        toolbar.addAction(self.action_zoom_in)
+        toolbar.addAction(self.action_zoom_out)
+        toolbar.addAction(self.action_zoom_reset)
+
     def _setup_status_bar(self):
         """Set up the status bar."""
         self.status_bar = self.statusBar()
@@ -186,6 +302,11 @@ class MainWindow(QMainWindow):
         # Validation status
         self.validation_label = QLabel("")
         self.status_bar.addPermanentWidget(self.validation_label)
+
+        # Zoom level indicator
+        self.zoom_label = QLabel("Zoom: 100%")
+        self.status_bar.addPermanentWidget(self.zoom_label)
+        self._update_zoom_label()
 
     def _connect_signals(self):
         """Connect signals between components."""
@@ -203,6 +324,74 @@ class MainWindow(QMainWindow):
 
         # Project change notifications
         self.project_changed.connect(self.update_status)
+
+    def zoom_in(self):
+        """Increase text size."""
+        current_font = QApplication.font()
+        new_size = min(current_font.pointSize() + 1, 24)
+        self._apply_font_size(new_size)
+        self.settings.setValue("display/font_size", new_size)
+        self._update_zoom_label()
+        self.refresh_views()
+
+    def zoom_out(self):
+        """Decrease text size."""
+        current_font = QApplication.font()
+        new_size = max(current_font.pointSize() - 1, 8)
+        self._apply_font_size(new_size)
+        self.settings.setValue("display/font_size", new_size)
+        self._update_zoom_label()
+        self.refresh_views()
+
+    def zoom_reset(self):
+        """Reset text size to default."""
+        self._apply_font_size(10)
+        self.settings.setValue("display/font_size", 10)
+        self._update_zoom_label()
+        self.refresh_views()
+
+    def _update_zoom_label(self):
+        """Update the zoom level indicator in the status bar."""
+        current_font = QApplication.font()
+        percentage = int((current_font.pointSize() / 10) * 100)
+        self.zoom_label.setText(f"Zoom: {percentage}%")
+
+    def show_display_settings(self):
+        """Show the display settings dialog."""
+        dialog = ScalingDialog(self)
+
+        # Set current values
+        current_font = QApplication.font()
+        dialog.font_size_spin.setValue(current_font.pointSize())
+
+        current_scale = self.settings.value("display/scale_factor", 1.0, type=float)
+        scale_percentage = f"{int(current_scale * 100)}%"
+        index = dialog.scale_combo.findText(scale_percentage)
+        if index >= 0:
+            dialog.scale_combo.setCurrentIndex(index)
+
+        if dialog.exec() == QDialog.Accepted:
+            # Apply font size
+            new_font_size = dialog.get_font_size()
+            self._apply_font_size(new_font_size)
+            self.settings.setValue("display/font_size", new_font_size)
+
+            # Save scale factor (requires restart)
+            new_scale_factor = dialog.get_scale_factor()
+            old_scale_factor = self.settings.value("display/scale_factor", 1.0, type=float)
+            self.settings.setValue("display/scale_factor", new_scale_factor)
+
+            # Update UI
+            self._update_zoom_label()
+            self.refresh_views()
+
+            # Show restart message if scale changed
+            if abs(new_scale_factor - old_scale_factor) > 0.01:
+                QMessageBox.information(
+                    self,
+                    "Restart Required",
+                    "UI scaling changes will take full effect after restarting the application."
+                )
 
     def new_project(self):
         """Create a new memory map project."""
@@ -635,7 +824,6 @@ class MainWindow(QMainWindow):
     def on_item_selected(self, item):
         """Handle selection change in the outline."""
         self.detail_form.set_current_item(item)
-        self.bit_visualizer.set_current_item(item)
 
     def on_register_changed(self):
         """Handle register property changes."""
@@ -645,7 +833,6 @@ class MainWindow(QMainWindow):
 
     def on_field_changed(self):
         """Handle bit field changes."""
-        self.bit_visualizer.refresh()
         self.schedule_validation()
         self.project_changed.emit()
 
@@ -658,7 +845,6 @@ class MainWindow(QMainWindow):
         if self.current_project:
             self.outline.set_project(self.current_project)
             self.detail_form.set_project(self.current_project)
-            self.bit_visualizer.set_project(self.current_project)
             self.schedule_validation()
 
     def update_window_title(self):
