@@ -38,9 +38,14 @@ class BitFieldVisualizerWidget(QWidget):
         self.debug_mode_enabled = True
 
         self._update_size_parameters()
-        
+
         # Enable mouse tracking for click events
         self.setMouseTracking(True)
+
+        # Track dragging state
+        self.is_dragging = False
+        self.drag_toggle_value = None  # The value we're setting during drag (0 or 1)
+        self.toggled_bits = set()  # Track which bits have been toggled in this drag
 
     def _update_size_parameters(self):
         """Update size parameters based on debug mode."""
@@ -428,44 +433,48 @@ class BitFieldVisualizerWidget(QWidget):
             height = self.bit_number_height + self.bit_height + self.label_height + 2 * self.margin + 80
 
         return QSize(width, height)
-    
+
     def mousePressEvent(self, event):
-        """Handle mouse click events to toggle live bit values."""
+        """Handle mouse press to start dragging and toggle bit values."""
         if not self.debug_mode_enabled or not self.current_register:
             return
-        
+
         # Get click position
         x = event.pos().x()
         y = event.pos().y()
-        
+
         # Calculate which row was clicked (reset or live)
         y_reset = self.margin + self.bit_number_height
         y_live = y_reset + self.bit_height
-        
+
         # Check if click is in the live row
         if y < y_live or y > y_live + self.bit_height:
             return  # Not in live row
-        
+
         # Calculate which bit was clicked
         if x < self.margin or x > self.margin + 32 * self.bit_width:
             return  # Not in bit area
-        
+
         bit_index = (x - self.margin) // self.bit_width
         if bit_index >= 32:
             return
-        
+
         # Convert display position to actual bit number (31-bit is at position 0)
         actual_bit = 31 - bit_index
-        
-        # Toggle the bit in the live register value
+
+        # Start dragging
+        self.is_dragging = True
+        self.toggled_bits = set()
+
+        # Get current value of the bit to determine what we'll be setting during drag
         register_name = getattr(self.current_register, 'name', None)
         if not register_name:
             return
-        
+
         current_set = debug_manager.get_current_debug_set()
         if not current_set:
             current_set = debug_manager.create_debug_set("default")
-        
+
         # Get current live value or use reset value as baseline
         live_value_obj = current_set.get_register_value(register_name)
         if live_value_obj and live_value_obj.value is not None:
@@ -476,21 +485,100 @@ class BitFieldVisualizerWidget(QWidget):
             for field in self.current_register._fields.values():
                 if field.reset_value is not None:
                     current_value |= (field.reset_value << field.offset)
-        
-        # Toggle the bit
-        new_value = current_value ^ (1 << actual_bit)
-        
-        # Update the register value
-        from examples.gui.memory_map_editor.debug_mode import DebugValue
-        current_set.set_register_value(register_name, DebugValue(new_value))
-        
-        # Update field values from the new register value
-        debug_manager.update_field_values_from_register(register_name, self.current_register, new_value)
-        
-        # Trigger repaint
-        self.update()
-        
-        # Notify parent widgets to update (find the RegisterDetailForm)
+
+        # Determine the toggle value: if current bit is 0, we'll set to 1, and vice versa
+        current_bit_value = (current_value >> actual_bit) & 1
+        self.drag_toggle_value = 1 - current_bit_value
+
+        # Toggle the first bit
+        self._toggle_bit_to_value(actual_bit, self.drag_toggle_value)
+
+    def mouseMoveEvent(self, event):
+        """Handle mouse movement during drag to toggle additional bits."""
+        if not self.is_dragging or not self.debug_mode_enabled or not self.current_register:
+            return
+
+        # Get current position
+        x = event.pos().x()
+        y = event.pos().y()
+
+        # Calculate which row we're in
+        y_reset = self.margin + self.bit_number_height
+        y_live = y_reset + self.bit_height
+
+        # Check if still in the live row
+        if y < y_live or y > y_live + self.bit_height:
+            return
+
+        # Calculate which bit we're over
+        if x < self.margin or x > self.margin + 32 * self.bit_width:
+            return
+
+        bit_index = (x - self.margin) // self.bit_width
+        if bit_index >= 32:
+            return
+
+        # Convert display position to actual bit number
+        actual_bit = 31 - bit_index
+
+        # Only toggle if we haven't already toggled this bit in this drag
+        if actual_bit not in self.toggled_bits:
+            self._toggle_bit_to_value(actual_bit, self.drag_toggle_value)
+
+    def mouseReleaseEvent(self, event):
+        """Handle mouse release to end dragging."""
+        if self.is_dragging:
+            self.is_dragging = False
+            self.toggled_bits.clear()
+            self.drag_toggle_value = None
+
+            # Notify parent widgets to update after drag is complete
+            self._notify_parent_refresh()
+
+    def _toggle_bit_to_value(self, actual_bit, target_value):
+        """Set a specific bit to the target value (0 or 1)."""
+        register_name = getattr(self.current_register, 'name', None)
+        if not register_name:
+            return
+
+        current_set = debug_manager.get_current_debug_set()
+        if not current_set:
+            current_set = debug_manager.create_debug_set("default")
+
+        # Get current live value
+        live_value_obj = current_set.get_register_value(register_name)
+        if live_value_obj and live_value_obj.value is not None:
+            current_value = live_value_obj.value
+        else:
+            # Use reset value as starting point
+            current_value = 0
+            for field in self.current_register._fields.values():
+                if field.reset_value is not None:
+                    current_value |= (field.reset_value << field.offset)
+
+        # Set the bit to the target value
+        if target_value == 1:
+            new_value = current_value | (1 << actual_bit)
+        else:
+            new_value = current_value & ~(1 << actual_bit)
+
+        # Only update if the value actually changed
+        if new_value != current_value:
+            # Update the register value
+            from examples.gui.memory_map_editor.debug_mode import DebugValue
+            current_set.set_register_value(register_name, DebugValue(new_value))
+
+            # Update field values from the new register value
+            debug_manager.update_field_values_from_register(register_name, self.current_register, new_value)
+
+            # Mark this bit as toggled
+            self.toggled_bits.add(actual_bit)
+
+            # Trigger repaint
+            self.update()
+
+    def _notify_parent_refresh(self):
+        """Notify parent widgets to refresh their displays."""
         parent = self.parent()
         while parent:
             # Look for the wrapper BitFieldVisualizer
