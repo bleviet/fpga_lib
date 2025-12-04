@@ -38,6 +38,9 @@ class BitFieldVisualizerWidget(QWidget):
         self.debug_mode_enabled = True
 
         self._update_size_parameters()
+        
+        # Enable mouse tracking for click events
+        self.setMouseTracking(True)
 
     def _update_size_parameters(self):
         """Update size parameters based on debug mode."""
@@ -425,6 +428,83 @@ class BitFieldVisualizerWidget(QWidget):
             height = self.bit_number_height + self.bit_height + self.label_height + 2 * self.margin + 80
 
         return QSize(width, height)
+    
+    def mousePressEvent(self, event):
+        """Handle mouse click events to toggle live bit values."""
+        if not self.debug_mode_enabled or not self.current_register:
+            return
+        
+        # Get click position
+        x = event.pos().x()
+        y = event.pos().y()
+        
+        # Calculate which row was clicked (reset or live)
+        y_reset = self.margin + self.bit_number_height
+        y_live = y_reset + self.bit_height
+        
+        # Check if click is in the live row
+        if y < y_live or y > y_live + self.bit_height:
+            return  # Not in live row
+        
+        # Calculate which bit was clicked
+        if x < self.margin or x > self.margin + 32 * self.bit_width:
+            return  # Not in bit area
+        
+        bit_index = (x - self.margin) // self.bit_width
+        if bit_index >= 32:
+            return
+        
+        # Convert display position to actual bit number (31-bit is at position 0)
+        actual_bit = 31 - bit_index
+        
+        # Toggle the bit in the live register value
+        register_name = getattr(self.current_register, 'name', None)
+        if not register_name:
+            return
+        
+        current_set = debug_manager.get_current_debug_set()
+        if not current_set:
+            current_set = debug_manager.create_debug_set("default")
+        
+        # Get current live value or use reset value as baseline
+        live_value_obj = current_set.get_register_value(register_name)
+        if live_value_obj and live_value_obj.value is not None:
+            current_value = live_value_obj.value
+        else:
+            # Use reset value as starting point
+            current_value = 0
+            for field in self.current_register._fields.values():
+                if field.reset_value is not None:
+                    current_value |= (field.reset_value << field.offset)
+        
+        # Toggle the bit
+        new_value = current_value ^ (1 << actual_bit)
+        
+        # Update the register value
+        from examples.gui.memory_map_editor.debug_mode import DebugValue
+        current_set.set_register_value(register_name, DebugValue(new_value))
+        
+        # Update field values from the new register value
+        debug_manager.update_field_values_from_register(register_name, self.current_register, new_value)
+        
+        # Trigger repaint
+        self.update()
+        
+        # Notify parent widgets to update (find the RegisterDetailForm)
+        parent = self.parent()
+        while parent:
+            # Look for the wrapper BitFieldVisualizer
+            if isinstance(parent, BitFieldVisualizer):
+                # Now find the RegisterDetailForm
+                form_parent = parent.parent()
+                while form_parent:
+                    # Check if this is the RegisterDetailForm by looking for refresh_live_display method
+                    if hasattr(form_parent, 'refresh_live_display'):
+                        form_parent.refresh_live_display()
+                        return
+                    form_parent = form_parent.parent()
+                return
+            parent = parent.parent()
 
 
 class BitFieldVisualizer(QWidget):
@@ -540,6 +620,8 @@ class BitFieldVisualizer(QWidget):
             self.visualizer.set_register(self.current_item)
             field_count = len(self.current_item._fields)
             self.info_label.setText(f"Register: {self.current_item.name} ({field_count} fields)")
+            # Also update the visualizer display
+            self.visualizer.update()
         elif isinstance(self.current_item, RegisterArrayAccessor):
             # For arrays, show the field template
             if self.current_item._field_template:
