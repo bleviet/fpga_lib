@@ -11,7 +11,7 @@ from PySide6.QtCore import Signal, Qt, QEvent
 from PySide6.QtGui import QColor, QKeySequence, QShortcut
 
 from memory_map_core import Register, RegisterArrayAccessor, BitField
-from debug_mode import debug_manager, DebugValue
+from examples.gui.memory_map_editor.debug_mode import debug_manager, DebugValue
 from .delegates import AccessTypeDelegate
 from .bit_field_operations import BitFieldOperations
 
@@ -157,11 +157,22 @@ class BitFieldTableWidget(QWidget):
             # Live Value
             live_text = ""
             live_val = None
-            if isinstance(self.current_item, Register) and current_set:
+            if isinstance(self.current_item, Register) and current_set and reg_name:
+                # Try to get field debug value
                 field_dbg = current_set.get_field_value(reg_name, field.name)
                 if field_dbg and field_dbg.value is not None:
                     live_val = field_dbg.value
-                    live_text = f"0x{live_val:X}"
+                else:
+                    # Fall back to extracting from register value
+                    reg_val_obj = current_set.get_register_value(reg_name)
+                    if reg_val_obj and reg_val_obj.value is not None:
+                        mask = (1 << field.width) - 1
+                        live_val = (reg_val_obj.value >> field.offset) & mask
+
+                # Format the live value if we have one
+                if live_val is not None:
+                    hex_width = max(1, (field.width + 3) // 4)
+                    live_text = f"0x{live_val:0{hex_width}X}"
 
             live_item = QTableWidgetItem(live_text)
 

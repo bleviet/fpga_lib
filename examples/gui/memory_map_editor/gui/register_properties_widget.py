@@ -147,8 +147,44 @@ class RegisterPropertiesWidget(QWidget):
         self.address_spin.setValue(register.offset)
         self.description_edit.setPlainText(register.description)
         self._last_description = register.description
+        # Ensure live values default to reset values if not already set
+        self._ensure_live_defaults(register)
         self.update_reset_value_display()
         self._update_live_value_display()
+
+    def _ensure_live_defaults(self, register: Register):
+        """Populate live (debug) values with reset defaults if not already defined.
+
+        This runs when a register is loaded. It will NOT overwrite existing
+        user-entered live values. Live values mirror reset only by default.
+        """
+        current_set = debug_manager.get_current_debug_set()
+        if current_set is None:
+            current_set = debug_manager.create_debug_set("default")
+
+        reg_name = register.name
+        reg_live_obj = current_set.get_register_value(reg_name)
+
+        # Determine if we need to initialize: no register live value or value is None
+        if reg_live_obj is None or reg_live_obj.value is None:
+            # Use register.reset_value as baseline
+            reset_val = register.reset_value
+            current_set.set_register_value(reg_name, DebugValue(reset_val))
+
+            # Also set individual field values for consistency
+            for field_name, field in register._fields.items():
+                field_reset = field.reset_value if field.reset_value is not None else 0
+                current_set.set_field_value(reg_name, field_name, DebugValue(field_reset))
+        else:
+            # Register value exists, but ensure all field values are set
+            for field_name, field in register._fields.items():
+                existing_field_live = current_set.get_field_value(reg_name, field_name)
+                if existing_field_live is None or existing_field_live.value is None:
+                    # Extract field value from register value
+                    reg_value = reg_live_obj.value
+                    mask = (1 << field.width) - 1
+                    field_value = (reg_value >> field.offset) & mask
+                    current_set.set_field_value(reg_name, field_name, DebugValue(field_value))
 
     def _load_register_array(self, array: RegisterArrayAccessor):
         """Load register array data."""

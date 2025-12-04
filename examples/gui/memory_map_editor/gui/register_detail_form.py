@@ -112,14 +112,18 @@ class RegisterDetailForm(QWidget):
         else:
             self._set_controls_enabled(True)
 
-            # Update properties widget
+            # Update properties widget FIRST - this initializes live defaults
             self.properties_widget.set_item(self.current_item)
 
-            # Update bit field table
+            # Update bit field table - will now see initialized live values
             self.bit_field_table.set_current_item(self.current_item)
 
             # Update visualizer
             self.bit_visualizer.set_current_item(self.current_item)
+
+            # Force refresh to ensure live values are displayed
+            if isinstance(self.current_item, Register):
+                self.bit_field_table.refresh()
 
     def refresh_live_display(self):
         """Refresh displayed live values from debug set."""
