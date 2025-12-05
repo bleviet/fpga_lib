@@ -2,47 +2,83 @@
 #
 # A central library of Bus Abstraction Definitions.
 # Your generator script loads this when it sees 'useBusLibrary'.
+#
+# Width Parameterization:
+# - Widths specified here are defaults
+# - Individual components can override using 'portWidthOverrides' in their busInterface definition
+# - Parameterizable widths should reference parameter names where applicable
+#
+# Direction Handling:
+# - Directions are specified from the MASTER perspective
+# - Generator inverts directions automatically when interfaceMode is "slave"
+# - This eliminates duplication between master/slave definitions
 
-AXI4L_SLAVE:
+AXI4L:
     busType:
         vendor: "arm.com"
         library: "amba"
         name: "axi4l"
         version: "r0p0_0"
-    interfaceMode: "slave"
 
     # Defines all logical ports for this bus type.
-    # The generator script will check against this list.
+    # Directions are from MASTER perspective (out = master drives, in = master receives)
+    # Generator auto-inverts for SLAVE mode
     ports:
         # Clock & Reset (These are logical ports associated with the bus)
         - { name: "ACLK", presence: "required" }
         - { name: "ARESETn", presence: "required" }
 
         # Write Address Channel
-        - { name: "AWADDR", width: 32, direction: "in", presence: "required" }
-        - { name: "AWVALID", direction: "in", presence: "required" }
-        - { name: "AWREADY", direction: "out", presence: "required" }
-        - { name: "AWPROT", width: 3, direction: "in", presence: "optional" } # Optional
+        - { name: "AWADDR", width: 32, direction: "out", presence: "required" }
+        - { name: "AWVALID", direction: "out", presence: "required" }
+        - { name: "AWREADY", direction: "in", presence: "required" }
+        - { name: "AWPROT", width: 3, direction: "out", presence: "optional" }
 
         # Write Data Channel
-        - { name: "WDATA", width: 32, direction: "in", presence: "required" }
-        - { name: "WSTRB", width: 4, direction: "in", presence: "required" }
-        - { name: "WVALID", direction: "in", presence: "required" }
-        - { name: "WREADY", direction: "out", presence: "required" }
+        - { name: "WDATA", width: 32, direction: "out", presence: "required" }
+        - { name: "WSTRB", width: 4, direction: "out", presence: "required" }
+        - { name: "WVALID", direction: "out", presence: "required" }
+        - { name: "WREADY", direction: "in", presence: "required" }
 
         # Write Response Channel
-        - { name: "BRESP", width: 2, direction: "out", presence: "required" }
-        - { name: "BVALID", direction: "out", presence: "required" }
-        - { name: "BREADY", direction: "in", presence: "required" }
+        - { name: "BRESP", width: 2, direction: "in", presence: "required" }
+        - { name: "BVALID", direction: "in", presence: "required" }
+        - { name: "BREADY", direction: "out", presence: "required" }
 
         # Read Address Channel
-        - { name: "ARADDR", width: 32, direction: "in", presence: "required" }
-        - { name: "ARVALID", direction: "in", presence: "required" }
-        - { name: "ARREADY", direction: "out", presence: "required" }
-        - { name: "ARPROT", width: 3, direction: "in", presence: "optional" } # Optional
+        - { name: "ARADDR", width: 32, direction: "out", presence: "required" }
+        - { name: "ARVALID", direction: "out", presence: "required" }
+        - { name: "ARREADY", direction: "in", presence: "required" }
+        - { name: "ARPROT", width: 3, direction: "out", presence: "optional" }
 
         # Read Data Channel
-        - { name: "RDATA", width: 32, direction: "out", presence: "required" }
-        - { name: "RRESP", width: 2, direction: "out", presence: "required" }
-        - { name: "RVALID", direction: "out", presence: "required" }
-        - { name: "RREADY", direction: "in", presence: "required" }
+        - { name: "RDATA", width: 32, direction: "in", presence: "required" }
+        - { name: "RRESP", width: 2, direction: "in", presence: "required" }
+        - { name: "RVALID", direction: "in", presence: "required" }
+        - { name: "RREADY", direction: "out", presence: "required" }
+
+AXIS:
+    busType:
+        vendor: "arm.com"
+        library: "amba"
+        name: "axis"
+        version: "1.0"
+
+    # Defines all logical ports for AXI Stream.
+    # Directions are from MASTER perspective (out = master drives, in = master receives)
+    # Generator auto-inverts for SLAVE mode
+    ports:
+        # Clock & Reset
+        - { name: "ACLK", presence: "required" }
+        - { name: "ARESETn", presence: "required" }
+
+        # Stream Data Channel
+        - { name: "TDATA", width: 32, direction: "out", presence: "required" }
+        - { name: "TVALID", direction: "out", presence: "required" }
+        - { name: "TREADY", direction: "in", presence: "required" }
+        - { name: "TSTRB", width: 4, direction: "out", presence: "optional" } # Byte qualifiers
+        - { name: "TKEEP", width: 4, direction: "out", presence: "optional" } # Byte qualifiers
+        - { name: "TLAST", direction: "out", presence: "optional" } # End of packet/frame
+        - { name: "TID", width: 8, direction: "out", presence: "optional" } # Stream ID
+        - { name: "TDEST", width: 4, direction: "out", presence: "optional" } # Routing destination
+        - { name: "TUSER", width: 1, direction: "out", presence: "optional" } # User-defined sideband

@@ -52,7 +52,8 @@ useBusLibrary: "../common/bus_definitions.yml"
 
 busInterfaces:
     - name: "S_AXI_LITE" # Logical name of this interface
-      type: "AXI4L_SLAVE" # Type from the bus library
+      type: "AXI4L" # Type from the bus library
+      mode: "slave" # Interface mode: master or slave (directions auto-inverted for slave)
 
       # --- Port Mapping ---
       physicalPrefix: "s_axi_" # Generator creates "s_axi_awaddr", "s_axi_wdata", etc.
@@ -69,6 +70,46 @@ busInterfaces:
           - "AWPROT" # We choose to use this optional signal
           - "ARPROT" # We choose to use this optional signal
 
+      # --- Width Overrides ---
+      # Override default widths from bus library to match component needs
+      portWidthOverrides:
+          AWADDR: 12 # Address bus sized for 4KB register space
+          ARADDR: 12 # Match write address width
+          WDATA: 32 # Keep 32-bit data (explicit for clarity)
+          RDATA: 32 # Keep 32-bit data (explicit for clarity)
+          WSTRB: 4 # Byte enables match WDATA/8
+
+    - name: "M_AXIS_EVENTS" # Master AXI Stream for timer event output
+      type: "AXIS" # AXI Stream from the bus library
+      mode: "master" # This core generates stream data
+
+      # --- Array Configuration ---
+      # Create multiple instances of this interface, one per timer channel
+      array:
+          count: 4 # Number of instances (matches NUM_CHANNELS parameter)
+          indexStart: 0 # Start index (0, 1, 2, 3)
+          namingPattern: "M_AXIS_CH{index}_EVENTS" # Logical names: M_AXIS_CH0_EVENTS, M_AXIS_CH1_EVENTS, etc.
+          physicalPrefixPattern: "m_axis_ch{index}_evt_" # Physical prefixes: m_axis_ch0_evt_, m_axis_ch1_evt_, etc.
+
+      # --- Port Mapping ---
+      physicalPrefix: "m_axis_evt_" # Base prefix (overridden by array pattern)
+
+      # --- Clock/Reset Association ---
+      associatedClock: "SYS_CLK" # Uses system clock, not register clock
+      associatedReset: "SYS_RST"
+
+      # --- Optional Port Usage ---
+      useOptionalPorts:
+          - "TLAST" # Mark end of event burst
+          - "TUSER" # Event type/priority information (not TID since each channel has own interface)
+
+      # --- Width Overrides ---
+      portWidthOverrides:
+          TDATA: 64 # 64-bit event data (timestamp + info)
+          TSTRB: 8 # Match TDATA width
+          TKEEP: 8 # Match TDATA width
+          TUSER: 4 # 4 bits for event metadata (priority, type, etc.)
+
 # Import the memory map from its separate file
 memoryMaps:
     import: "my_timer_core.memmap.yml"
@@ -83,6 +124,16 @@ parameters:
     - name: "AXI_ADDR_WIDTH"
       value: 32
       dataType: "integer"
+
+    - name: "EVENT_FIFO_DEPTH"
+      value: 16
+      dataType: "integer"
+      description: "Depth of event FIFO for each AXI Stream channel"
+
+    - name: "TIMESTAMP_WIDTH"
+      value: 48
+      dataType: "integer"
+      description: "Width of timestamp counter in bits"
 
 fileSets:
     # Option 1: Inline definition ("direct reference")
