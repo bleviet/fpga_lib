@@ -82,3 +82,86 @@ AXIS:
         - { name: "TID", width: 8, direction: "out", presence: "optional" } # Stream ID
         - { name: "TDEST", width: 4, direction: "out", presence: "optional" } # Routing destination
         - { name: "TUSER", width: 1, direction: "out", presence: "optional" } # User-defined sideband
+
+AVALON_MM:
+    busType:
+        vendor: "intel.com"
+        library: "avalon"
+        name: "avalon_mm"
+        version: "1.0"
+
+    # Defines all logical ports for Avalon Memory-Mapped interface.
+    # Directions are from MASTER perspective (out = master drives, in = master receives)
+    # Generator auto-inverts for SLAVE mode
+    ports:
+        # Clock & Reset
+        - { name: "clk", presence: "required" }
+        - { name: "reset", presence: "required" }
+
+        # Address Phase
+        - { name: "address", width: 32, direction: "out", presence: "required" }
+        - { name: "read", direction: "out", presence: "required" }
+        - { name: "write", direction: "out", presence: "required" }
+        - {
+              name: "byteenable",
+              width: 4,
+              direction: "out",
+              presence: "optional",
+          }
+        - { name: "chipselect", direction: "out", presence: "optional" }
+
+        # Write Data
+        - {
+              name: "writedata",
+              width: 32,
+              direction: "out",
+              presence: "required",
+          }
+
+        # Read Data
+        - { name: "readdata", width: 32, direction: "in", presence: "required" }
+        - { name: "readdatavalid", direction: "in", presence: "optional" }
+
+        # Flow Control
+        - { name: "waitrequest", direction: "in", presence: "optional" }
+
+        # Burst Transfer (optional)
+        - {
+              name: "burstcount",
+              width: 8,
+              direction: "out",
+              presence: "optional",
+          }
+        - { name: "beginbursttransfer", direction: "out", presence: "optional" }
+
+        # Response (optional)
+        - { name: "response", width: 2, direction: "in", presence: "optional" }
+
+AVALON_ST:
+    busType:
+        vendor: "intel.com"
+        library: "avalon"
+        name: "avalon_st"
+        version: "1.0"
+
+    # Defines all logical ports for Avalon Streaming interface.
+    # Directions are from SOURCE perspective (out = source drives, in = source receives)
+    # Generator auto-inverts for SINK mode
+    ports:
+        # Clock & Reset
+        - { name: "clk", presence: "required" }
+        - { name: "reset", presence: "required" }
+
+        # Stream Data Channel
+        - { name: "data", width: 32, direction: "out", presence: "required" }
+        - { name: "valid", direction: "out", presence: "required" }
+        - { name: "ready", direction: "in", presence: "optional" }
+
+        # Packet Signals
+        - { name: "startofpacket", direction: "out", presence: "optional" }
+        - { name: "endofpacket", direction: "out", presence: "optional" }
+        - { name: "empty", width: 2, direction: "out", presence: "optional" } # Number of empty symbols
+
+        # Channel/Error Signals
+        - { name: "channel", width: 8, direction: "out", presence: "optional" }
+        - { name: "error", width: 2, direction: "out", presence: "optional" }
