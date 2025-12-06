@@ -1,26 +1,26 @@
 File: neorv32_cpu_control.vhd
-Original file: /Users/bachleviet/workspace/fpga_lib/fpga_lib/tests/parser/hdl/../resources/vhdl/neorv32_core/neorv32_cpu_control.vhd
+Original file: /home/balevision/workspace/bleviet/fpga_lib/fpga_lib/tests/parser/hdl/../resources/vhdl/neorv32_core/neorv32_cpu_control.vhd
 
 Entity: neorv32_cpu_control
 Ports (18):
-  - clk_i : in std_ulogic
-  - rstn_i : in std_ulogic
-  - ctrl_o : out ctrl_bus_t
-  - frontend_i : in if_bus_t
-  - pmp_fault_i : in std_ulogic
-  - alu_cp_done_i : in std_ulogic
-  - alu_cmp_i : in std_ulogic_vector(1 downto 0)
-  - alu_add_i : in std_ulogic_vector(XLEN-1 downto 0)
-  - rf_rs1_i : in std_ulogic_vector(XLEN-1 downto 0)
-  - csr_rdata_o : out std_ulogic_vector(XLEN-1 downto 0)
-  - xcsr_rdata_i : in std_ulogic_vector(XLEN-1 downto 0)
-  - irq_dbg_i : in std_ulogic
-  - irq_machine_i : in std_ulogic_vector(2 downto 0)
-  - irq_fast_i : in std_ulogic_vector(15 downto 0)
-  - lsu_wait_i : in std_ulogic
-  - lsu_mar_i : in std_ulogic_vector(XLEN-1 downto 0)
-  - lsu_err_i : in std_ulogic_vector(3 downto 0)
-  - mem_sync_i : in std_ulogic
+  - clk_i : PortDirection.IN std_ulogic
+  - rstn_i : PortDirection.IN std_ulogic
+  - ctrl_o : PortDirection.OUT ctrl_bus_t
+  - frontend_i : PortDirection.IN if_bus_t
+  - pmp_fault_i : PortDirection.IN std_ulogic
+  - alu_cp_done_i : PortDirection.IN std_ulogic
+  - alu_cmp_i : PortDirection.IN std_ulogic_vector(1 downto 0)
+  - alu_add_i : PortDirection.IN std_ulogic_vector(XLEN-1 downto 0)
+  - rf_rs1_i : PortDirection.IN std_ulogic_vector(XLEN-1 downto 0)
+  - csr_rdata_o : PortDirection.OUT std_ulogic_vector(XLEN-1 downto 0)
+  - xcsr_rdata_i : PortDirection.IN std_ulogic_vector(XLEN-1 downto 0)
+  - irq_dbg_i : PortDirection.IN std_ulogic
+  - irq_machine_i : PortDirection.IN std_ulogic_vector(2 downto 0)
+  - irq_fast_i : PortDirection.IN std_ulogic_vector(15 downto 0)
+  - lsu_wait_i : PortDirection.IN std_ulogic
+  - lsu_mar_i : PortDirection.IN std_ulogic_vector(XLEN-1 downto 0)
+  - lsu_err_i : PortDirection.IN std_ulogic_vector(3 downto 0)
+  - mem_sync_i : PortDirection.IN std_ulogic
 
 Generated VHDL:
 library ieee;

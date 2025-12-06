@@ -1,16 +1,16 @@
 File: neorv32_debug_dtm.vhd
-Original file: /Users/bachleviet/workspace/fpga_lib/fpga_lib/tests/parser/hdl/../resources/vhdl/neorv32_core/neorv32_debug_dtm.vhd
+Original file: /home/balevision/workspace/bleviet/fpga_lib/fpga_lib/tests/parser/hdl/../resources/vhdl/neorv32_core/neorv32_debug_dtm.vhd
 
 Entity: neorv32_debug_dtm
 Ports (8):
-  - clk_i : in std_ulogic
-  - rstn_i : in std_ulogic
-  - jtag_tck_i : in std_ulogic
-  - jtag_tdi_i : in std_ulogic
-  - jtag_tdo_o : out std_ulogic
-  - jtag_tms_i : in std_ulogic
-  - dmi_req_o : out dmi_req_t
-  - dmi_rsp_i : in dmi_rsp_t
+  - clk_i : PortDirection.IN std_ulogic
+  - rstn_i : PortDirection.IN std_ulogic
+  - jtag_tck_i : PortDirection.IN std_ulogic
+  - jtag_tdi_i : PortDirection.IN std_ulogic
+  - jtag_tdo_o : PortDirection.OUT std_ulogic
+  - jtag_tms_i : PortDirection.IN std_ulogic
+  - dmi_req_o : PortDirection.OUT dmi_req_t
+  - dmi_rsp_i : PortDirection.IN dmi_rsp_t
 
 Generated VHDL:
 library ieee;

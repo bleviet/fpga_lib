@@ -1,15 +1,15 @@
 File: neorv32_gptmr.vhd
-Original file: /Users/bachleviet/workspace/fpga_lib/fpga_lib/tests/parser/hdl/../resources/vhdl/neorv32_core/neorv32_gptmr.vhd
+Original file: /home/balevision/workspace/bleviet/fpga_lib/fpga_lib/tests/parser/hdl/../resources/vhdl/neorv32_core/neorv32_gptmr.vhd
 
 Entity: neorv32_gptmr
 Ports (7):
-  - clk_i : in std_ulogic
-  - rstn_i : in std_ulogic
-  - bus_req_i : in bus_req_t
-  - bus_rsp_o : out bus_rsp_t
-  - clkgen_en_o : out std_ulogic
-  - clkgen_i : in std_ulogic_vector(7 downto 0)
-  - irq_o : out std_ulogic
+  - clk_i : PortDirection.IN std_ulogic
+  - rstn_i : PortDirection.IN std_ulogic
+  - bus_req_i : PortDirection.IN bus_req_t
+  - bus_rsp_o : PortDirection.OUT bus_rsp_t
+  - clkgen_en_o : PortDirection.OUT std_ulogic
+  - clkgen_i : PortDirection.IN std_ulogic_vector(7 downto 0)
+  - irq_o : PortDirection.OUT std_ulogic
 
 Generated VHDL:
 library ieee;

@@ -1,16 +1,16 @@
 File: neorv32_sys.vhd
-Original file: /Users/bachleviet/workspace/fpga_lib/fpga_lib/tests/parser/hdl/../resources/vhdl/neorv32_core/neorv32_sys.vhd
+Original file: /home/balevision/workspace/bleviet/fpga_lib/fpga_lib/tests/parser/hdl/../resources/vhdl/neorv32_core/neorv32_sys.vhd
 
 Entity: neorv32_sys_reset
 Ports (8):
-  - clk_i : in std_ulogic
-  - rstn_ext_i : in std_ulogic
-  - rstn_wdt_i : in std_ulogic
-  - rstn_dbg_i : in std_ulogic
-  - rstn_ext_o : out std_ulogic
-  - rstn_sys_o : out std_ulogic
-  - xrstn_wdt_o : out std_ulogic
-  - xrstn_ocd_o : out std_ulogic
+  - clk_i : PortDirection.IN std_ulogic
+  - rstn_ext_i : PortDirection.IN std_ulogic
+  - rstn_wdt_i : PortDirection.IN std_ulogic
+  - rstn_dbg_i : PortDirection.IN std_ulogic
+  - rstn_ext_o : PortDirection.OUT std_ulogic
+  - rstn_sys_o : PortDirection.OUT std_ulogic
+  - xrstn_wdt_o : PortDirection.OUT std_ulogic
+  - xrstn_ocd_o : PortDirection.OUT std_ulogic
 
 Generated VHDL:
 library ieee;

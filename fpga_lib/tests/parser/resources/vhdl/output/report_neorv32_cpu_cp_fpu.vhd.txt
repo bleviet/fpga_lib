@@ -1,21 +1,21 @@
 File: neorv32_cpu_cp_fpu.vhd
-Original file: /Users/bachleviet/workspace/fpga_lib/fpga_lib/tests/parser/hdl/../resources/vhdl/neorv32_core/neorv32_cpu_cp_fpu.vhd
+Original file: /home/balevision/workspace/bleviet/fpga_lib/fpga_lib/tests/parser/hdl/../resources/vhdl/neorv32_core/neorv32_cpu_cp_fpu.vhd
 
 Entity: neorv32_cpu_cp_fpu
 Ports (13):
-  - clk_i : in std_ulogic
-  - rstn_i : in std_ulogic
-  - ctrl_i : in ctrl_bus_t
-  - csr_we_i : in std_ulogic
-  - csr_addr_i : in std_ulogic_vector(1 downto 0)
-  - csr_wdata_i : in std_ulogic_vector(XLEN-1 downto 0)
-  - csr_rdata_o : out std_ulogic_vector(XLEN-1 downto 0)
-  - cmp_i : in std_ulogic_vector(1 downto 0)
-  - rs1_i : in std_ulogic_vector(XLEN-1 downto 0)
-  - rs2_i : in std_ulogic_vector(XLEN-1 downto 0)
-  - rs3_i : in std_ulogic_vector(XLEN-1 downto 0)
-  - res_o : out std_ulogic_vector(XLEN-1 downto 0)
-  - valid_o : out std_ulogic
+  - clk_i : PortDirection.IN std_ulogic
+  - rstn_i : PortDirection.IN std_ulogic
+  - ctrl_i : PortDirection.IN ctrl_bus_t
+  - csr_we_i : PortDirection.IN std_ulogic
+  - csr_addr_i : PortDirection.IN std_ulogic_vector(1 downto 0)
+  - csr_wdata_i : PortDirection.IN std_ulogic_vector(XLEN-1 downto 0)
+  - csr_rdata_o : PortDirection.OUT std_ulogic_vector(XLEN-1 downto 0)
+  - cmp_i : PortDirection.IN std_ulogic_vector(1 downto 0)
+  - rs1_i : PortDirection.IN std_ulogic_vector(XLEN-1 downto 0)
+  - rs2_i : PortDirection.IN std_ulogic_vector(XLEN-1 downto 0)
+  - rs3_i : PortDirection.IN std_ulogic_vector(XLEN-1 downto 0)
+  - res_o : PortDirection.OUT std_ulogic_vector(XLEN-1 downto 0)
+  - valid_o : PortDirection.OUT std_ulogic
 
 Generated VHDL:
 library ieee;

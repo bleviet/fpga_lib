@@ -1,22 +1,22 @@
 File: neorv32_cpu.vhd
-Original file: /Users/bachleviet/workspace/fpga_lib/fpga_lib/tests/parser/hdl/../resources/vhdl/neorv32_core/neorv32_cpu.vhd
+Original file: /home/balevision/workspace/bleviet/fpga_lib/fpga_lib/tests/parser/hdl/../resources/vhdl/neorv32_core/neorv32_cpu.vhd
 
 Entity: neorv32_cpu
 Ports (14):
-  - clk_i : in std_ulogic
-  - rstn_i : in std_ulogic
-  - msi_i : in std_ulogic
-  - mei_i : in std_ulogic
-  - mti_i : in std_ulogic
-  - firq_i : in std_ulogic_vector(15 downto 0)
-  - dbi_i : in std_ulogic
-  - icc_tx_o : out icc_t
-  - icc_rx_i : in icc_t
-  - ibus_req_o : out bus_req_t
-  - ibus_rsp_i : in bus_rsp_t
-  - dbus_req_o : out bus_req_t
-  - dbus_rsp_i : in bus_rsp_t
-  - mem_sync_i : in std_ulogic
+  - clk_i : PortDirection.IN std_ulogic
+  - rstn_i : PortDirection.IN std_ulogic
+  - msi_i : PortDirection.IN std_ulogic
+  - mei_i : PortDirection.IN std_ulogic
+  - mti_i : PortDirection.IN std_ulogic
+  - firq_i : PortDirection.IN std_ulogic_vector(15 downto 0)
+  - dbi_i : PortDirection.IN std_ulogic
+  - icc_tx_o : PortDirection.OUT icc_t
+  - icc_rx_i : PortDirection.IN icc_t
+  - ibus_req_o : PortDirection.OUT bus_req_t
+  - ibus_rsp_i : PortDirection.IN bus_rsp_t
+  - dbus_req_o : PortDirection.OUT bus_req_t
+  - dbus_rsp_i : PortDirection.IN bus_rsp_t
+  - mem_sync_i : PortDirection.IN std_ulogic
 
 Generated VHDL:
 library ieee;

@@ -1,15 +1,15 @@
 File: neorv32_cpu_regfile.vhd
-Original file: /Users/bachleviet/workspace/fpga_lib/fpga_lib/tests/parser/hdl/../resources/vhdl/neorv32_core/neorv32_cpu_regfile.vhd
+Original file: /home/balevision/workspace/bleviet/fpga_lib/fpga_lib/tests/parser/hdl/../resources/vhdl/neorv32_core/neorv32_cpu_regfile.vhd
 
 Entity: neorv32_cpu_regfile
 Ports (7):
-  - clk_i : in std_ulogic
-  - rstn_i : in std_ulogic
-  - ctrl_i : in ctrl_bus_t
-  - rd_i : in std_ulogic_vector(XLEN-1 downto 0)
-  - rs1_o : out std_ulogic_vector(XLEN-1 downto 0)
-  - rs2_o : out std_ulogic_vector(XLEN-1 downto 0)
-  - rs3_o : out std_ulogic_vector(XLEN-1 downto 0)
+  - clk_i : PortDirection.IN std_ulogic
+  - rstn_i : PortDirection.IN std_ulogic
+  - ctrl_i : PortDirection.IN ctrl_bus_t
+  - rd_i : PortDirection.IN std_ulogic_vector(XLEN-1 downto 0)
+  - rs1_o : PortDirection.OUT std_ulogic_vector(XLEN-1 downto 0)
+  - rs2_o : PortDirection.OUT std_ulogic_vector(XLEN-1 downto 0)
+  - rs3_o : PortDirection.OUT std_ulogic_vector(XLEN-1 downto 0)
 
 Generated VHDL:
 library ieee;

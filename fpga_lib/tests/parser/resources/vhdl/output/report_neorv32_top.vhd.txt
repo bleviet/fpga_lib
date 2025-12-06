@@ -1,72 +1,72 @@
 File: neorv32_top.vhd
-Original file: /Users/bachleviet/workspace/fpga_lib/fpga_lib/tests/parser/hdl/../resources/vhdl/neorv32_core/neorv32_top.vhd
+Original file: /home/balevision/workspace/bleviet/fpga_lib/fpga_lib/tests/parser/hdl/../resources/vhdl/neorv32_core/neorv32_top.vhd
 
 Entity: neorv32_top
 Ports (64):
-  - clk_i : in std_ulogic
-  - rstn_i : in std_ulogic
-  - rstn_ocd_o : out std_ulogic
-  - rstn_wdt_o : out std_ulogic
-  - jtag_tck_i : in std_ulogic := 'L'
-  - jtag_tdi_i : in std_ulogic := 'L'
-  - jtag_tdo_o : out std_ulogic
-  - jtag_tms_i : in std_ulogic := 'L'
-  - xbus_adr_o : out std_ulogic_vector(31 downto 0)
-  - xbus_dat_o : out std_ulogic_vector(31 downto 0)
-  - xbus_tag_o : out std_ulogic_vector(2 downto 0)
-  - xbus_we_o : out std_ulogic
-  - xbus_sel_o : out std_ulogic_vector(3 downto 0)
-  - xbus_stb_o : out std_ulogic
-  - xbus_cyc_o : out std_ulogic
-  - xbus_dat_i : in std_ulogic_vector(31 downto 0) := (others => 'L')
-  - xbus_ack_i : in std_ulogic := 'L'
-  - xbus_err_i : in std_ulogic := 'L'
-  - slink_rx_dat_i : in std_ulogic_vector(31 downto 0) := (others => 'L')
-  - slink_rx_src_i : in std_ulogic_vector(3 downto 0)  := (others => 'L')
-  - slink_rx_val_i : in std_ulogic := 'L'
-  - slink_rx_lst_i : in std_ulogic := 'L'
-  - slink_rx_rdy_o : out std_ulogic
-  - slink_tx_dat_o : out std_ulogic_vector(31 downto 0)
-  - slink_tx_dst_o : out std_ulogic_vector(3 downto 0)
-  - slink_tx_val_o : out std_ulogic
-  - slink_tx_lst_o : out std_ulogic
-  - slink_tx_rdy_i : in std_ulogic := 'L'
-  - gpio_o : out std_ulogic_vector(31 downto 0)
-  - gpio_i : in std_ulogic_vector(31 downto 0) := (others => 'L')
-  - uart0_txd_o : out std_ulogic
-  - uart0_rxd_i : in std_ulogic := 'L'
-  - uart0_rtsn_o : out std_ulogic
-  - uart0_ctsn_i : in std_ulogic := 'L'
-  - uart1_txd_o : out std_ulogic
-  - uart1_rxd_i : in std_ulogic := 'L'
-  - uart1_rtsn_o : out std_ulogic
-  - uart1_ctsn_i : in std_ulogic := 'L'
-  - spi_clk_o : out std_ulogic
-  - spi_dat_o : out std_ulogic
-  - spi_dat_i : in std_ulogic := 'L'
-  - spi_csn_o : out std_ulogic_vector(7 downto 0)
-  - sdi_clk_i : in std_ulogic := 'L'
-  - sdi_dat_o : out std_ulogic
-  - sdi_dat_i : in std_ulogic := 'L'
-  - sdi_csn_i : in std_ulogic := 'H'
-  - twi_sda_i : in std_ulogic := 'H'
-  - twi_sda_o : out std_ulogic
-  - twi_scl_i : in std_ulogic := 'H'
-  - twi_scl_o : out std_ulogic
-  - twd_sda_i : in std_ulogic := 'H'
-  - twd_sda_o : out std_ulogic
-  - twd_scl_i : in std_ulogic := 'H'
-  - twd_scl_o : out std_ulogic
-  - onewire_i : in std_ulogic := 'H'
-  - onewire_o : out std_ulogic
-  - pwm_o : out std_ulogic_vector(15 downto 0)
-  - cfs_in_i : in std_ulogic_vector(IO_CFS_IN_SIZE-1 downto 0) := (others => 'L')
-  - cfs_out_o : out std_ulogic_vector(IO_CFS_OUT_SIZE-1 downto 0)
-  - neoled_o : out std_ulogic
-  - mtime_time_o : out std_ulogic_vector(63 downto 0)
-  - mtime_irq_i : in std_ulogic := 'L'
-  - msw_irq_i : in std_ulogic := 'L'
-  - mext_irq_i : in std_ulogic := 'L'
+  - clk_i : PortDirection.IN std_ulogic
+  - rstn_i : PortDirection.IN std_ulogic
+  - rstn_ocd_o : PortDirection.OUT std_ulogic
+  - rstn_wdt_o : PortDirection.OUT std_ulogic
+  - jtag_tck_i : PortDirection.IN std_ulogic := 'L'
+  - jtag_tdi_i : PortDirection.IN std_ulogic := 'L'
+  - jtag_tdo_o : PortDirection.OUT std_ulogic
+  - jtag_tms_i : PortDirection.IN std_ulogic := 'L'
+  - xbus_adr_o : PortDirection.OUT std_ulogic_vector(31 downto 0)
+  - xbus_dat_o : PortDirection.OUT std_ulogic_vector(31 downto 0)
+  - xbus_tag_o : PortDirection.OUT std_ulogic_vector(2 downto 0)
+  - xbus_we_o : PortDirection.OUT std_ulogic
+  - xbus_sel_o : PortDirection.OUT std_ulogic_vector(3 downto 0)
+  - xbus_stb_o : PortDirection.OUT std_ulogic
+  - xbus_cyc_o : PortDirection.OUT std_ulogic
+  - xbus_dat_i : PortDirection.IN std_ulogic_vector(31 downto 0) := (others => 'L')
+  - xbus_ack_i : PortDirection.IN std_ulogic := 'L'
+  - xbus_err_i : PortDirection.IN std_ulogic := 'L'
+  - slink_rx_dat_i : PortDirection.IN std_ulogic_vector(31 downto 0) := (others => 'L')
+  - slink_rx_src_i : PortDirection.IN std_ulogic_vector(3 downto 0)  := (others => 'L')
+  - slink_rx_val_i : PortDirection.IN std_ulogic := 'L'
+  - slink_rx_lst_i : PortDirection.IN std_ulogic := 'L'
+  - slink_rx_rdy_o : PortDirection.OUT std_ulogic
+  - slink_tx_dat_o : PortDirection.OUT std_ulogic_vector(31 downto 0)
+  - slink_tx_dst_o : PortDirection.OUT std_ulogic_vector(3 downto 0)
+  - slink_tx_val_o : PortDirection.OUT std_ulogic
+  - slink_tx_lst_o : PortDirection.OUT std_ulogic
+  - slink_tx_rdy_i : PortDirection.IN std_ulogic := 'L'
+  - gpio_o : PortDirection.OUT std_ulogic_vector(31 downto 0)
+  - gpio_i : PortDirection.IN std_ulogic_vector(31 downto 0) := (others => 'L')
+  - uart0_txd_o : PortDirection.OUT std_ulogic
+  - uart0_rxd_i : PortDirection.IN std_ulogic := 'L'
+  - uart0_rtsn_o : PortDirection.OUT std_ulogic
+  - uart0_ctsn_i : PortDirection.IN std_ulogic := 'L'
+  - uart1_txd_o : PortDirection.OUT std_ulogic
+  - uart1_rxd_i : PortDirection.IN std_ulogic := 'L'
+  - uart1_rtsn_o : PortDirection.OUT std_ulogic
+  - uart1_ctsn_i : PortDirection.IN std_ulogic := 'L'
+  - spi_clk_o : PortDirection.OUT std_ulogic
+  - spi_dat_o : PortDirection.OUT std_ulogic
+  - spi_dat_i : PortDirection.IN std_ulogic := 'L'
+  - spi_csn_o : PortDirection.OUT std_ulogic_vector(7 downto 0)
+  - sdi_clk_i : PortDirection.IN std_ulogic := 'L'
+  - sdi_dat_o : PortDirection.OUT std_ulogic
+  - sdi_dat_i : PortDirection.IN std_ulogic := 'L'
+  - sdi_csn_i : PortDirection.IN std_ulogic := 'H'
+  - twi_sda_i : PortDirection.IN std_ulogic := 'H'
+  - twi_sda_o : PortDirection.OUT std_ulogic
+  - twi_scl_i : PortDirection.IN std_ulogic := 'H'
+  - twi_scl_o : PortDirection.OUT std_ulogic
+  - twd_sda_i : PortDirection.IN std_ulogic := 'H'
+  - twd_sda_o : PortDirection.OUT std_ulogic
+  - twd_scl_i : PortDirection.IN std_ulogic := 'H'
+  - twd_scl_o : PortDirection.OUT std_ulogic
+  - onewire_i : PortDirection.IN std_ulogic := 'H'
+  - onewire_o : PortDirection.OUT std_ulogic
+  - pwm_o : PortDirection.OUT std_ulogic_vector(15 downto 0)
+  - cfs_in_i : PortDirection.IN std_ulogic_vector(IO_CFS_IN_SIZE-1 downto 0) := (others => 'L')
+  - cfs_out_o : PortDirection.OUT std_ulogic_vector(IO_CFS_OUT_SIZE-1 downto 0)
+  - neoled_o : PortDirection.OUT std_ulogic
+  - mtime_time_o : PortDirection.OUT std_ulogic_vector(63 downto 0)
+  - mtime_irq_i : PortDirection.IN std_ulogic := 'L'
+  - msw_irq_i : PortDirection.IN std_ulogic := 'L'
+  - mext_irq_i : PortDirection.IN std_ulogic := 'L'
 
 Generated VHDL:
 library ieee;
