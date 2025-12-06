@@ -316,7 +316,7 @@ Based on the comprehensive architecture in `docs/notes.md`, here's a phased impl
 ## Phase 3: IP Core Library Manager (Weeks 6-8)
 
 ### 3.1 Indexing System (Week 6)
-**Goal:** Fast discovery and search
+**Goal:** Fast discovery and search with parallel processing
 
 **Tasks:**
 1. **SQLite index schema**:
@@ -326,19 +326,50 @@ Based on the comprehensive architecture in `docs/notes.md`, here's a phased impl
    CREATE VIRTUAL TABLE ip_cores_fts USING fts5( ... );
    CREATE TABLE dependencies ( ... );
    CREATE TABLE bus_interfaces ( ... );
+   CREATE TABLE embeddings (  -- For AI-powered semantic search
+       core_id INTEGER PRIMARY KEY,
+       embedding BLOB,  -- Vector embedding of description + metadata
+       model_version TEXT,
+       FOREIGN KEY (core_id) REFERENCES ip_cores(id)
+   );
    ```
 
-2. **Indexer implementation**:
+2. **Parallel indexer implementation**:
    ```python
    # fpga_lib/library/indexer.py
+   from concurrent.futures import ProcessPoolExecutor, as_completed
+   import multiprocessing
+   
    class IpCoreIndexer:
-       def __init__(self, project_root: Path, index_db: Path):
+       def __init__(self, project_root: Path, index_db: Path, max_workers: int = None):
            # As detailed in notes.md
+           self.max_workers = max_workers or multiprocessing.cpu_count()
+           self.executor = ProcessPoolExecutor(max_workers=self.max_workers)
            pass
        
        def scan_project(self) -> None:
-           """Initial scan (runs once)."""
-           pass
+           """Parallel initial scan using multiprocessing."""
+           files = list(self._discover_files())
+           
+           # Parse files in parallel across CPU cores
+           futures = []
+           for file_path in files:
+               future = self.executor.submit(self._parse_file_worker, file_path)
+               futures.append(future)
+           
+           # Collect results and index sequentially (SQLite writes)
+           for future in as_completed(futures):
+               try:
+                   parsed_data = future.result()
+                   self._index_parsed_data(parsed_data)
+               except Exception as e:
+                   logger.error(f"Failed to index: {e}")
+       
+       @staticmethod
+       def _parse_file_worker(path: Path) -> dict:
+           """Worker process: parse file (CPU-intensive)."""
+           parser = ParserFactory.get_parser(detect_format(path))
+           return parser.parse(path).model_dump()
        
        def _index_file(self, path: Path) -> None:
            """Parse and index single file."""
@@ -356,10 +387,18 @@ Based on the comprehensive architecture in `docs/notes.md`, here's a phased impl
            # Setup as in notes.md
    ```
 
-4. **Query engine**:
+4. **AI-powered query engine**:
    ```python
    # fpga_lib/library/query.py
+   import numpy as np
+   from sentence_transformers import SentenceTransformer
+   
    class IpCoreQuery:
+       def __init__(self, db_path: Path):
+           # Load lightweight embedding model (runs on CPU)
+           self.embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
+           self.db = sqlite3.connect(db_path)
+       
        def find_by_name(self, pattern: str) -> List[IpCoreMetadata]:
            pass
        
@@ -367,10 +406,42 @@ Based on the comprehensive architecture in `docs/notes.md`, here's a phased impl
            pass
        
        def full_text_search(self, query: str) -> List[IpCoreMetadata]:
+           """Traditional keyword-based search."""
            pass
+       
+       def semantic_search(self, query: str, top_k: int = 10) -> List[IpCoreMetadata]:
+           """AI-powered semantic search using embeddings.
+           
+           Example queries:
+           - "timer with interrupt support"
+           - "DMA controller for video streaming"
+           - "cores similar to AXI GPIO"
+           """
+           # Generate query embedding
+           query_embedding = self.embedding_model.encode(query)
+           
+           # Compute cosine similarity with all indexed cores
+           cursor = self.db.execute("SELECT core_id, embedding FROM embeddings")
+           scores = []
+           for core_id, embedding_blob in cursor:
+               core_embedding = np.frombuffer(embedding_blob, dtype=np.float32)
+               similarity = np.dot(query_embedding, core_embedding)
+               scores.append((core_id, similarity))
+           
+           # Return top-k most similar cores
+           top_cores = sorted(scores, key=lambda x: x[1], reverse=True)[:top_k]
+           return [self._load_metadata(core_id) for core_id, _ in top_cores]
+       
+       def generate_embeddings_batch(self, cores: List[IpCore]) -> None:
+           """Generate embeddings for multiple cores in parallel."""
+           texts = [f"{c.description} {c.vlnv.name}" for c in cores]
+           embeddings = self.embedding_model.encode(texts, batch_size=32, show_progress_bar=True)
+           
+           for core, embedding in zip(cores, embeddings):
+               self._store_embedding(core.vlnv, embedding)
    ```
 
-**Deliverable:** Fast indexing and search backend
+**Deliverable:** Fast parallel indexing with AI-powered semantic search backend
 
 ---
 
@@ -633,7 +704,7 @@ Based on the comprehensive architecture in `docs/notes.md`, here's a phased impl
 
 ---
 
-## Phase 5: Additional Plugins (Weeks 13-16)
+## Phase 5: Additional Plugins (Weeks 13-17)
 
 ### 5.1 IP Core Explorer Plugin (Week 13)
 
@@ -655,21 +726,35 @@ Based on the comprehensive architecture in `docs/notes.md`, here's a phased impl
            ))
    ```
 
-2. **Search bar**:
+2. **AI-enhanced search bar**:
    ```python
    class SearchWidget(QWidget):
        def __init__(self, library: LibraryManager):
            super().__init__()
            self.library = library
            self.search_input = QLineEdit()
+           self.search_mode = QComboBox()
+           self.search_mode.addItems(["Keyword", "Semantic (AI)", "Hybrid"])
            self.search_input.textChanged.connect(self.on_search)
        
        def on_search(self, text: str):
-           results = self.library.search(text)
+           mode = self.search_mode.currentText()
+           
+           if mode == "Keyword":
+               results = self.library.search(text)
+           elif mode == "Semantic (AI)":
+               # Natural language search
+               results = self.library.semantic_search(text)
+           else:  # Hybrid
+               # Combine keyword + semantic results
+               keyword_results = self.library.search(text)
+               semantic_results = self.library.semantic_search(text)
+               results = self._merge_results(keyword_results, semantic_results)
+           
            self.results_tree.populate(results)
    ```
 
-**Deliverable:** IP core library navigation plugin
+**Deliverable:** IP core library navigation with AI-powered search
 
 ---
 
@@ -732,7 +817,88 @@ Based on the comprehensive architecture in `docs/notes.md`, here's a phased impl
 
 ---
 
-### 5.4 Documentation Generator Plugin (Week 16)
+### 5.4 AI Assistant Plugin (Week 16)
+
+**Tasks:**
+1. **Integration with LLM API**:
+   ```python
+   # plugins/ai_assistant/__init__.py
+   from openai import OpenAI  # or local LLM via llama.cpp
+   
+   class AiAssistantPlugin(IPlugin):
+       def __init__(self):
+           # Use local model for privacy, or API for advanced features
+           self.use_local = os.getenv("FPGA_USE_LOCAL_LLM", "true") == "true"
+           
+           if self.use_local:
+               from llama_cpp import Llama
+               self.model = Llama(model_path="models/codellama-7b.gguf", n_ctx=4096)
+           else:
+               self.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+       
+       def generate_register_documentation(self, register: Register) -> str:
+           """Auto-generate register descriptions from names and bit fields."""
+           prompt = f"""Generate a clear technical description for this hardware register:
+           
+           Name: {register.name}
+           Bit fields: {[f.name for f in register.fields]}
+           Access: {register.access}
+           
+           Description:"""
+           
+           return self._generate(prompt)
+       
+       def suggest_register_names(self, description: str) -> List[str]:
+           """Suggest register names from natural language description."""
+           prompt = f"""Given this IP core functionality: "{description}"
+           
+           Suggest 5 appropriate register names following hardware naming conventions:"""
+           
+           return self._generate(prompt).split('\n')
+       
+       def explain_bus_protocol(self, bus_type: str) -> str:
+           """Generate explanation of bus protocol requirements."""
+           prompt = f"""Explain the {bus_type} bus protocol requirements 
+           for FPGA IP core implementation. Include timing, signals, and handshake."""
+           
+           return self._generate(prompt)
+       
+       def validate_with_ai(self, ip_core: IpCore) -> List[str]:
+           """AI-powered validation suggestions."""
+           prompt = f"""Review this IP core design for potential issues:
+           
+           {ip_core.model_dump_json(indent=2)}
+           
+           Identify: naming inconsistencies, missing signals, address alignment issues."""
+           
+           return self._generate(prompt).split('\n')
+   ```
+
+2. **Chat interface in GUI**:
+   ```python
+   class AiChatWidget(QWidget):
+       def __init__(self, ai_assistant: AiAssistantPlugin):
+           super().__init__()
+           self.assistant = ai_assistant
+           self.chat_history = QTextEdit()
+           self.input_field = QLineEdit()
+           
+           # Context-aware suggestions
+           self.input_field.returnPressed.connect(self.on_send)
+       
+       def on_send(self):
+           user_message = self.input_field.text()
+           context = self._get_current_context()  # Current IP core, selected register
+           
+           response = self.assistant.chat(user_message, context)
+           self.chat_history.append(f"You: {user_message}\nAI: {response}\n")
+   ```
+
+**Deliverable:** AI-powered code generation and design assistance
+
+---
+
+### 5.5 Documentation Generator Plugin (Week 17)
 
 **Tasks:**
 1. **Export to Markdown/PDF**:
@@ -760,18 +926,183 @@ Based on the comprehensive architecture in `docs/notes.md`, here's a phased impl
 
 ---
 
-## Phase 6: Polish & Release (Weeks 17-20)
+## Phase 6: Advanced Features & GPU Acceleration (Weeks 18-21)
 
-### 6.1 User Experience (Weeks 17-18)
+### 6.1 GPU-Accelerated Operations (Week 18)
+
+**Goal:** Leverage GPU for compute-intensive tasks
 
 **Tasks:**
-1. **Command palette** (VS Code style):
+1. **Similarity search on GPU**:
+   ```python
+   # fpga_lib/library/gpu_search.py
+   import torch
+   import cupy as cp  # CUDA-accelerated NumPy
+   
+   class GpuAcceleratedSearch:
+       def __init__(self, use_gpu: bool = None):
+           if use_gpu is None:
+               use_gpu = torch.cuda.is_available()
+           
+           self.device = torch.device("cuda" if use_gpu else "cpu")
+           self.embeddings_tensor = None
+       
+       def load_embeddings_to_gpu(self, embeddings: np.ndarray):
+           """Load all core embeddings to GPU memory."""
+           self.embeddings_tensor = torch.from_numpy(embeddings).to(self.device)
+       
+       def batch_similarity_search(self, queries: List[str], top_k: int = 10) -> List[List[int]]:
+           """Compute similarity for multiple queries simultaneously on GPU."""
+           query_embeddings = self.embedding_model.encode(queries)
+           query_tensor = torch.from_numpy(query_embeddings).to(self.device)
+           
+           # Matrix multiplication on GPU: [num_queries, embedding_dim] × [num_cores, embedding_dim]^T
+           # Result: [num_queries, num_cores] similarity matrix
+           similarities = torch.mm(query_tensor, self.embeddings_tensor.t())
+           
+           # Get top-k for each query (parallel across GPU cores)
+           top_indices = torch.topk(similarities, k=top_k, dim=1).indices
+           
+           return top_indices.cpu().numpy().tolist()
+   ```
+
+2. **Parallel validation on GPU**:
+   ```python
+   # fpga_lib/validator/gpu_validator.py
+   class GpuValidator:
+       def validate_address_alignment_batch(self, registers: List[Register]) -> List[bool]:
+           """Check alignment for thousands of registers in parallel."""
+           offsets = cp.array([r.offset for r in registers])
+           widths = cp.array([r.width for r in registers])
+           
+           # Vectorized operation on GPU
+           alignments = widths // 8
+           is_aligned = (offsets % alignments) == 0
+           
+           return is_aligned.get()  # Transfer back to CPU
+   ```
+
+3. **Configuration**:
+   ```python
+   # fpga_lib/config.py
+   @dataclass
+   class PerformanceConfig:
+       use_gpu: bool = True  # Auto-detect CUDA
+       use_multiprocessing: bool = True
+       max_workers: int = multiprocessing.cpu_count()
+       gpu_batch_size: int = 1024
+       
+       @classmethod
+       def auto_detect(cls):
+           """Detect optimal configuration."""
+           return cls(
+               use_gpu=torch.cuda.is_available(),
+               max_workers=min(multiprocessing.cpu_count(), 16)  # Cap to avoid overhead
+           )
+   ```
+
+**Deliverable:** GPU-accelerated search and validation
+
+---
+
+### 6.2 Distributed Processing (Week 19)
+
+**Goal:** Handle massive projects (1000+ IP cores) efficiently
+
+**Tasks:**
+1. **Distributed indexing with Ray**:
+   ```python
+   # fpga_lib/library/distributed_indexer.py
+   import ray
+   
+   @ray.remote
+   class DistributedIndexWorker:
+       def __init__(self):
+           self.parser_factory = ParserFactory()
+       
+       def parse_files(self, file_paths: List[Path]) -> List[dict]:
+           """Parse batch of files on remote worker."""
+           results = []
+           for path in file_paths:
+               try:
+                   parser = self.parser_factory.get_parser(detect_format(path))
+                   ip_core = parser.parse(path)
+                   results.append(ip_core.model_dump())
+               except Exception as e:
+                   logger.error(f"Failed to parse {path}: {e}")
+           return results
+   
+   class DistributedIndexer:
+       def __init__(self, num_workers: int = None):
+           ray.init(num_cpus=num_workers)
+           self.workers = [DistributedIndexWorker.remote() for _ in range(num_workers or 4)]
+       
+       def scan_project(self, file_paths: List[Path]) -> None:
+           """Distribute parsing across cluster/multiple machines."""
+           # Split files into batches
+           batch_size = len(file_paths) // len(self.workers)
+           batches = [file_paths[i:i+batch_size] for i in range(0, len(file_paths), batch_size)]
+           
+           # Submit batches to workers (can run on different machines)
+           futures = [worker.parse_files.remote(batch) for worker, batch in zip(self.workers, batches)]
+           
+           # Collect results
+           results = ray.get(futures)
+           
+           # Index results (single-threaded SQLite writes)
+           for batch_results in results:
+               for parsed_data in batch_results:
+                   self._index_parsed_data(parsed_data)
+   ```
+
+2. **Cloud deployment support**:
+   ```python
+   # Support for AWS Lambda, Google Cloud Functions for massive projects
+   # fpga_lib/cloud/lambda_indexer.py
+   def lambda_parse_handler(event, context):
+       """AWS Lambda function to parse single file."""
+       s3_path = event['s3_path']
+       file_content = download_from_s3(s3_path)
+       
+       parser = ParserFactory.get_parser(detect_format(s3_path))
+       ip_core = parser.parse_string(file_content)
+       
+       return ip_core.model_dump()
+   ```
+
+**Deliverable:** Distributed processing for enterprise-scale projects
+
+---
+
+### 6.3 User Experience & AI Integration (Week 20)
+
+**Tasks:**
+1. **AI-powered command palette** (VS Code style with suggestions):
    ```python
    # fpga_lib/gui/command_palette.py
    class CommandPalette(QDialog):
-       def __init__(self, plugin_manager: PluginManager):
+       def __init__(self, plugin_manager: PluginManager, ai_assistant: AiAssistantPlugin):
            super().__init__()
            self.commands = self._collect_commands(plugin_manager)
+           self.ai = ai_assistant
+           self.search_box = QLineEdit()
+           self.search_box.textChanged.connect(self.on_search_changed)
+       
+       def on_search_changed(self, text: str):
+           """Smart command suggestions using AI."""
+           # Traditional fuzzy match
+           fuzzy_matches = self._fuzzy_search(text)
+           
+           # AI-powered intent recognition
+           if len(text) > 10:  # Natural language query
+               # "show all timer cores" → SearchCommand with filter
+               # "generate vhdl for selected register" → GenerateCommand
+               suggested_commands = self.ai.interpret_command(text, self.commands)
+               matches = suggested_commands + fuzzy_matches
+           else:
+               matches = fuzzy_matches
+           
+           self.results_list.populate(matches)
        
        def _collect_commands(self, pm: PluginManager) -> List[Command]:
            commands = []
@@ -800,11 +1131,24 @@ Based on the comprehensive architecture in `docs/notes.md`, here's a phased impl
    - Right-click register → "Generate C Header", "Export to Excel", "Validate"
    - Right-click IP core → "Show Dependencies", "Open in Editor"
 
-**Deliverable:** Polished, keyboard-driven UI
+5. **Intelligent autocomplete**:
+   ```python
+   # AI-powered field suggestions
+   class RegisterNameCompleter(QCompleter):
+       def __init__(self, ai_assistant: AiAssistantPlugin):
+           super().__init__()
+           self.ai = ai_assistant
+       
+       def complete_register_name(self, partial: str, context: IpCore) -> List[str]:
+           """Suggest register names based on IP core context."""
+           return self.ai.suggest_register_names(f"{context.description} {partial}")
+   ```
+
+**Deliverable:** Polished, AI-enhanced, keyboard-driven UI
 
 ---
 
-### 6.2 Performance & Stability (Week 19)
+### 6.4 Performance & Stability (Week 21)
 
 **Tasks:**
 1. **Lazy loading**:
@@ -819,17 +1163,44 @@ Based on the comprehensive architecture in `docs/notes.md`, here's a phased impl
    - Close unused tabs automatically
    - Clear undo history for old edits
 
-4. **Profiling**:
+4. **Profiling and optimization**:
    ```bash
+   # Profile CPU usage
    python -m cProfile -o profile.stats fpga_tool gui
-   python -m pstats profile.stats
+   
+   # Profile GPU usage
+   nsys profile --stats=true python fpga_tool gui
+   
+   # Monitor memory
+   py-spy record -o profile.svg -- python fpga_tool gui
    ```
 
-**Deliverable:** Fast, stable application
+5. **Adaptive performance**:
+   ```python
+   # fpga_lib/perf/adaptive.py
+   class AdaptivePerformanceManager:
+       def __init__(self):
+           self.config = PerformanceConfig.auto_detect()
+       
+       def optimize_for_workload(self, num_files: int, avg_file_size: int):
+           """Adjust strategy based on workload."""
+           if num_files > 10000:
+               # Use distributed processing
+               self.enable_distributed()
+           elif num_files > 1000:
+               # Use multiprocessing
+               self.enable_multiprocessing()
+           
+           if torch.cuda.is_available() and avg_file_size > 1_000_000:
+               # GPU beneficial for large files
+               self.enable_gpu()
+   ```
+
+**Deliverable:** Fast, stable, auto-optimizing application
 
 ---
 
-### 6.3 Documentation & Examples (Week 20)
+### 6.5 Documentation & Examples (Week 22)
 
 **Tasks:**
 1. **User guide**:
@@ -842,7 +1213,31 @@ Based on the comprehensive architecture in `docs/notes.md`, here's a phased impl
    - "Converting VHDL to YAML"
    - "Setting up a project library"
 
-3. **Example projects**:
+3. **Performance configuration guide**:
+   ```markdown
+   # Performance Optimization Guide
+   
+   ## CPU-Only Systems
+   - Set `use_multiprocessing=True`
+   - Workers = CPU cores - 1
+   
+   ## GPU-Enabled Systems (NVIDIA/AMD)
+   - Set `use_gpu=True`
+   - Batch size = 1024 for RTX 3080+
+   - Use GPU for: semantic search, batch validation
+   
+   ## Distributed Clusters
+   - Set up Ray cluster
+   - Configure workers across nodes
+   - Ideal for 10,000+ IP core projects
+   
+   ## Cloud Deployment
+   - AWS Lambda: Serverless parsing
+   - S3: Store index and embeddings
+   - SageMaker: Host embedding model
+   ```
+
+4. **Example projects**:
    ```
    examples/
        projects/
@@ -855,6 +1250,9 @@ Based on the comprehensive architecture in `docs/notes.md`, here's a phased impl
                scaler.yml
                filter.yml
                dma.yml
+           enterprise_soc/  # Large project demonstrating distributed processing
+               1000+ IP cores
+               benchmark_results.md
    ```
 
 4. **Plugin template**:
@@ -873,11 +1271,20 @@ Based on the comprehensive architecture in `docs/notes.md`, here's a phased impl
 |-------|----------|------------------|
 | **Phase 1: Core Foundation** | 3 weeks | Pydantic models, parser/generator registry, CLI tool |
 | **Phase 2: CLI Tool** | 2 weeks | Working CLI, tests, docs |
-| **Phase 3: Library Manager** | 3 weeks | Fast indexing, search, dependency graph |
+| **Phase 3: Library Manager** | 3 weeks | Parallel indexing, AI semantic search, dependency graph |
 | **Phase 4: GUI Foundation** | 4 weeks | Plugin host, event bus, first plugin (memory map editor) |
-| **Phase 5: Additional Plugins** | 4 weeks | Explorer, bus config, preview, docs |
-| **Phase 6: Polish** | 4 weeks | UX, performance, documentation |
-| **Total** | **20 weeks** (~5 months) | Full-featured application |
+| **Phase 5: Additional Plugins** | 5 weeks | Explorer, bus config, preview, AI assistant, docs |
+| **Phase 6: Advanced Features** | 5 weeks | GPU acceleration, distributed processing, AI integration, polish |
+| **Total** | **22 weeks** (~5.5 months) | Full-featured AI-enhanced application |
+
+### Hardware Requirements by Tier
+
+| Tier | CPU | RAM | GPU | Use Case |
+|------|-----|-----|-----|----------|
+| **Basic** | 4 cores | 8 GB | None | Small projects (<100 cores), keyword search |
+| **Standard** | 8 cores | 16 GB | None | Medium projects (<1000 cores), semantic search on CPU |
+| **Advanced** | 16 cores | 32 GB | RTX 3060+ | Large projects (<10K cores), GPU-accelerated search |
+| **Enterprise** | Cluster | Distributed | Multi-GPU | Massive projects (10K+ cores), distributed indexing |
 
 ---
 
@@ -888,6 +1295,10 @@ Based on the comprehensive architecture in `docs/notes.md`, here's a phased impl
 3. **Incremental releases**: Ship CLI tool after Phase 2, GUI shell after Phase 4
 4. **Test continuously**: Each phase has tests before moving forward
 5. **Document as you go**: API docs written alongside code
+6. **Performance from day one**: Use multiprocessing by default, GPU when available
+7. **AI as enhancement**: Traditional search works without AI, but AI improves UX
+8. **Privacy-first AI**: Support local LLMs (llama.cpp) for air-gapped environments
+9. **Graceful degradation**: All features work on CPU-only systems, GPU optional
 
 ---
 
@@ -897,5 +1308,54 @@ Based on the comprehensive architecture in `docs/notes.md`, here's a phased impl
 2. **Week 1, Day 2**: Integrate with existing `Register` class
 3. **Week 1, Day 3**: Add validation methods
 4. **Week 1, Day 4-5**: Create test suite for models
+5. **Week 1, Day 5**: Add performance config with multiprocessing support
 
-This plan builds incrementally, allowing you to ship useful tools early (CLI) while working toward the full vision (plugin-based GUI). Each phase has clear deliverables and can be validated independently.
+## Optional Dependencies by Feature
+
+```toml
+# pyproject.toml
+[project.optional-dependencies]
+# Multiprocessing (enabled by default, no extra deps)
+multiprocessing = []
+
+# GPU acceleration (NVIDIA CUDA)
+gpu = [
+    "torch>=2.0",
+    "cupy-cuda12x>=12.0",  # Match your CUDA version
+]
+
+# AI features (semantic search, code generation)
+ai = [
+    "sentence-transformers>=2.2",
+    "transformers>=4.30",
+    "llama-cpp-python>=0.2",  # Local LLM support
+    "openai>=1.0",  # Optional: API-based LLM
+]
+
+# Distributed processing (enterprise)
+distributed = [
+    "ray[default]>=2.5",
+]
+
+# Full installation (all features)
+full = [
+    "fpga_lib[gpu,ai,distributed]",
+]
+```
+
+**Installation Examples:**
+```bash
+# Basic (CPU only, multiprocessing)
+pip install fpga_lib
+
+# With AI features (CPU-based embeddings)
+pip install fpga_lib[ai]
+
+# With GPU acceleration
+pip install fpga_lib[gpu,ai]
+
+# Enterprise (all features)
+pip install fpga_lib[full]
+```
+
+This plan builds incrementally, allowing you to ship useful tools early (CLI) while working toward the full vision (AI-enhanced, GPU-accelerated, plugin-based GUI). Each phase has clear deliverables and can be validated independently. Performance optimizations (multiprocessing, GPU, distributed) are designed as opt-in enhancements that don't break the core functionality.
