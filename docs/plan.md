@@ -4,6 +4,87 @@ Based on the comprehensive architecture in `docs/notes.md`, here's a phased impl
 
 ---
 
+## LLM Integration Strategy Overview
+
+### Why Integrate LLM?
+
+Traditional HDL parsing faces challenges that AI naturally solves:
+
+1. **Ambiguity Resolution**: VHDL code often lacks explicit metadata (which signals form a bus interface?)
+2. **Natural Language Understanding**: Comments contain valuable semantic information
+3. **Pattern Recognition**: Identifying non-standard conventions across different coding styles
+4. **Semantic Search**: Finding IP cores by functionality, not just keywords
+5. **Code Quality**: Suggesting improvements based on best practices
+
+### Integration Philosophy: "Hybrid Intelligence"
+
+**NOT**: Replace deterministic parsing with unreliable LLM
+**YES**: Enhance reliable parsing with intelligent interpretation
+
+```
+┌────────────────────────────────────────────────────┐
+│                    Input VHDL                      │
+└──────────────┬─────────────────────────────────────┘
+               │
+               ▼
+┌──────────────────────────────────────────────────┐
+│  Phase 1: pyparsing (Deterministic)              │
+│  • Extract entity, ports, generics               │
+│  • Reliable structure extraction                 │
+│  • Always succeeds (or fails clearly)            │
+└──────────────┬───────────────────────────────────┘
+               │
+               ▼
+┌──────────────────────────────────────────────────┐
+│  Phase 2: LLM (Intelligent - OPTIONAL)           │
+│  • Analyze comments for bus interfaces           │
+│  • Infer missing metadata                        │
+│  • Suggest improvements                          │
+│  • Graceful fallback if unavailable              │
+└──────────────┬───────────────────────────────────┘
+               │
+               ▼
+┌──────────────────────────────────────────────────┐
+│         Canonical IpCore Model                   │
+└──────────────────────────────────────────────────┘
+```
+
+### Where LLM Adds Value
+
+| Use Case | Traditional Approach | LLM Enhancement |
+|----------|---------------------|-----------------|
+| Bus interface detection | Manual YAML annotation | Auto-detect from signals/comments |
+| Documentation | Parse explicit comments only | Generate from context + naming |
+| Search | Keyword matching | Semantic similarity ("timer" = "counter") |
+| Code review | Static analysis rules | Context-aware suggestions |
+| Migration | Manual conversion | Intelligent upgrade recommendations |
+
+### Design Principles
+
+1. **Optional & Configurable**: `--enable-ai` flag, off by default
+2. **Local-First**: Default to Ollama (privacy + no API costs)
+3. **Graceful Degradation**: Core functionality works without LLM
+4. **Reuse Proven Patterns**: Leverage `llm_core` from `summarize_webpage`
+5. **Educational**: Demonstrate practical AI in domain-specific tools
+
+### Implementation Pattern
+
+Following the **Provider + Strategy pattern** from `llm_core`:
+
+```python
+# Configuration
+class ParserConfig(BaseModel):
+    enable_llm: bool = False          # Explicit opt-in
+    llm_provider: str = "ollama"      # Local by default
+    llm_model: str = "llama3.3:latest"
+
+# Usage
+parser = VhdlParser(config=ParserConfig(enable_llm=True))
+ip_core = parser.parse("timer.vhd")  # AI-enhanced if available
+```
+
+---
+
 ## Phase 1: Core Foundation (Weeks 1-3)
 
 ### 1.1 Canonical Data Model (Week 1)
@@ -88,11 +169,56 @@ Based on the comprehensive architecture in `docs/notes.md`, here's a phased impl
    - Extend to parse full IP core definitions (not just memory maps)
    - Support the enhanced YAML schema from `docs/notes.md`
 
-2. **VHDL Parser** (enhance existing):
+2. **VHDL Parser with AI Enhancement** (enhance existing):
    - Build on existing `fpga_lib/parser/hdl/vhdl_parser.py`
-   - Use `pyparsing` for robust entity extraction
-   - Handle generics, ports with expressions (`DATA_WIDTH - 1`)
-   - Extract bus interface hints from comments or pragmas
+   - **Phase 1 (pyparsing)**: Robust entity extraction
+     - Use `pyparsing` for deterministic parsing of entity, ports, generics
+     - Extract basic structure reliably
+   - **Phase 2 (LLM-powered)**: Intelligent interpretation
+     - Integrate `llm_core` providers for AI-powered analysis
+     - Extract bus interface hints from comments/pragmas (e.g., "AXI4-Lite slave")
+     - Group related signals into logical bus interfaces (e.g., signals with `axi_` prefix)
+     - Handle complex expressions (`DATA_WIDTH - 1`, `2**N - 1`)
+     - Infer missing metadata (address widths, protocol types)
+     - Gracefully handle non-standard/vendor-specific conventions
+   - **Hybrid Strategy Pattern**:
+     ```python
+     class VhdlParserStrategy:
+         def __init__(self, llm_provider: Optional[BaseProvider] = None):
+             self.pyparsing_parser = VhdlPyparsingParser()
+             self.llm_provider = llm_provider  # Optional AI enhancement
+         
+         def parse(self, vhdl_text: str) -> IpCore:
+             # Step 1: Deterministic parsing
+             entity_data = self.pyparsing_parser.parse(vhdl_text)
+             
+             # Step 2: AI-enhanced interpretation (if LLM available)
+             if self.llm_provider:
+                 entity_data = self._enhance_with_llm(entity_data, vhdl_text)
+             
+             return self._to_canonical_model(entity_data)
+         
+         def _enhance_with_llm(self, entity_data, vhdl_text):
+             """Use LLM to extract bus interfaces from comments/conventions."""
+             prompt = f"""
+             Analyze this VHDL entity and identify bus interfaces:
+             
+             Entity: {entity_data['name']}
+             Ports: {entity_data['ports']}
+             Comments: {self._extract_comments(vhdl_text)}
+             
+             Identify:
+             1. Which ports belong to standard bus interfaces (AXI, Avalon, etc.)
+             2. Bus interface type and role (master/slave)
+             3. Any missing metadata from comments
+             
+             Return structured JSON.
+             """
+             # Use llm_core provider pattern
+             bus_interfaces = self.llm_provider.analyze(prompt)
+             entity_data['bus_interfaces'] = bus_interfaces
+             return entity_data
+     ```
 
 3. **Create Parser Registry**:
    ```python
@@ -121,7 +247,20 @@ Based on the comprehensive architecture in `docs/notes.md`, here's a phased impl
    - Clear error messages with line numbers
    - Option to parse with warnings vs strict mode
 
-**Deliverable:** Pluggable parser system that converts YAML/VHDL → `IpCore` model
+5. **LLM Integration Setup**:
+   - Add `llm_core` as dependency to `fpga_lib`
+   - Create configuration for LLM provider selection:
+     ```python
+     # fpga_lib/config.py
+     class ParserConfig(BaseModel):
+         enable_llm_enhancement: bool = False  # Opt-in
+         llm_provider: Optional[str] = "ollama"  # Default to local
+         llm_model: Optional[str] = "llama3.3:latest"
+     ```
+   - Fallback gracefully: If LLM unavailable, use pyparsing-only mode
+   - Add CLI flag: `fpga-lib parse --enable-ai input.vhd`
+
+**Deliverable:** Pluggable parser system (YAML/VHDL → `IpCore` model) with optional AI enhancement
 
 ---
 
@@ -313,6 +452,182 @@ Based on the comprehensive architecture in `docs/notes.md`, here's a phased impl
 
 ---
 
+## Phase 2.3: LLM Integration Use Cases (Week 5.5)
+**Goal:** Define where AI adds value beyond basic parsing
+
+### LLM Enhancement Scenarios
+
+**1. Bus Interface Auto-Detection**
+```python
+# Input: VHDL with unclear bus grouping
+# LLM analyzes:
+# - Signal naming conventions (axi_*, m_axis_*)
+# - Comments ("AXI4-Lite slave interface")
+# - Port groupings in entity
+# 
+# Output: Structured bus interface metadata
+{
+    "name": "s_axi",
+    "type": "AXI4_LITE",
+    "role": "slave",
+    "signals": {
+        "awaddr": "s_axi_awaddr",
+        "awvalid": "s_axi_awvalid",
+        ...
+    }
+}
+```
+
+**2. Documentation Generation**
+```python
+# Input: Sparse comments in VHDL
+# LLM generates:
+# - Register descriptions based on names
+# - Bitfield purposes from context
+# - Usage examples
+# 
+# Example:
+# CTRL_REG (0x00) → "Control register for enabling/disabling core"
+# STATUS_REG (0x04) → "Status register with interrupt flags"
+```
+
+**3. Code Quality Analysis**
+```python
+# LLM reviews VHDL and suggests:
+# - Missing reset conditions
+# - Potential timing issues
+# - Non-standard conventions
+# - Improvement opportunities
+```
+
+**4. Semantic Search Enhancement**
+```python
+# Query: "timer with interrupt support"
+# Traditional search: keyword matching
+# LLM search: 
+#   - Understands "timer" could be "counter" or "watchdog"
+#   - Recognizes "interrupt" might be "irq" or "event"
+#   - Ranks by functional similarity, not just text match
+```
+
+**5. Migration Assistant**
+```python
+# Input: Old VHDL coding style
+# LLM suggests:
+# - Modern VHDL-2008 equivalents
+# - Standard bus interface conversions
+# - Synthesis-friendly alternatives
+```
+
+### Implementation Pattern (mirrors summarizer.py)
+
+```python
+# fpga_lib/ai/vhdl_analyzer.py
+from llm_core.providers import BaseProvider
+from rich.console import Console
+
+class VhdlAiAnalyzer:
+    """AI-powered VHDL analysis using llm_core providers."""
+    
+    def __init__(self, provider: BaseProvider):
+        self.provider = provider
+        self.console = Console()
+    
+    def detect_bus_interfaces(self, entity_data: Dict, vhdl_text: str) -> List[BusInterface]:
+        """Use LLM to identify bus interfaces from VHDL code."""
+        
+        if not self.provider.api_key and self.provider.name != "Ollama":
+            self.console.print(f"[yellow]LLM provider not configured, skipping AI enhancement[/yellow]")
+            return []
+        
+        system_prompt = """
+        You are an expert FPGA engineer analyzing VHDL code.
+        Identify standard bus interfaces (AXI, Avalon, Wishbone, etc.) from:
+        1. Signal naming conventions
+        2. Comments and pragmas
+        3. Port groupings
+        
+        Return structured JSON with bus interface metadata.
+        """
+        
+        user_prompt = f"""
+        Entity: {entity_data['name']}
+        Ports: {json.dumps(entity_data['ports'], indent=2)}
+        
+        VHDL Code:
+        {vhdl_text[:2000]}  # First 2000 chars for context
+        
+        Identify all bus interfaces and return as JSON array:
+        [
+          {{
+            "name": "s_axi",
+            "type": "AXI4_LITE",
+            "role": "slave",
+            "signals": {{"awaddr": "s_axi_awaddr", ...}}
+          }}
+        ]
+        """
+        
+        with self.console.status("[green]Analyzing with AI..."):
+            client = self.provider.get_client()
+            result = self.provider.analyze(client, user_prompt, system_prompt)
+        
+        return self._parse_llm_response(result)
+```
+
+### Configuration & Fallback
+
+```python
+# Example usage in VHDL parser
+class VhdlParser:
+    def __init__(self, config: ParserConfig):
+        self.pyparsing_parser = VhdlPyparsingParser()
+        
+        # Optional LLM enhancement
+        if config.enable_llm_enhancement:
+            from llm_core.providers import OllamaProvider, OpenAIProvider
+            
+            if config.llm_provider == "ollama":
+                llm = OllamaProvider(model_name=config.llm_model)
+            elif config.llm_provider == "openai":
+                llm = OpenAIProvider(model_name=config.llm_model)
+            else:
+                llm = None
+            
+            self.ai_analyzer = VhdlAiAnalyzer(llm) if llm else None
+        else:
+            self.ai_analyzer = None
+    
+    def parse(self, vhdl_text: str) -> IpCore:
+        # Step 1: Deterministic parsing (always runs)
+        entity_data = self.pyparsing_parser.parse(vhdl_text)
+        
+        # Step 2: AI enhancement (optional, graceful fallback)
+        if self.ai_analyzer:
+            try:
+                bus_interfaces = self.ai_analyzer.detect_bus_interfaces(
+                    entity_data, vhdl_text
+                )
+                entity_data['bus_interfaces'] = bus_interfaces
+            except Exception as e:
+                # Graceful degradation: log warning, continue without AI
+                logger.warning(f"LLM enhancement failed: {e}, continuing with basic parsing")
+        
+        return self._to_canonical_model(entity_data)
+```
+
+### Benefits of This Approach
+
+1. **Optional & Local-First**: Defaults to Ollama (no API costs, no privacy concerns)
+2. **Graceful Degradation**: Works without LLM, enhanced with LLM
+3. **Reuses llm_core**: Proven provider abstraction from `summarize_webpage`
+4. **User Control**: CLI flag `--enable-ai` for explicit opt-in
+5. **Educational**: Shows practical AI integration in domain-specific tools
+
+**Deliverable:** AI-enhanced parser with multiple use cases, following llm_core patterns
+
+---
+
 ## Phase 3: IP Core Library Manager (Weeks 6-8)
 
 ### 3.1 Indexing System (Week 6)
@@ -387,17 +702,20 @@ Based on the comprehensive architecture in `docs/notes.md`, here's a phased impl
            # Setup as in notes.md
    ```
 
-4. **AI-powered query engine**:
+4. **AI-powered query engine with LLM fallback**:
    ```python
    # fpga_lib/library/query.py
    import numpy as np
    from sentence_transformers import SentenceTransformer
+   from typing import Optional
+   from llm_core.providers import BaseProvider
    
    class IpCoreQuery:
-       def __init__(self, db_path: Path):
-           # Load lightweight embedding model (runs on CPU)
+       def __init__(self, db_path: Path, llm_provider: Optional[BaseProvider] = None):
+           # Lightweight embedding model (runs on CPU, no GPU needed)
            self.embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
            self.db = sqlite3.connect(db_path)
+           self.llm_provider = llm_provider  # Optional LLM for query expansion
        
        def find_by_name(self, pattern: str) -> List[IpCoreMetadata]:
            pass
@@ -417,8 +735,11 @@ Based on the comprehensive architecture in `docs/notes.md`, here's a phased impl
            - "DMA controller for video streaming"
            - "cores similar to AXI GPIO"
            """
+           # Optional: Use LLM to expand/clarify query
+           expanded_query = self._expand_query_with_llm(query) if self.llm_provider else query
+           
            # Generate query embedding
-           query_embedding = self.embedding_model.encode(query)
+           query_embedding = self.embedding_model.encode(expanded_query)
            
            # Compute cosine similarity with all indexed cores
            cursor = self.db.execute("SELECT core_id, embedding FROM embeddings")
@@ -432,6 +753,34 @@ Based on the comprehensive architecture in `docs/notes.md`, here's a phased impl
            top_cores = sorted(scores, key=lambda x: x[1], reverse=True)[:top_k]
            return [self._load_metadata(core_id) for core_id, _ in top_cores]
        
+       def _expand_query_with_llm(self, query: str) -> str:
+           """Use LLM to expand natural language query into technical terms.
+           
+           Example:
+           Input: "I need something to count time"
+           Output: "timer counter watchdog periodic interrupt"
+           """
+           prompt = f"""
+           Convert this natural language query into technical FPGA/HDL terms.
+           Add synonyms and related terms. Keep it concise.
+           
+           Query: "{query}"
+           
+           Return only the expanded technical query (no explanation).
+           """
+           
+           try:
+               client = self.llm_provider.get_client()
+               expanded = self.llm_provider.summarize(
+                   client, prompt, 
+                   system_prompt="You are an FPGA engineering assistant.",
+                   user_prompt_prefix=""
+               )
+               return expanded.strip()
+           except Exception as e:
+               logger.warning(f"Query expansion failed: {e}, using original query")
+               return query
+       
        def generate_embeddings_batch(self, cores: List[IpCore]) -> None:
            """Generate embeddings for multiple cores in parallel."""
            texts = [f"{c.description} {c.vlnv.name}" for c in cores]
@@ -441,7 +790,7 @@ Based on the comprehensive architecture in `docs/notes.md`, here's a phased impl
                self._store_embedding(core.vlnv, embedding)
    ```
 
-**Deliverable:** Fast parallel indexing with AI-powered semantic search backend
+**Deliverable:** Fast parallel indexing with AI-powered semantic search backend + optional LLM query expansion
 
 ---
 
