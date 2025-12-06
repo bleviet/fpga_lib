@@ -70,7 +70,29 @@ class YamlIpCoreParser:
 
     @staticmethod
     def _filter_none(data: Dict[str, Any]) -> Dict[str, Any]:
-        """Remove keys with None values from dictionary."""
+        """
+        Remove keys with None values from dictionary.
+
+        This is required for Pydantic v2 compatibility. When a model field has
+        a default value or default_factory, passing None explicitly causes
+        validation errors. By filtering None values, we let Pydantic use its
+        own defaults instead.
+
+        Args:
+            data: Dictionary that may contain None values
+
+        Returns:
+            Dictionary with all None-valued keys removed
+
+        Example:
+            >>> # Without filtering - FAILS if description has default value:
+            >>> Clock(name="CLK", description=None)
+            ValidationError: description field expects string, got None
+
+            >>> # With filtering - WORKS:
+            >>> Clock(**_filter_none({"name": "CLK", "description": None}))
+            Clock(name="CLK", description="")  # Uses default value
+        """
         return {k: v for k, v in data.items() if v is not None}
 
     def parse_file(self, file_path: Union[str, Path]) -> IpCore:
@@ -149,7 +171,7 @@ class YamlIpCoreParser:
         # Parse file sets (may include imports)
         file_sets = self._parse_file_sets(data.get("fileSets", []), file_path)
 
-        # Create IpCore model - use _filter_none to avoid passing None for lists
+        # Create IpCore model - only pass non-empty values to use Pydantic defaults
         kwargs = {
             "api_version": api_version,
             "vlnv": vlnv,
