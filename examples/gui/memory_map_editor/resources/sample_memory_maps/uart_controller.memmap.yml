@@ -1,0 +1,186 @@
+# uart_controller.memmap.yml
+#
+# Defines the memory map for the UART Controller component.
+# High-speed UART with FIFO buffers.
+
+---
+# The list of memory maps
+- name: "CSR_MAP"
+  description: "Control/Status Registers for UART Controller"
+
+  addressBlocks:
+    # --- Block 1: Control and Status Registers ---
+    - name: "CONTROL_STATUS_REGS"
+      offset: 0x0000
+      usage: "register"
+      defaultRegWidth: 32
+
+      registers:
+        # Generator assigns offset: 0x00
+        - name: "CONTROL"
+          description: "UART control register"
+          fields:
+            - {
+                name: "ENABLE",
+                bitWidth: 1,
+                access: "read-write",
+                description: "UART enable",
+              }
+            - {
+                name: "PARITY_ENABLE",
+                bitWidth: 1,
+                access: "read-write",
+                description: "Parity enable",
+              }
+            - {
+                name: "PARITY_ODD",
+                bitWidth: 1,
+                access: "read-write",
+                description: "Odd parity (0=even, 1=odd)",
+              }
+            - {
+                name: "STOP_BITS",
+                bitWidth: 1,
+                access: "read-write",
+                description: "Stop bits (0=1 bit, 1=2 bits)",
+              }
+            - {
+                name: "DATA_BITS",
+                bitWidth: 2,
+                access: "read-write",
+                description: "Data bits (0=5, 1=6, 2=7, 3=8)",
+              }
+            - {
+                name: "FLOW_CONTROL",
+                bitWidth: 2,
+                access: "read-write",
+                description: "Flow control (0=none, 1=RTS/CTS)",
+              }
+            - { name: "RESERVED", bitWidth: 24, access: "read-only" }
+
+        # Generator assigns offset: 0x04
+        - name: "STATUS"
+          description: "UART status register"
+          access: "read-only"
+          fields:
+            - {
+                name: "TX_READY",
+                bitWidth: 1,
+                access: "read-only",
+                description: "Transmitter ready",
+              }
+            - {
+                name: "RX_VALID",
+                bitWidth: 1,
+                access: "read-only",
+                description: "Receiver data valid",
+              }
+            - {
+                name: "TX_EMPTY",
+                bitWidth: 1,
+                access: "read-only",
+                description: "Transmit buffer empty",
+              }
+            - {
+                name: "RX_FULL",
+                bitWidth: 1,
+                access: "read-only",
+                description: "Receive buffer full",
+              }
+            - {
+                name: "PARITY_ERROR",
+                bitWidth: 1,
+                access: "read-only",
+                description: "Parity error flag",
+              }
+            - {
+                name: "FRAME_ERROR",
+                bitWidth: 1,
+                access: "read-only",
+                description: "Frame error flag",
+              }
+            - {
+                name: "OVERRUN_ERROR",
+                bitWidth: 1,
+                access: "read-only",
+                description: "Overrun error flag",
+              }
+            - { name: "RESERVED", bitWidth: 25, access: "read-only" }
+
+        # Generator assigns offset: 0x08
+        - name: "BAUD_RATE"
+          description: "Baud rate configuration"
+          fields:
+            - {
+                name: "DIVISOR",
+                bitWidth: 16,
+                access: "read-write",
+                description: "Baud rate divisor",
+              }
+            - {
+                name: "PRESCALER",
+                bitWidth: 8,
+                access: "read-write",
+                description: "Clock prescaler",
+              }
+            - { name: "RESERVED", bitWidth: 8, access: "read-only" }
+
+        # Generator assigns offset: 0x0C
+        - name: "TX_DATA"
+          description: "Transmit data register"
+          access: "write-only"
+          fields:
+            - {
+                name: "DATA",
+                bitWidth: 8,
+                access: "write-only",
+                description: "Transmit data",
+              }
+            - { name: "RESERVED", bitWidth: 24, access: "read-only" }
+
+        # Generator assigns offset: 0x10
+        - name: "RX_DATA"
+          description: "Receive data register"
+          access: "read-only"
+          fields:
+            - {
+                name: "DATA",
+                bitWidth: 8,
+                access: "read-only",
+                description: "Received data",
+              }
+            - { name: "RESERVED", bitWidth: 24, access: "read-only" }
+
+    # --- Block 2: FIFO Buffers ---
+    - name: "FIFO_BUFFERS"
+      offset: 0x0200
+      usage: "register"
+      defaultRegWidth: 32
+
+      registers:
+        # FIFO buffer entries (16 instances)
+        # Generator will create: FIFO_ENTRY_0, FIFO_ENTRY_1, ..., FIFO_ENTRY_15
+        - name: "FIFO_ENTRY"
+          count: 16
+          stride: 4
+          description: "FIFO buffer entry"
+          fields:
+            - {
+                name: "TX_DATA",
+                bitWidth: 8,
+                access: "read-write",
+                description: "TX FIFO data",
+              }
+            - {
+                name: "RX_DATA",
+                bitWidth: 8,
+                access: "read-only",
+                description: "RX FIFO data",
+              }
+            - { name: "RESERVED", bitWidth: 15, access: "read-only" }
+            - {
+                name: "VALID",
+                bitWidth: 1,
+                access: "read-write",
+                description: "Entry valid flag",
+              }

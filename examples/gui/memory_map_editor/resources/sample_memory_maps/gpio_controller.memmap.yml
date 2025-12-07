@@ -1,0 +1,137 @@
+# gpio_controller.memmap.yml
+#
+# Defines the memory map for the GPIO Controller component.
+# 32-channel GPIO controller with configurable pins.
+
+---
+# The list of memory maps
+- name: "CSR_MAP"
+  description: "Control/Status Registers for GPIO Controller"
+
+  addressBlocks:
+      # --- Block 1: Control and Status Registers ---
+      - name: "CONTROL_STATUS_REGS"
+        offset: 0x0000
+        usage: "register"
+        defaultRegWidth: 32
+
+        registers:
+            # Generator assigns offset: 0x00
+            - name: "CONTROL"
+              description: "Main control register"
+              fields:
+                  - {
+                        name: "ENABLE",
+                        bitWidth: 1,
+                        access: "read-write",
+                        description: "Enable GPIO controller",
+                    }
+                  - {
+                        name: "INTERRUPT_ENABLE",
+                        bitWidth: 1,
+                        access: "read-write",
+                        description: "Enable global interrupts",
+                    }
+                  - {
+                        name: "MODE",
+                        bitWidth: 2,
+                        access: "read-write",
+                        description: "Operating mode (0=normal, 1=test, 2=low_power)",
+                    }
+                  - { name: "RESERVED_LOW", bitWidth: 20, access: "read-only" }
+                  - {
+                        name: "VERSION",
+                        bitWidth: 8,
+                        access: "read-only",
+                        description: "Hardware version",
+                    }
+
+            # Generator assigns offset: 0x04
+            - name: "STATUS"
+              description: "Status register"
+              access: "read-only"
+              fields:
+                  - {
+                        name: "READY",
+                        bitWidth: 1,
+                        access: "read-only",
+                        description: "Controller ready",
+                    }
+                  - {
+                        name: "ERROR",
+                        bitWidth: 1,
+                        access: "read-only",
+                        description: "Error condition",
+                    }
+                  - {
+                        name: "INTERRUPT_PENDING",
+                        bitWidth: 1,
+                        access: "read-only",
+                        description: "Interrupt pending",
+                    }
+                  - { name: "RESERVED_LOW", bitWidth: 5, access: "read-only" }
+                  - {
+                        name: "ACTIVE_PINS",
+                        bitWidth: 8,
+                        access: "read-only",
+                        description: "Number of active pins",
+                    }
+                  - { name: "RESERVED_HIGH", bitWidth: 16, access: "read-only" }
+
+            # Generator assigns offset: 0x08
+            - name: "INTERRUPT_MASK"
+              description: "Interrupt mask register (1=enabled, 0=disabled)"
+              fields:
+                  - { name: "MASK_BITS", bitWidth: 32, access: "read-write" }
+
+      # --- Block 2: GPIO Pin Configuration Array ---
+      - name: "GPIO_PIN_ARRAY"
+        offset: 0x0100
+        usage: "register"
+        defaultRegWidth: 32
+
+        registers:
+            # GPIO pin configuration registers (32 instances)
+            # Generator will create: GPIO_PIN_0, GPIO_PIN_1, ..., GPIO_PIN_31
+            - name: "GPIO_PIN"
+              count: 32
+              stride: 4
+              description: "GPIO pin configuration register"
+              fields:
+                  - {
+                        name: "VALUE",
+                        bitWidth: 1,
+                        access: "read-write",
+                        description: "Pin output value",
+                    }
+                  - {
+                        name: "DIRECTION",
+                        bitWidth: 1,
+                        access: "read-write",
+                        description: "Pin direction (0=input, 1=output)",
+                    }
+                  - {
+                        name: "PULL_ENABLE",
+                        bitWidth: 1,
+                        access: "read-write",
+                        description: "Enable pull resistor",
+                    }
+                  - {
+                        name: "PULL_UP",
+                        bitWidth: 1,
+                        access: "read-write",
+                        description: "Pull direction (0=down, 1=up)",
+                    }
+                  - {
+                        name: "INTERRUPT_ENABLE",
+                        bitWidth: 1,
+                        access: "read-write",
+                        description: "Enable interrupt for this pin",
+                    }
+                  - {
+                        name: "INTERRUPT_TYPE",
+                        bitWidth: 2,
+                        access: "read-write",
+                        description: "Interrupt type (0=level, 1=edge, 2=both)",
+                    }
+                  - { name: "RESERVED", bitWidth: 25, access: "read-only" }

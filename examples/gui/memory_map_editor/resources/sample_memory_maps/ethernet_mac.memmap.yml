@@ -1,0 +1,273 @@
+# ethernet_mac.memmap.yml
+#
+# Defines the memory map for the Ethernet MAC component.
+# Gigabit Ethernet MAC controller with configuration registers.
+
+---
+# The list of memory maps
+- name: "CSR_MAP"
+  description: "Control/Status Registers for Ethernet MAC"
+
+  addressBlocks:
+    # --- Block 1: MAC Configuration Registers ---
+    - name: "MAC_CONFIG_REGS"
+      offset: 0x0000
+      usage: "register"
+      defaultRegWidth: 32
+
+      registers:
+        # Generator assigns offset: 0x00
+        - name: "MAC_CONFIG"
+          description: "MAC configuration register"
+          fields:
+            - {
+                name: "ENABLE_TX",
+                bitWidth: 1,
+                access: "read-write",
+                description: "Enable transmission",
+              }
+            - {
+                name: "ENABLE_RX",
+                bitWidth: 1,
+                access: "read-write",
+                description: "Enable reception",
+              }
+            - {
+                name: "DUPLEX_MODE",
+                bitWidth: 1,
+                access: "read-write",
+                description: "Full duplex mode",
+              }
+            - {
+                name: "SPEED",
+                bitWidth: 2,
+                access: "read-write",
+                description: "Link speed (00=10M, 01=100M, 10=1G)",
+              }
+            - {
+                name: "LOOPBACK",
+                bitWidth: 1,
+                access: "read-write",
+                description: "Loopback mode",
+              }
+            - {
+                name: "AUTO_PAD",
+                bitWidth: 1,
+                access: "read-write",
+                description: "Automatic padding",
+              }
+            - {
+                name: "CRC_ENABLE",
+                bitWidth: 1,
+                access: "read-write",
+                description: "CRC generation/checking",
+              }
+            - { name: "RESERVED", bitWidth: 24, access: "read-only" }
+
+        # Generator assigns offset: 0x04
+        - name: "MAC_STATUS"
+          description: "MAC status register"
+          access: "read-only"
+          fields:
+            - {
+                name: "LINK_UP",
+                bitWidth: 1,
+                access: "read-only",
+                description: "Link status",
+              }
+            - {
+                name: "TX_ACTIVE",
+                bitWidth: 1,
+                access: "read-only",
+                description: "Transmission active",
+              }
+            - {
+                name: "RX_ACTIVE",
+                bitWidth: 1,
+                access: "read-only",
+                description: "Reception active",
+              }
+            - {
+                name: "SPEED_DETECTED",
+                bitWidth: 2,
+                access: "read-only",
+                description: "Detected link speed",
+              }
+            - {
+                name: "DUPLEX_DETECTED",
+                bitWidth: 1,
+                access: "read-only",
+                description: "Detected duplex mode",
+              }
+            - { name: "RESERVED", bitWidth: 26, access: "read-only" }
+
+        # Generator assigns offset: 0x08
+        - name: "MAC_ADDRESS_LOW"
+          description: "MAC address lower 32 bits [31:0]"
+          fields:
+            - { name: "ADDRESS", bitWidth: 32, access: "read-write" }
+
+        # Generator assigns offset: 0x0C
+        - name: "MAC_ADDRESS_HIGH"
+          description: "MAC address upper 16 bits [47:32]"
+          fields:
+            - {
+                name: "ADDRESS",
+                bitWidth: 16,
+                access: "read-write",
+                description: "MAC address bits [47:32]",
+              }
+            - { name: "RESERVED", bitWidth: 15, access: "read-only" }
+            - {
+                name: "VALID",
+                bitWidth: 1,
+                access: "read-write",
+                description: "MAC address valid",
+              }
+
+        # Generator assigns offset: 0x10
+        - name: "INTERRUPT_STATUS"
+          description: "Interrupt status register (Write 1 to clear)"
+          access: "write-1-to-clear"
+          fields:
+            - {
+                name: "TX_COMPLETE",
+                bitWidth: 1,
+                access: "write-1-to-clear",
+                description: "Transmission complete",
+              }
+            - {
+                name: "RX_COMPLETE",
+                bitWidth: 1,
+                access: "write-1-to-clear",
+                description: "Reception complete",
+              }
+            - {
+                name: "TX_ERROR",
+                bitWidth: 1,
+                access: "write-1-to-clear",
+                description: "Transmission error",
+              }
+            - {
+                name: "RX_ERROR",
+                bitWidth: 1,
+                access: "write-1-to-clear",
+                description: "Reception error",
+              }
+            - {
+                name: "LINK_CHANGE",
+                bitWidth: 1,
+                access: "write-1-to-clear",
+                description: "Link status change",
+              }
+            - { name: "RESERVED", bitWidth: 27, access: "read-only" }
+
+        # Generator assigns offset: 0x14
+        - name: "INTERRUPT_ENABLE"
+          description: "Interrupt enable register"
+          fields:
+            - {
+                name: "TX_COMPLETE_EN",
+                bitWidth: 1,
+                access: "read-write",
+                description: "Enable TX complete interrupt",
+              }
+            - {
+                name: "RX_COMPLETE_EN",
+                bitWidth: 1,
+                access: "read-write",
+                description: "Enable RX complete interrupt",
+              }
+            - {
+                name: "TX_ERROR_EN",
+                bitWidth: 1,
+                access: "read-write",
+                description: "Enable TX error interrupt",
+              }
+            - {
+                name: "RX_ERROR_EN",
+                bitWidth: 1,
+                access: "read-write",
+                description: "Enable RX error interrupt",
+              }
+            - {
+                name: "LINK_CHANGE_EN",
+                bitWidth: 1,
+                access: "read-write",
+                description: "Enable link change interrupt",
+              }
+            - { name: "RESERVED", bitWidth: 27, access: "read-only" }
+
+    # --- Block 2: RX Buffer Descriptors ---
+    - name: "RX_BUFFERS"
+      offset: 0x1000
+      usage: "register"
+      defaultRegWidth: 32
+
+      registers:
+        # RX buffer address registers (16 instances)
+        # Generator will create: RX_BUFFER_ADDR_0, RX_BUFFER_ADDR_1, ..., RX_BUFFER_ADDR_15
+        - name: "RX_BUFFER_ADDR"
+          count: 16
+          stride: 8
+          description: "RX buffer address"
+          fields:
+            - { name: "ADDRESS", bitWidth: 32, access: "read-write" }
+
+        # RX buffer size and status (16 instances, offset +4)
+        # Generator will create: RX_BUFFER_SIZE_STATUS_0, ..., RX_BUFFER_SIZE_STATUS_15
+        - name: "RX_BUFFER_SIZE_STATUS"
+          count: 16
+          stride: 8
+          offset: 0x1004
+          description: "RX buffer size and status"
+          fields:
+            - {
+                name: "BUFFER_SIZE",
+                bitWidth: 16,
+                access: "read-write",
+                description: "Buffer size in bytes",
+              }
+            - {
+                name: "STATUS",
+                bitWidth: 16,
+                access: "read-only",
+                description: "Buffer status flags",
+              }
+
+    # --- Block 3: TX Buffer Descriptors ---
+    - name: "TX_BUFFERS"
+      offset: 0x2000
+      usage: "register"
+      defaultRegWidth: 32
+
+      registers:
+        # TX buffer address registers (16 instances)
+        # Generator will create: TX_BUFFER_ADDR_0, TX_BUFFER_ADDR_1, ..., TX_BUFFER_ADDR_15
+        - name: "TX_BUFFER_ADDR"
+          count: 16
+          stride: 8
+          description: "TX buffer address"
+          fields:
+            - { name: "ADDRESS", bitWidth: 32, access: "read-write" }
+
+        # TX buffer size and control (16 instances, offset +4)
+        # Generator will create: TX_BUFFER_SIZE_CONTROL_0, ..., TX_BUFFER_SIZE_CONTROL_15
+        - name: "TX_BUFFER_SIZE_CONTROL"
+          count: 16
+          stride: 8
+          offset: 0x2004
+          description: "TX buffer size and control"
+          fields:
+            - {
+                name: "BUFFER_SIZE",
+                bitWidth: 16,
+                access: "read-write",
+                description: "Buffer size in bytes",
+              }
+            - {
+                name: "CONTROL",
+                bitWidth: 16,
+                access: "read-write",
+                description: "Buffer control flags",
+              }
