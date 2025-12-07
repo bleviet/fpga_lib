@@ -1,294 +1,468 @@
 """
-Unit tests for AI-Enhanced VHDL Parser.
+Unit tests for VHDL AI Parser.
 
-Tests both deterministic parsing (Phase 1) and AI enhancements (Phase 2).
+Tests the pure LLM-based VHDL parser with various complexity levels
+and validates entity parsing, port extraction, generic handling, and
+bus interface detection.
 """
 
 import pytest
 from pathlib import Path
-
-from fpga_lib.parser.hdl.vhdl_ai_parser import (
-    VHDLAiParser,
-    ParserConfig,
-    ParsedEntityData,
-    VhdlAiAnalyzer
-)
-from fpga_lib.model.core import IpCore
+from fpga_lib.parser.hdl.vhdl_ai_parser import VHDLAiParser, ParserConfig
 from fpga_lib.model.port import PortDirection
+from fpga_lib.model.core import IpCore
+
+
+@pytest.fixture
+def test_vhdl_dir():
+    """Get the test VHDL directory path."""
+    return Path(__file__).parent.parent.parent / "examples" / "test_vhdl"
+
+
+@pytest.fixture
+def parser_config():
+    """Default parser configuration for testing."""
+    return ParserConfig(
+        llm_provider="ollama",
+        llm_model="gemma3:12b",
+        strict_mode=False
+    )
+
+
+@pytest.fixture
+def parser(parser_config):
+    """Create parser instance."""
+    return VHDLAiParser(config=parser_config)
 
 
 # ============================================================================
-# Test Data
+# Basic Entity Parsing Tests
 # ============================================================================
 
-SIMPLE_ENTITY = """
-entity simple_counter is
-    generic (
-        WIDTH : integer := 8
-    );
-    port (
-        clk : in std_logic;
-        reset : in std_logic;
-        enable : in std_logic;
-        count : out std_logic_vector(WIDTH-1 downto 0)
-    );
-end entity simple_counter;
-"""
+class TestBasicEntityParsing:
+    """Test basic entity structure parsing."""
 
-AXI_ENTITY = """
--- AXI4-Lite Slave Interface Example
-entity axi_peripheral is
-    port (
-        -- Clock and Reset
-        aclk : in std_logic;
-        aresetn : in std_logic;
+    def test_simple_counter_parsing(self, parser, test_vhdl_dir):
+        """Test parsing of simple counter entity."""
+        vhdl_file = test_vhdl_dir / "simple_counter.vhd"
+        assert vhdl_file.exists(), f"Test file not found: {vhdl_file}"
 
-        -- AXI4-Lite Slave Interface
-        s_axi_awaddr : in std_logic_vector(7 downto 0);
-        s_axi_awvalid : in std_logic;
-        s_axi_awready : out std_logic;
-        s_axi_wdata : in std_logic_vector(31 downto 0);
-        s_axi_wvalid : in std_logic;
-        s_axi_wready : out std_logic;
-        s_axi_bresp : out std_logic_vector(1 downto 0);
-        s_axi_bvalid : out std_logic;
-        s_axi_bready : in std_logic;
-        s_axi_araddr : in std_logic_vector(7 downto 0);
-        s_axi_arvalid : in std_logic;
-        s_axi_arready : out std_logic;
-        s_axi_rdata : out std_logic_vector(31 downto 0);
-        s_axi_rresp : out std_logic_vector(1 downto 0);
-        s_axi_rvalid : out std_logic;
-        s_axi_rready : in std_logic
-    );
-end entity axi_peripheral;
-"""
+        ip_core = parser.parse_file(vhdl_file)
 
-
-# ============================================================================
-# Phase 1 Tests (Deterministic Parsing)
-# ============================================================================
-
-
-class TestDeterministicParsing:
-    """Test pyparsing-based structure extraction."""
-
-    def test_simple_entity_parsing(self):
-        """Test parsing a simple entity without AI."""
-        parser = VHDLAiParser()
-        ip_core = parser.parse_text(SIMPLE_ENTITY)
-
+        assert ip_core is not None
+        assert isinstance(ip_core, IpCore)
         assert ip_core.vlnv.name == "simple_counter"
         assert len(ip_core.ports) == 4
         assert len(ip_core.parameters) == 1
 
-    def test_port_directions(self):
-        """Test port direction parsing."""
-        parser = VHDLAiParser()
-        ip_core = parser.parse_text(SIMPLE_ENTITY)
+    def test_entity_name_extraction(self, parser, test_vhdl_dir):
+        """Verify entity name is correctly extracted."""
+        test_files = [
+            ("simple_counter.vhd", "simple_counter"),
+            ("uart_transmitter.vhd", "uart_transmitter"),
+            ("fifo_buffer.vhd", "fifo_buffer"),
+        ]
 
-        port_map = {port.name: port for port in ip_core.ports}
+        for filename, expected_name in test_files:
+            vhdl_file = test_vhdl_dir / filename
+            if vhdl_file.exists():
+                ip_core = parser.parse_file(vhdl_file)
+                assert ip_core.vlnv.name == expected_name, \
+                    f"Entity name mismatch for {filename}"
 
-        assert port_map["clk"].direction == PortDirection.IN
-        assert port_map["reset"].direction == PortDirection.IN
-        assert port_map["enable"].direction == PortDirection.IN
-        assert port_map["count"].direction == PortDirection.OUT
+    def test_description_generation(self, parser, test_vhdl_dir):
+        """Verify LLM generates meaningful descriptions."""
+        vhdl_file = test_vhdl_dir / "simple_counter.vhd"
+        ip_core = parser.parse_file(vhdl_file)
 
-    def test_port_widths(self):
-        """Test port width extraction."""
-        parser = VHDLAiParser()
-        ip_core = parser.parse_text(SIMPLE_ENTITY)
+        assert ip_core.description is not None
+        assert len(ip_core.description) > 0
+        assert ip_core.description != "Failed to parse"
 
-        port_map = {port.name: port for port in ip_core.ports}
 
-        assert port_map["clk"].width == 1
-        assert port_map["count"].width == 8  # WIDTH-1 downto 0
+# ============================================================================
+# Port Parsing Tests
+# ============================================================================
 
-    def test_generic_parameters(self):
-        """Test generic/parameter parsing."""
-        parser = VHDLAiParser()
-        ip_core = parser.parse_text(SIMPLE_ENTITY)
+class TestPortParsing:
+    """Test port extraction and direction parsing."""
+
+    def test_simple_counter_ports(self, parser, test_vhdl_dir):
+        """Test simple counter port parsing."""
+        ip_core = parser.parse_file(test_vhdl_dir / "simple_counter.vhd")
+
+        # Expected ports: clk, rst_n, enable, count
+        port_names = [p.name for p in ip_core.ports]
+        assert "clk" in port_names
+        assert "rst_n" in port_names
+        assert "enable" in port_names
+        assert "count" in port_names
+
+    def test_port_directions(self, parser, test_vhdl_dir):
+        """Test port direction detection."""
+        ip_core = parser.parse_file(test_vhdl_dir / "simple_counter.vhd")
+
+        port_dict = {p.name: p for p in ip_core.ports}
+
+        assert port_dict["clk"].direction == PortDirection.IN
+        assert port_dict["rst_n"].direction == PortDirection.IN
+        assert port_dict["enable"].direction == PortDirection.IN
+        assert port_dict["count"].direction == PortDirection.OUT
+
+    def test_port_widths(self, parser, test_vhdl_dir):
+        """Test port width calculation."""
+        ip_core = parser.parse_file(test_vhdl_dir / "simple_counter.vhd")
+
+        port_dict = {p.name: p for p in ip_core.ports}
+
+        # std_logic ports should be width 1
+        assert port_dict["clk"].width == 1
+        assert port_dict["rst_n"].width == 1
+        assert port_dict["enable"].width == 1
+
+        # std_logic_vector(WIDTH-1 downto 0) should be WIDTH bits
+        # Default WIDTH = 8
+        assert port_dict["count"].width == 8
+
+    def test_uart_transmitter_ports(self, parser, test_vhdl_dir):
+        """Test UART transmitter with multiple port types."""
+        ip_core = parser.parse_file(test_vhdl_dir / "uart_transmitter.vhd")
+
+        assert len(ip_core.ports) == 6
+
+        port_dict = {p.name: p for p in ip_core.ports}
+
+        # System signals
+        assert "clk" in port_dict
+        assert "rst" in port_dict
+
+        # Data interface
+        assert "tx_data" in port_dict
+        assert "tx_valid" in port_dict
+        assert "tx_ready" in port_dict
+
+        # UART output
+        assert "uart_tx" in port_dict
+
+
+# ============================================================================
+# Generic/Parameter Parsing Tests
+# ============================================================================
+
+class TestGenericParsing:
+    """Test generic/parameter extraction."""
+
+    def test_simple_counter_generic(self, parser, test_vhdl_dir):
+        """Test simple generic extraction."""
+        ip_core = parser.parse_file(test_vhdl_dir / "simple_counter.vhd")
 
         assert len(ip_core.parameters) == 1
         param = ip_core.parameters[0]
-
         assert param.name == "WIDTH"
         assert param.data_type == "integer"
         assert param.value == "8"
 
-    def test_axi_entity_parsing(self):
-        """Test parsing AXI entity without AI."""
-        parser = VHDLAiParser()
-        ip_core = parser.parse_text(AXI_ENTITY)
+    def test_uart_transmitter_generics(self, parser, test_vhdl_dir):
+        """Test multiple generics with different types."""
+        ip_core = parser.parse_file(test_vhdl_dir / "uart_transmitter.vhd")
 
-        assert ip_core.vlnv.name == "axi_peripheral"
-        assert len(ip_core.ports) > 10  # Should have all AXI signals
+        assert len(ip_core.parameters) == 5
+
+        param_dict = {p.name: p for p in ip_core.parameters}
+
+        # Integer generics
+        assert "CLK_FREQ" in param_dict
+        assert param_dict["CLK_FREQ"].value == "50000000"
+
+        assert "BAUD_RATE" in param_dict
+        assert param_dict["BAUD_RATE"].value == "115200"
+
+        assert "DATA_BITS" in param_dict
+        assert param_dict["DATA_BITS"].value == "8"
+
+        assert "STOP_BITS" in param_dict
+        assert param_dict["STOP_BITS"].value == "1"
+
+        # Boolean generic
+        assert "PARITY_ENABLE" in param_dict
+        assert param_dict["PARITY_ENABLE"].data_type == "boolean"
+
+    def test_fifo_buffer_generics(self, parser, test_vhdl_dir):
+        """Test generics with power-of-2 expressions."""
+        ip_core = parser.parse_file(test_vhdl_dir / "fifo_buffer.vhd")
+
+        assert len(ip_core.parameters) == 2
+
+        param_dict = {p.name: p for p in ip_core.parameters}
+
+        assert "DATA_WIDTH" in param_dict
+        assert param_dict["DATA_WIDTH"].value == "32"
+
+        assert "DEPTH_LOG2" in param_dict
+        assert param_dict["DEPTH_LOG2"].value == "4"
 
 
 # ============================================================================
-# Phase 2 Tests (AI Enhancement)
+# Complex Expression Tests
 # ============================================================================
 
+class TestComplexExpressions:
+    """Test parsing of complex arithmetic expressions in port widths."""
 
-class TestAiEnhancement:
-    """Test AI-powered features (requires LLM)."""
+    def test_simple_subtraction(self, parser, test_vhdl_dir):
+        """Test WIDTH-1 expression."""
+        ip_core = parser.parse_file(test_vhdl_dir / "simple_counter.vhd")
 
-    @pytest.fixture
-    def ai_parser(self):
-        """Create AI-enabled parser."""
+        port_dict = {p.name: p for p in ip_core.ports}
+        # count: std_logic_vector(WIDTH-1 downto 0)
+        # With WIDTH=8, should be 8 bits
+        assert port_dict["count"].width == 8
+
+    def test_power_of_two(self, parser, test_vhdl_dir):
+        """Test 2**N expression."""
+        ip_core = parser.parse_file(test_vhdl_dir / "fifo_buffer.vhd")
+
+        # DEPTH_LOG2 = 4, so DEPTH = 2**4 = 16
+        # data_count: std_logic_vector(DEPTH_LOG2 downto 0) = 5 bits
+        port_dict = {p.name: p for p in ip_core.ports}
+        assert "data_count" in port_dict
+        assert port_dict["data_count"].width == 5
+
+    def test_division_expression(self, parser, test_vhdl_dir):
+        """Test (WIDTH/8)-1 expression."""
+        ip_core = parser.parse_file(test_vhdl_dir / "fifo_buffer.vhd")
+
+        # With DATA_WIDTH=32, wr_data should be 32 bits
+        port_dict = {p.name: p for p in ip_core.ports}
+        assert port_dict["wr_data"].width == 32
+
+    def test_axi_division_expression(self, parser, test_vhdl_dir):
+        """Test complex AXI division: (C_DATA_WIDTH/8)-1."""
+        vhdl_file = test_vhdl_dir / "axi_example_peripheral.vhd"
+        if not vhdl_file.exists():
+            pytest.skip("AXI example file not found")
+
+        ip_core = parser.parse_file(vhdl_file)
+
+        port_dict = {p.name: p for p in ip_core.ports}
+
+        # s_axi_wstrb: (C_S_AXI_DATA_WIDTH/8)-1 downto 0
+        # With C_S_AXI_DATA_WIDTH=32, should be 4 bits
+        if "s_axi_wstrb" in port_dict:
+            assert port_dict["s_axi_wstrb"].width == 4
+
+
+# ============================================================================
+# Bus Interface Detection Tests
+# ============================================================================
+
+class TestBusInterfaceDetection:
+    """Test AI-powered bus interface detection."""
+
+    def test_axi4_lite_detection(self, parser, test_vhdl_dir):
+        """Test AXI4-Lite bus interface detection."""
+        vhdl_file = test_vhdl_dir / "axi_example_peripheral.vhd"
+        if not vhdl_file.exists():
+            pytest.skip("AXI example file not found")
+
+        ip_core = parser.parse_file(vhdl_file)
+
+        assert len(ip_core.bus_interfaces) >= 1
+
+        # Find AXI interface
+        axi_bus = next((b for b in ip_core.bus_interfaces if "AXI" in b.type.upper()), None)
+        assert axi_bus is not None
+        assert "s_axi" in axi_bus.name.lower()
+        assert axi_bus.mode == "slave"
+
+    def test_axi_stream_detection(self, parser, test_vhdl_dir):
+        """Test AXI-Stream interface detection."""
+        ip_core = parser.parse_file(test_vhdl_dir / "axi_stream_filter.vhd")
+
+        assert len(ip_core.bus_interfaces) >= 1
+
+        # Should detect both slave and master interfaces
+        bus_names = [b.name for b in ip_core.bus_interfaces]
+        bus_types = [b.type for b in ip_core.bus_interfaces]
+
+        # Check for AXI-Stream interfaces
+        assert any("axis" in name.lower() or "stream" in t.lower()
+                   for name, t in zip(bus_names, bus_types))
+
+    def test_spi_detection(self, parser, test_vhdl_dir):
+        """Test SPI bus interface detection."""
+        ip_core = parser.parse_file(test_vhdl_dir / "spi_master.vhd")
+
+        # Should detect SPI interface from spi_sclk, spi_mosi, spi_miso, spi_cs_n
+        bus_types = [b.type for b in ip_core.bus_interfaces]
+
+        assert any("spi" in t.lower() for t in bus_types)
+
+    def test_wishbone_detection(self, parser, test_vhdl_dir):
+        """Test Wishbone bus interface detection."""
+        ip_core = parser.parse_file(test_vhdl_dir / "wishbone_slave.vhd")
+
+        # Should detect Wishbone from wb_* signals
+        bus_types = [b.type for b in ip_core.bus_interfaces]
+
+        assert any("wishbone" in t.lower() or "wb" in t.lower() for t in bus_types)
+
+    def test_no_bus_interface(self, parser, test_vhdl_dir):
+        """Test that simple cores without buses don't detect false positives."""
+        ip_core = parser.parse_file(test_vhdl_dir / "simple_counter.vhd")
+
+        # Simple counter should have no bus interfaces
+        assert len(ip_core.bus_interfaces) == 0
+
+
+# ============================================================================
+# Error Handling Tests
+# ============================================================================
+
+class TestErrorHandling:
+    """Test parser error handling and graceful degradation."""
+
+    def test_nonexistent_file(self, parser):
+        """Test handling of non-existent file."""
+        with pytest.raises(FileNotFoundError):
+            parser.parse_file(Path("/nonexistent/file.vhd"))
+
+    def test_strict_mode_on_failure(self):
+        """Test strict mode raises errors."""
         config = ParserConfig(
-            enable_llm=True,
-            llm_provider="ollama",
-            llm_model="llama3.3:latest"
+            llm_provider="invalid_provider",
+            strict_mode=True
         )
-        return VHDLAiParser(config=config)
 
-    @pytest.fixture
-    def ai_analyzer(self):
-        """Create AI analyzer."""
-        return VhdlAiAnalyzer(provider_name="ollama")
+        # Should raise RuntimeError in strict mode
+        with pytest.raises(RuntimeError):
+            VHDLAiParser(config=config)
 
-    def test_ai_availability(self, ai_analyzer):
-        """Test if AI is available (skip if not)."""
-        if not ai_analyzer.is_available():
-            pytest.skip("LLM not available (Ollama not running or llm_core not installed)")
+    def test_graceful_degradation_on_failure(self):
+        """Test graceful degradation when LLM unavailable."""
+        config = ParserConfig(
+            llm_provider="invalid_provider",
+            strict_mode=False
+        )
 
-    @pytest.mark.integration
-    def test_bus_interface_detection(self, ai_parser, ai_analyzer):
-        """Test AI detection of AXI bus interface."""
-        if not ai_analyzer.is_available():
-            pytest.skip("LLM not available")
-
-        ip_core = ai_parser.parse_text(AXI_ENTITY)
-
-        # AI should detect AXI interface
-        assert len(ip_core.bus_interfaces) > 0, "AI should detect at least one bus interface"
-
-        # Check if AXI detected
-        bus_types = [bus.type.upper() for bus in ip_core.bus_interfaces]
-        assert any("AXI" in bt for bt in bus_types), f"Expected AXI, got {bus_types}"
-
-    @pytest.mark.integration
-    def test_description_generation(self, ai_parser, ai_analyzer):
-        """Test AI-generated description."""
-        if not ai_analyzer.is_available():
-            pytest.skip("LLM not available")
-
-        ip_core = ai_parser.parse_text(AXI_ENTITY)
-
-        # AI should generate meaningful description
-        assert len(ip_core.description) > 10
-        assert "axi" in ip_core.description.lower() or "peripheral" in ip_core.description.lower()
-
-
-# ============================================================================
-# Configuration Tests
-# ============================================================================
-
-
-class TestConfiguration:
-    """Test parser configuration options."""
-
-    def test_default_config(self):
-        """Test default configuration."""
-        config = ParserConfig()
-
-        assert config.enable_llm is False
-        assert config.llm_provider == "ollama"
-        assert config.strict_mode is False
-
-    def test_ai_disabled_by_default(self):
-        """Test that AI is disabled by default."""
-        parser = VHDLAiParser()
-        assert parser.ai_analyzer is None
-
-    def test_strict_mode_disabled(self):
-        """Test graceful degradation in non-strict mode."""
-        config = ParserConfig(strict_mode=False)
+        # Should create parser but log error
         parser = VHDLAiParser(config=config)
-
-        # Invalid VHDL should return minimal valid core
-        ip_core = parser.parse_text("invalid vhdl code")
-        assert ip_core is not None
-        assert isinstance(ip_core, IpCore)
-
-    def test_strict_mode_enabled(self):
-        """Test strict mode fails on invalid input."""
-        config = ParserConfig(strict_mode=True)
-        parser = VHDLAiParser(config=config)
-
-        with pytest.raises(ValueError):
-            parser.parse_text("invalid vhdl code")
+        assert parser is not None
 
 
 # ============================================================================
 # Model Validation Tests
 # ============================================================================
 
-
 class TestModelValidation:
     """Test Pydantic model validation."""
 
-    def test_ip_core_model_valid(self):
-        """Test that parsed IP core is valid Pydantic model."""
-        parser = VHDLAiParser()
-        ip_core = parser.parse_text(SIMPLE_ENTITY)
+    def test_valid_ip_core_model(self, parser, test_vhdl_dir):
+        """Test that parsed IP core passes Pydantic validation."""
+        ip_core = parser.parse_file(test_vhdl_dir / "simple_counter.vhd")
 
-        # Should be able to export to dict
-        data = ip_core.model_dump()
-        assert isinstance(data, dict)
-        assert "vlnv" in data
-        assert "ports" in data
+        # Should be valid Pydantic model
+        assert isinstance(ip_core, IpCore)
 
-    def test_ip_core_json_export(self):
-        """Test JSON export."""
-        parser = VHDLAiParser()
-        ip_core = parser.parse_text(SIMPLE_ENTITY)
-
-        # Should be able to export to JSON
+        # Should be serializable to JSON
         json_str = ip_core.model_dump_json()
-        assert isinstance(json_str, str)
-        assert "simple_counter" in json_str
+        assert json_str is not None
+        assert len(json_str) > 0
 
-    def test_port_validation(self):
-        """Test port model validation."""
-        parser = VHDLAiParser()
-        ip_core = parser.parse_text(SIMPLE_ENTITY)
+    def test_vlnv_structure(self, parser, test_vhdl_dir):
+        """Test VLNV structure is correctly populated."""
+        ip_core = parser.parse_file(test_vhdl_dir / "simple_counter.vhd")
+
+        vlnv = ip_core.vlnv
+        assert vlnv.vendor == "unknown.vendor"
+        assert vlnv.library == "work"
+        assert vlnv.name == "simple_counter"
+        assert vlnv.version == "1.0.0"
+
+    def test_port_model_validation(self, parser, test_vhdl_dir):
+        """Test Port models are correctly validated."""
+        ip_core = parser.parse_file(test_vhdl_dir / "simple_counter.vhd")
 
         for port in ip_core.ports:
-            # Port should have valid direction
+            # Required fields
+            assert port.name is not None
             assert port.direction in [PortDirection.IN, PortDirection.OUT, PortDirection.INOUT]
-            # Port width should be positive
             assert port.width > 0
+            assert port.physical_port is not None
+
+
+# ============================================================================
+# Performance Tests
+# ============================================================================
+
+@pytest.mark.slow
+class TestPerformance:
+    """Performance and timing tests."""
+
+    def test_parsing_time_simple(self, parser, test_vhdl_dir, benchmark):
+        """Benchmark parsing time for simple entity."""
+        vhdl_file = test_vhdl_dir / "simple_counter.vhd"
+
+        result = benchmark(parser.parse_file, vhdl_file)
+        assert result is not None
+
+    def test_parsing_time_complex(self, parser, test_vhdl_dir, benchmark):
+        """Benchmark parsing time for complex entity."""
+        vhdl_file = test_vhdl_dir / "axi_example_peripheral.vhd"
+        if not vhdl_file.exists():
+            pytest.skip("AXI example file not found")
+
+        result = benchmark(parser.parse_file, vhdl_file)
+        assert result is not None
 
 
 # ============================================================================
 # Integration Tests
 # ============================================================================
 
-
+@pytest.mark.integration
 class TestIntegration:
-    """Integration tests with real files."""
+    """Integration tests with different LLM providers."""
 
-    def test_parse_example_file(self):
-        """Test parsing the example AXI peripheral file."""
-        example_file = Path(__file__).parent.parent.parent.parent / "examples" / "test_vhdl" / "axi_example_peripheral.vhd"
+    def test_parse_with_ollama(self, test_vhdl_dir):
+        """Test parsing with Ollama provider."""
+        config = ParserConfig(llm_provider="ollama", llm_model="gemma3:12b")
+        parser = VHDLAiParser(config=config)
 
-        if not example_file.exists():
-            pytest.skip(f"Example file not found: {example_file}")
+        if not parser.llm_parser.is_available():
+            pytest.skip("Ollama not available")
 
-        parser = VHDLAiParser()
-        ip_core = parser.parse_file(example_file)
+        ip_core = parser.parse_file(test_vhdl_dir / "simple_counter.vhd")
+        assert ip_core.vlnv.name == "simple_counter"
 
-        assert ip_core.vlnv.name == "axi_example_peripheral"
-        assert len(ip_core.ports) > 0
-        assert len(ip_core.parameters) > 0
+    @pytest.mark.skipif(
+        "OPENAI_API_KEY" not in __import__("os").environ,
+        reason="OpenAI API key not configured"
+    )
+    def test_parse_with_openai(self, test_vhdl_dir):
+        """Test parsing with OpenAI provider."""
+        config = ParserConfig(llm_provider="openai", llm_model="gpt-4o-mini")
+        parser = VHDLAiParser(config=config)
+
+        ip_core = parser.parse_file(test_vhdl_dir / "simple_counter.vhd")
+        assert ip_core.vlnv.name == "simple_counter"
+
+    @pytest.mark.skipif(
+        "GEMINI_API_KEY" not in __import__("os").environ,
+        reason="Gemini API key not configured"
+    )
+    def test_parse_with_gemini(self, test_vhdl_dir):
+        """Test parsing with Gemini provider."""
+        config = ParserConfig(llm_provider="gemini", llm_model="gemini-2.0-flash-exp")
+        parser = VHDLAiParser(config=config)
+
+        ip_core = parser.parse_file(test_vhdl_dir / "simple_counter.vhd")
+        assert ip_core.vlnv.name == "simple_counter"
 
 
 # ============================================================================
 # Run Tests
 # ============================================================================
-
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
