@@ -53,8 +53,8 @@ def parse_args():
     )
     parser.add_argument(
         "--model",
-        default="gemma3:12b",
-        help="LLM model name (default: gemma3:12b)"
+        default=None,
+        help="LLM model name (default: provider-specific - gemma3:12b for ollama, gpt-4o-mini for openai, gemini-2.0-flash-exp for gemini)"
     )
     parser.add_argument(
         "--strict",
@@ -162,6 +162,15 @@ def main():
         console.print(f"[bold red]Error:[/bold red] File not found: {args.vhdl_file}")
         sys.exit(1)
 
+    # Set provider-specific default models if not specified
+    if args.model is None:
+        if args.provider == "ollama":
+            args.model = "gemma3:12b"
+        elif args.provider == "openai":
+            args.model = "gpt-5-nano"
+        elif args.provider == "gemini":
+            args.model = "gemini-2.5-flash-lite"
+
     # Show configuration
     config_info = f"""
 **Parser Configuration:**
@@ -185,6 +194,29 @@ def main():
 
     try:
         parser = VHDLAiParser(config=config)
+
+        # Check if provider is available before parsing
+        if not parser.llm_parser.is_available():
+            error_msg = f"[bold red]Error:[/bold red] LLM provider '{args.provider}' is not available.\n"
+
+            if args.provider == "openai":
+                error_msg += "\n[yellow]OpenAI requires an API key. Please:[/yellow]\n"
+                error_msg += "1. Set OPENAI_API_KEY environment variable, or\n"
+                error_msg += "2. Create a .env file with: OPENAI_API_KEY=your-key-here\n"
+                error_msg += "\nGet your API key from: https://platform.openai.com/api-keys"
+            elif args.provider == "gemini":
+                error_msg += "\n[yellow]Gemini requires an API key. Please:[/yellow]\n"
+                error_msg += "1. Set GEMINI_API_KEY environment variable, or\n"
+                error_msg += "2. Create a .env file with: GEMINI_API_KEY=your-key-here\n"
+                error_msg += "\nGet your API key from: https://aistudio.google.com/app/apikey"
+            elif args.provider == "ollama":
+                error_msg += "\n[yellow]Ollama requires a local server. Please:[/yellow]\n"
+                error_msg += "1. Install Ollama from: https://ollama.ai\n"
+                error_msg += "2. Start the server: ollama serve\n"
+                error_msg += f"3. Pull the model: ollama pull {args.model}"
+
+            console.print(error_msg)
+            sys.exit(1)
 
         with console.status("[bold green]Parsing VHDL..."):
             ip_core = parser.parse_file(args.vhdl_file)

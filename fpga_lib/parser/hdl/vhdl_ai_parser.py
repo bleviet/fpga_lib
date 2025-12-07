@@ -42,7 +42,7 @@ class ParserConfig(BaseModel):
     """Configuration for AI-powered VHDL parser."""
 
     llm_provider: str = Field(default="ollama", description="LLM provider (ollama, openai, gemini)")
-    llm_model: str = Field(default="llama3.3:latest", description="LLM model name")
+    llm_model: str = Field(default="gemma3:12b", description="LLM model name")
 
     # Default VLNV components
     default_vendor: str = Field(default="unknown.vendor", description="Default vendor")
@@ -73,7 +73,7 @@ class VhdlLlmParser:
     This replaces pyparsing with LLM intelligence for more robust parsing.
     """
 
-    def __init__(self, provider_name: str = "ollama", model_name: str = "llama3.3:latest"):
+    def __init__(self, provider_name: str = "ollama", model_name: str = "gemma3:12b"):
         """
         Initialize LLM parser.
 

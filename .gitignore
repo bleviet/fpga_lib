@@ -44,3 +44,5 @@ htmlcov/
 
 # Operating system specific temporary files
 ._*
+
+.env
