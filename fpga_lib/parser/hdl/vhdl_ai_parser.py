@@ -181,9 +181,15 @@ Return ONLY valid JSON (no markdown, no explanation) with this structure:
 
 Common bus interface types and their signals:
 - AXI4_LITE: awaddr, awvalid, awready, wdata, wstrb, wvalid, wready, bresp, bvalid, bready, araddr, arvalid, arready, rdata, rresp, rvalid, rready
+- AXI4_FULL: Same as AXI4_LITE plus awid, awlen, awsize, awburst, awlock, awcache, awprot, awqos, bid, arid, arlen, arsize, arburst, arlock, arcache, arprot, arqos, rid, rlast
 - AXI_STREAM: tdata, tvalid, tready, tlast, tkeep, tstrb, tuser, tid, tdest
-- AVALON_MM: address, writedata, readdata, write, read, waitrequest, byteenable
-- WISHBONE: adr, dat_i, dat_o, we, cyc, stb, ack
+- AVALON_MM: address, writedata, readdata, write, read, waitrequest, byteenable, readdatavalid
+- WISHBONE: adr, dat_i, dat_o, we, cyc, stb, ack, err, rty, sel
+- SPI: sclk/sck/clk, mosi/sdo/dout, miso/sdi/din, cs/cs_n/ss/ss_n (chip select can be active high or low)
+- I2C: scl/sclk (clock), sda (data), may have separate sda_i/sda_o/sda_t (tristate control)
+- UART: tx/txd/uart_tx (transmit), rx/rxd/uart_rx (receive), may have rts/cts (flow control)
+- JTAG: tck (clock), tms (mode select), tdi (data in), tdo (data out), trst_n (reset, optional)
+- APB: paddr, psel, penable, pwrite, pwdata, prdata, pready, pslverr
 
 For width calculation:
 - std_logic = 1
@@ -192,9 +198,18 @@ For width calculation:
 - Handle arithmetic expressions like (C_WIDTH-1 downto 0), (C_WIDTH/8)-1 downto 0)
 
 Identify bus interfaces by:
-1. Signal naming prefixes (s_axi_, m_axis_, avmm_)
-2. Comments mentioning bus types
-3. Standard signal patterns"""
+1. Signal naming prefixes (s_axi_, m_axis_, avmm_, wb_, apb_)
+2. Comments mentioning bus types (AXI, SPI, I2C, UART, Wishbone, Avalon)
+3. Standard signal patterns matching common interfaces
+4. Naming conventions (spi_sclk, i2c_scl, uart_tx indicate specific bus types)
+
+Bus interface naming guidelines:
+- Group related signals with common prefixes or suffixes
+- SPI: Look for sclk/sck + mosi/miso + cs combinations
+- I2C: Look for scl + sda pairs (may be bidirectional with _i/_o/_t suffixes)
+- UART: Look for tx/rx pairs (may include rts/cts for flow control)
+- Master vs Slave: Masters typically drive clock/control, slaves respond
+- Direction: Master initiates transfers, slave responds"""
 
         user_prompt = f"""Parse this VHDL entity and return structured JSON:
 
