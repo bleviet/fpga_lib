@@ -1,2 +1,5 @@
-pyparsing
 jinja2
+rich
+openai
+python-dotenv
+pydantic
