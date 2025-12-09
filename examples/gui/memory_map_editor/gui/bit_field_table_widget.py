@@ -7,7 +7,7 @@ Handles user interactions, cell editing, validation, and visual highlighting.
 
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
                                QTableWidget, QTableWidgetItem, QMessageBox)
-from PySide6.QtCore import Signal, Qt, QEvent
+from PySide6.QtCore import Signal, Qt
 from PySide6.QtGui import QColor, QKeySequence, QShortcut
 
 from memory_map_core import Register, RegisterArrayAccessor, BitField
@@ -53,6 +53,15 @@ class BitFieldTableWidget(QWidget):
         # Set delegate for Access column
         access_delegate = AccessTypeDelegate(self.table)
         self.table.setItemDelegateForColumn(3, access_delegate)
+
+        # Enable single-click editing for Access column
+        from PySide6.QtWidgets import QAbstractItemView
+        self.table.setEditTriggers(
+            QAbstractItemView.CurrentChanged |
+            QAbstractItemView.DoubleClicked |
+            QAbstractItemView.SelectedClicked |
+            QAbstractItemView.EditKeyPressed
+        )
 
         layout.addWidget(self.table)
 
