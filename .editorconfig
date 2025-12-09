@@ -24,7 +24,7 @@ trim_trailing_whitespace = false
 indent_style = space
 indent_size = 4
 
-[*.yaml]
+[*.yaml, *.yml]
 indent_style = space
 indent_size = 2
 

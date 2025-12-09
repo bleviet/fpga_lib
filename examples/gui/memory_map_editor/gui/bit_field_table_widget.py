@@ -42,13 +42,15 @@ class BitFieldTableWidget(QWidget):
         ])
 
         # Set column widths
-        self.table.setColumnWidth(0, 100)  # Name
+        from PySide6.QtWidgets import QHeaderView
+        header = self.table.horizontalHeader()
+        header.setSectionResizeMode(0, QHeaderView.ResizeToContents)  # Name - fit to content
         self.table.setColumnWidth(1, 80)   # Bits
         self.table.setColumnWidth(2, 60)   # Width
         self.table.setColumnWidth(3, 80)   # Access
         self.table.setColumnWidth(4, 100)  # Reset Value
         self.table.setColumnWidth(5, 100)  # Live Value
-        self.table.setColumnWidth(6, 200)  # Description
+        header.setSectionResizeMode(6, QHeaderView.Stretch)  # Description - stretch to fill
 
         # Set delegate for Access column
         access_delegate = AccessTypeDelegate(self.table)

@@ -266,10 +266,30 @@ def _load_new_format(mem_map: dict, file_path: Path) -> MemoryMapProject:
     # Process address blocks
     for addr_block in mem_map.get('addressBlocks', []):
         block_offset = addr_block.get('offset', 0)
+        default_reg_width = addr_block.get('defaultRegWidth', 32) // 8  # Convert bits to bytes
+
+        # Track current offset for auto-calculation
+        current_offset = 0
 
         # Load registers within this address block
         for reg_info in addr_block.get('registers', []):
+            # If register doesn't have explicit offset, use auto-calculated one
+            if 'offset' not in reg_info:
+                reg_info = reg_info.copy()  # Don't modify original
+                reg_info['offset'] = current_offset
+
             _load_register(project, reg_info, base_offset=block_offset)
+
+            # Calculate next offset based on register type
+            if 'registers' in reg_info and 'count' in reg_info:
+                # Nested array: size = count * stride
+                current_offset = reg_info['offset'] + (reg_info['count'] * reg_info.get('stride', default_reg_width))
+            elif 'count' in reg_info:
+                # Simple array: size = count * stride
+                current_offset = reg_info['offset'] + (reg_info['count'] * reg_info.get('stride', default_reg_width))
+            else:
+                # Single register: size = default width
+                current_offset = reg_info['offset'] + default_reg_width
 
     return project
 
@@ -339,9 +359,11 @@ def _load_nested_register_array(project: MemoryMapProject, array_info: dict, bas
     Example: DESCRIPTOR[64] containing SRC_ADDR, DST_ADDR, LENGTH registers
 
     Creates flattened registers with hierarchical names like:
-    - DESCRIPTOR_0_SRC_ADDR
-    - DESCRIPTOR_0_DST_ADDR
-    - DESCRIPTOR_1_SRC_ADDR
+    - DESCRIPTOR[0].SRC_ADDR
+    - DESCRIPTOR[0].DST_ADDR
+    - DESCRIPTOR[1].SRC_ADDR
+
+    These registers are marked with metadata to allow UI grouping.
     """
     array_name = array_info['name']
     count = array_info['count']
@@ -376,14 +398,22 @@ def _load_nested_register_array(project: MemoryMapProject, array_info: dict, bas
                 )
                 fields.append(field)
 
-            # Create flattened register with hierarchical name
+            # Create flattened register with hierarchical name using bracket notation
             register = Register(
-                name=f"{array_name}_{idx}_{sub_reg_name}",
+                name=f"{array_name}[{idx}].{sub_reg_name}",
                 offset=instance_offset + sub_reg_offset,
                 bus=project._bus,
                 fields=fields,
                 description=sub_reg_info.get('description', '')
             )
+
+            # Add metadata for UI grouping
+            register._array_parent = array_name
+            register._array_index = idx
+            register._array_base = array_base
+            register._array_count = count
+            register._array_stride = stride
+
             project.registers.append(register)
 
 

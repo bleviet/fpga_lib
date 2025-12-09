@@ -10,7 +10,7 @@ from PySide6.QtWidgets import (
     QPushButton, QLabel, QMessageBox
 )
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QFont, QShortcut, QKeySequence
+from PySide6.QtGui import QFont, QShortcut, QKeySequence, QColor, QBrush
 
 from memory_map_core import MemoryMapProject
 from fpga_lib.core import Register, RegisterArrayAccessor
@@ -50,6 +50,17 @@ class MemoryMapOutline(QWidget):
         header_layout.addWidget(title_label)
 
         header_layout.addStretch()
+
+        # Expand/Collapse all buttons for arrays
+        self.expand_all_btn = QPushButton("▼ Expand All")
+        self.expand_all_btn.setToolTip("Expand All Register Arrays")
+        self.expand_all_btn.setMaximumWidth(90)
+        header_layout.addWidget(self.expand_all_btn)
+
+        self.collapse_all_btn = QPushButton("▶ Collapse All")
+        self.collapse_all_btn.setToolTip("Collapse All Register Arrays")
+        self.collapse_all_btn.setMaximumWidth(90)
+        header_layout.addWidget(self.collapse_all_btn)
 
         # Register insertion buttons
         self.insert_register_before_btn = QPushButton("Reg ↑")
@@ -96,13 +107,18 @@ class MemoryMapOutline(QWidget):
         self.tree = QTreeWidget()
         self.tree.setHeaderLabels(["Name", "Address", "Type"])
         self.tree.setAlternatingRowColors(True)
-        self.tree.setRootIsDecorated(False)
+        self.tree.setRootIsDecorated(True)  # Enable expand/collapse arrows
         layout.addWidget(self.tree)
 
+        # Track expansion state of arrays
+        self._expanded_arrays = set()  # Store names of expanded arrays
+
         # Set column widths
-        self.tree.setColumnWidth(0, 150)
-        self.tree.setColumnWidth(1, 80)
-        self.tree.setColumnWidth(2, 70)
+        from PySide6.QtWidgets import QHeaderView
+        header = self.tree.header()
+        header.setSectionResizeMode(0, QHeaderView.ResizeToContents)  # Name - fit to content
+        self.tree.setColumnWidth(1, 150)  # Address - wider for ranges
+        header.setSectionResizeMode(2, QHeaderView.ResizeToContents)  # Type - fit to content
 
         # Initially disable register management buttons (no selection)
         self._update_button_states(False)
@@ -130,6 +146,13 @@ class MemoryMapOutline(QWidget):
     def _connect_signals(self):
         """Connect internal signals."""
         self.tree.currentItemChanged.connect(self._on_selection_changed)
+        self.tree.itemExpanded.connect(self._on_item_expanded)
+        self.tree.itemCollapsed.connect(self._on_item_collapsed)
+
+        # Expand/collapse all buttons
+        self.expand_all_btn.clicked.connect(self._expand_all_arrays)
+        self.collapse_all_btn.clicked.connect(self._collapse_all_arrays)
+
         self.insert_register_before_btn.clicked.connect(self._insert_register_before_clicked)
         self.insert_register_after_btn.clicked.connect(self._insert_register_after_clicked)
         self.insert_array_before_btn.clicked.connect(self._insert_array_before_clicked)
@@ -164,9 +187,34 @@ class MemoryMapOutline(QWidget):
         if not self.current_project:
             return
 
-        # Add registers (sorted by offset for logical display order)
-        sorted_registers = sorted(self.current_project.registers, key=lambda r: r.offset)
-        for register in sorted_registers:
+        # Group registers by array parent (for nested arrays like DESCRIPTOR[0].SRC_ADDR)
+        nested_array_groups = {}  # {array_name: {index: [registers]}}
+        standalone_registers = []
+
+        for register in self.current_project.registers:
+            if hasattr(register, '_array_parent'):
+                # This is part of a nested array
+                array_name = register._array_parent
+                index = register._array_index
+
+                if array_name not in nested_array_groups:
+                    nested_array_groups[array_name] = {
+                        'registers': {},
+                        'base': register._array_base,
+                        'count': register._array_count,
+                        'stride': register._array_stride
+                    }
+
+                if index not in nested_array_groups[array_name]['registers']:
+                    nested_array_groups[array_name]['registers'][index] = []
+
+                nested_array_groups[array_name]['registers'][index].append(register)
+            else:
+                # Standalone register
+                standalone_registers.append(register)
+
+        # Add standalone registers
+        for register in sorted(standalone_registers, key=lambda r: r.offset):
             item = QTreeWidgetItem([
                 register.name,
                 f"0x{register.offset:04X}",
@@ -174,6 +222,77 @@ class MemoryMapOutline(QWidget):
             ])
             item.setData(0, Qt.UserRole, register)
             self.tree.addTopLevelItem(item)
+
+        # Add nested array groups
+        for array_name, array_data in sorted(nested_array_groups.items(), key=lambda x: x[1]['base']):
+            count = array_data['count']
+            stride = array_data['stride']
+            base = array_data['base']
+            end_addr = base + (count * stride) - 1
+
+            # Create parent array item
+            parent_item = QTreeWidgetItem([
+                array_name,
+                f"0x{base:04X}-0x{end_addr:04X}",
+                f"Array[{count}]"
+            ])
+
+            # Make array parent bold
+            for col in range(3):
+                font = parent_item.font(col)
+                font.setBold(True)
+                parent_item.setFont(col, font)
+
+            # Add child items for each array element
+            for idx in sorted(array_data['registers'].keys()):
+                registers = array_data['registers'][idx]
+                element_offset = base + (idx * stride)
+
+                # Create array element node
+                element_item = QTreeWidgetItem([
+                    f"{array_name}[{idx}]",
+                    f"0x{element_offset:04X}",
+                    "Element"
+                ])
+
+                # Style array elements (gray, italic)
+                gray_brush = QBrush(QColor(100, 100, 100))
+                for col in range(3):
+                    element_item.setForeground(col, gray_brush)
+                    font = element_item.font(col)
+                    font.setItalic(True)
+                    element_item.setFont(col, font)
+
+                # Add sub-registers as children of the element
+                for reg in sorted(registers, key=lambda r: r.offset):
+                    # Extract sub-register name (e.g., "SRC_ADDR" from "DESCRIPTOR[0].SRC_ADDR")
+                    sub_name = reg.name.split('.')[-1] if '.' in reg.name else reg.name
+
+                    sub_item = QTreeWidgetItem([
+                        sub_name,
+                        f"0x{reg.offset:04X}",
+                        "Register"
+                    ])
+                    sub_item.setData(0, Qt.UserRole, reg)
+
+                    # Make sub-registers even lighter gray
+                    lighter_gray = QBrush(QColor(120, 120, 120))
+                    for col in range(3):
+                        sub_item.setForeground(col, lighter_gray)
+
+                    element_item.addChild(sub_item)
+
+                # Store the first register as UserRole data for the element (for compatibility)
+                element_item.setData(0, Qt.UserRole, registers[0] if registers else None)
+                parent_item.addChild(element_item)
+
+            self.tree.addTopLevelItem(parent_item)
+
+            # Restore expansion state
+            if array_name in self._expanded_arrays:
+                parent_item.setExpanded(True)
+            else:
+                parent_item.setExpanded(False)
 
         # Add register arrays (sorted by base offset for logical display order)
         sorted_arrays = sorted(self.current_project.register_arrays, key=lambda a: a._base_offset)
@@ -185,7 +304,43 @@ class MemoryMapOutline(QWidget):
                 f"Array[{array._count}]"
             ])
             item.setData(0, Qt.UserRole, array)
+
+            # Make array parent items bold to distinguish from registers
+            for col in range(3):
+                font = item.font(col)
+                font.setBold(True)
+                item.setFont(col, font)
+
+            # Add child items for each array element
+            for i in range(array._count):
+                element_offset = array._base_offset + (i * array._stride)
+                element_accessor = array[i]  # Get RegisterArrayAccessor for this element
+                child_item = QTreeWidgetItem([
+                    f"{array._name}[{i}]",
+                    f"0x{element_offset:04X}",
+                    "Element"
+                ])
+                child_item.setData(0, Qt.UserRole, element_accessor)
+                child_item.setData(0, Qt.UserRole + 1, i)  # Store index
+                child_item.setData(0, Qt.UserRole + 2, array)  # Store parent array
+
+                # Style array elements differently (subtle gray, italic)
+                gray_brush = QBrush(QColor(100, 100, 100))
+                for col in range(3):
+                    child_item.setForeground(col, gray_brush)
+                    font = child_item.font(col)
+                    font.setItalic(True)
+                    child_item.setFont(col, font)
+
+                item.addChild(child_item)
+
             self.tree.addTopLevelItem(item)
+
+            # Restore expansion state
+            if array._name in self._expanded_arrays:
+                item.setExpanded(True)
+            else:
+                item.setExpanded(False)  # Collapsed by default
 
         # Sort by address (this will mix registers and arrays by address)
         self.tree.sortItems(1, Qt.AscendingOrder)
@@ -214,7 +369,15 @@ class MemoryMapOutline(QWidget):
             item = self.tree.topLevelItem(i)
             if item.data(0, Qt.UserRole) == memory_item:
                 self.tree.setCurrentItem(item)
-                break
+                return
+
+            # Check child items (array elements)
+            for j in range(item.childCount()):
+                child = item.child(j)
+                if child.data(0, Qt.UserRole) == memory_item:
+                    item.setExpanded(True)  # Expand parent if selecting child
+                    self.tree.setCurrentItem(child)
+                    return
 
     def get_selected_item(self):
         """Get the currently selected memory map item."""
@@ -375,3 +538,35 @@ class MemoryMapOutline(QWidget):
         # Emit project changed signal to update other views
         if hasattr(parent, 'project_changed'):
             parent.project_changed.emit()
+
+    def _on_item_expanded(self, item: QTreeWidgetItem):
+        """Track when an array is expanded."""
+        array = item.data(0, Qt.UserRole)
+        if hasattr(array, '_name'):  # It's a register array
+            self._expanded_arrays.add(array._name)
+
+    def _on_item_collapsed(self, item: QTreeWidgetItem):
+        """Track when an array is collapsed."""
+        array = item.data(0, Qt.UserRole)
+        if hasattr(array, '_name'):  # It's a register array
+            self._expanded_arrays.discard(array._name)
+
+    def _expand_all_arrays(self):
+        """Expand all register arrays in the tree."""
+        for i in range(self.tree.topLevelItemCount()):
+            item = self.tree.topLevelItem(i)
+            if item.childCount() > 0:  # It's an array with children
+                item.setExpanded(True)
+                array = item.data(0, Qt.UserRole)
+                if hasattr(array, '_name'):
+                    self._expanded_arrays.add(array._name)
+
+    def _collapse_all_arrays(self):
+        """Collapse all register arrays in the tree."""
+        for i in range(self.tree.topLevelItemCount()):
+            item = self.tree.topLevelItem(i)
+            if item.childCount() > 0:  # It's an array with children
+                item.setExpanded(False)
+                array = item.data(0, Qt.UserRole)
+                if hasattr(array, '_name'):
+                    self._expanded_arrays.discard(array._name)
