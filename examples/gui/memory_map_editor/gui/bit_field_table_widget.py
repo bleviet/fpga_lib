@@ -6,8 +6,8 @@ Handles user interactions, cell editing, validation, and visual highlighting.
 """
 
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
-                               QTableWidget, QTableWidgetItem, QMessageBox)
-from PySide6.QtCore import Signal, Qt
+                               QTableWidget, QTableWidgetItem, QMessageBox, QStyle)
+from PySide6.QtCore import Signal, Qt, QSize
 from PySide6.QtGui import QColor, QKeySequence, QShortcut
 
 from memory_map_core import Register, RegisterArrayAccessor, BitField
@@ -58,9 +58,12 @@ class BitFieldTableWidget(QWidget):
         button_layout.addSpacing(10)
 
         # Remove button
-        self.remove_field_btn = QPushButton("🗑")
+        self.remove_field_btn = QPushButton()
         self.remove_field_btn.setToolTip("Remove Selected Field")
         self.remove_field_btn.setFixedSize(32, 32)
+        trash_icon = self.style().standardIcon(QStyle.SP_TrashIcon)
+        self.remove_field_btn.setIcon(trash_icon)
+        self.remove_field_btn.setIconSize(QSize(20, 20))
         button_layout.addWidget(self.remove_field_btn)
 
         # Separator
@@ -275,20 +278,23 @@ class BitFieldTableWidget(QWidget):
         if not self.current_item:
             return
 
+        fields_list = BitFieldOperations.get_sorted_fields(self.current_item)
+
         # Find available space for a 1-bit field
-        next_offset = BitFieldOperations.find_available_space(self.current_item, 1)
+        next_offset = BitFieldOperations.find_available_space(fields_list, 1)
         if next_offset == -1:
             QMessageBox.warning(self, "Cannot Add Field",
                               "No space available in the 32-bit register for a new field.")
             return
 
         # Create a default field
-        field_name = BitFieldOperations.generate_unique_field_name(self.current_item)
+        existing_names = {f.name for f in fields_list}
+        field_name = BitFieldOperations.generate_unique_field_name(existing_names)
         new_field = BitField(field_name, next_offset, 1, "rw", "New field", reset_value=0)
 
         # Validate the field fits
         is_valid, error_msg = BitFieldOperations.validate_field_fits(
-            self.current_item, new_field
+            new_field, fields_list
         )
         if not is_valid:
             QMessageBox.warning(self, "Cannot Add Field", f"Validation failed: {error_msg}")
@@ -340,7 +346,8 @@ class BitFieldTableWidget(QWidget):
             return
 
         # Create new field
-        new_field_name = BitFieldOperations.generate_unique_field_name(self.current_item)
+        existing_names = {f.name for f in fields_list}
+        new_field_name = BitFieldOperations.generate_unique_field_name(existing_names)
 
         # Determine insertion strategy
         if position == 'before':
@@ -413,7 +420,9 @@ class BitFieldTableWidget(QWidget):
             ]
 
         # Recalculate offsets to close gaps
-        BitFieldOperations.recalculate_offsets(self.current_item)
+        fields_list = BitFieldOperations.get_sorted_fields(self.current_item)
+        BitFieldOperations.recalculate_offsets(fields_list)
+        BitFieldOperations.update_item_fields(self.current_item, fields_list)
 
         # Refresh table
         self.refresh()
@@ -492,7 +501,9 @@ class BitFieldTableWidget(QWidget):
         if not self.current_item:
             return
 
-        BitFieldOperations.recalculate_offsets(self.current_item)
+        fields_list = BitFieldOperations.get_sorted_fields(self.current_item)
+        BitFieldOperations.recalculate_offsets(fields_list)
+        BitFieldOperations.update_item_fields(self.current_item, fields_list)
         self.refresh()
         self.field_changed.emit()
 
@@ -584,6 +595,8 @@ class BitFieldTableWidget(QWidget):
         if not bits_item:
             return
 
+        fields_list = BitFieldOperations.get_sorted_fields(self.current_item)
+
         try:
             bits_text = bits_item.text().strip()
 
@@ -612,7 +625,7 @@ class BitFieldTableWidget(QWidget):
             # Create temporary field for validation
             temp_field = BitField(field.name, new_offset, new_width, field.access, field.description)
             is_valid, error_msg = BitFieldOperations.validate_field_fits(
-                self.current_item, temp_field, exclude_field=field
+                temp_field, fields_list, exclude_field=field
             )
 
             if not is_valid:
@@ -629,10 +642,11 @@ class BitFieldTableWidget(QWidget):
                     field.offset = new_offset
                     field.width = new_width
                     BitFieldOperations.recalculate_offsets_preserving_field(
-                        self.current_item, field
+                        fields_list, field
                     )
 
                     # Validate final result
+                    BitFieldOperations.update_item_fields(self.current_item, fields_list)
                     final_fields = BitFieldOperations.get_sorted_fields(self.current_item)
                     max_bit = max(f.offset + f.width for f in final_fields) if final_fields else 0
 
@@ -661,6 +675,8 @@ class BitFieldTableWidget(QWidget):
         if not width_item:
             return
 
+        fields_list = BitFieldOperations.get_sorted_fields(self.current_item)
+
         try:
             new_width = int(width_item.text())
             old_width = field.width
@@ -668,7 +684,7 @@ class BitFieldTableWidget(QWidget):
             # Create temporary field for validation
             temp_field = BitField(field.name, field.offset, new_width, field.access, field.description)
             is_valid, error_msg = BitFieldOperations.validate_field_fits(
-                self.current_item, temp_field, exclude_field=field
+                temp_field, fields_list, exclude_field=field
             )
 
             if not is_valid:
@@ -683,7 +699,8 @@ class BitFieldTableWidget(QWidget):
 
                 if reply == QMessageBox.Yes:
                     field.width = new_width
-                    BitFieldOperations.recalculate_offsets(self.current_item)
+                    BitFieldOperations.recalculate_offsets(fields_list)
+                    BitFieldOperations.update_item_fields(self.current_item, fields_list)
 
                     # Check if recalculation resolved the issue
                     final_fields = BitFieldOperations.get_sorted_fields(self.current_item)
@@ -691,7 +708,8 @@ class BitFieldTableWidget(QWidget):
 
                     if max_bit > 32:
                         field.width = old_width
-                        BitFieldOperations.recalculate_offsets(self.current_item)
+                        BitFieldOperations.recalculate_offsets(fields_list)
+                        BitFieldOperations.update_item_fields(self.current_item, fields_list)
                         QMessageBox.warning(
                             self,
                             "Cannot Fit Fields",

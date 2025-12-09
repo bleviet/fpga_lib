@@ -7,9 +7,9 @@ Allows navigation and selection of memory map items.
 
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QTreeWidget, QTreeWidgetItem,
-    QPushButton, QLabel, QMessageBox
+    QPushButton, QLabel, QMessageBox, QStyle
 )
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Qt, Signal, QSize
 from PySide6.QtGui import QFont, QShortcut, QKeySequence, QColor, QBrush
 
 from memory_map_core import MemoryMapProject
@@ -94,9 +94,12 @@ class MemoryMapOutline(QWidget):
         header_layout.addSpacing(10)
 
         # Remove button
-        self.remove_register_btn = QPushButton("🗑")
+        self.remove_register_btn = QPushButton()
         self.remove_register_btn.setToolTip("Remove Selected Register/Array")
         self.remove_register_btn.setFixedSize(32, 32)
+        trash_icon = self.style().standardIcon(QStyle.SP_TrashIcon)
+        self.remove_register_btn.setIcon(trash_icon)
+        self.remove_register_btn.setIconSize(QSize(20, 20))
         header_layout.addWidget(self.remove_register_btn)
 
         # Separator

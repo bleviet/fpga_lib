@@ -9,9 +9,9 @@ from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QSplitter,
     QMenuBar, QMenu, QToolBar, QStatusBar, QMessageBox, QFileDialog,
     QLabel, QPushButton, QApplication, QSlider, QDialog, QDialogButtonBox,
-    QFormLayout, QSpinBox, QComboBox
+    QFormLayout, QSpinBox, QComboBox, QStyle
 )
-from PySide6.QtCore import Qt, Signal, QTimer, QSettings
+from PySide6.QtCore import Qt, Signal, QTimer, QSettings, QSize
 from PySide6.QtGui import QAction, QKeySequence, QIcon, QFont
 from pathlib import Path
 
@@ -220,6 +220,7 @@ class MainWindow(QMainWindow):
         self.action_validate.setShortcut(QKeySequence("Ctrl+R"))
         self.action_validate.setStatusTip("Check for errors and conflicts")
         self.action_validate.triggered.connect(self.validate_project)
+        self.action_validate.setIcon(self.style().standardIcon(QStyle.SP_DialogApplyButton))
         edit_menu.addAction(self.action_validate)
 
         # View menu
@@ -239,6 +240,10 @@ class MainWindow(QMainWindow):
         self.action_zoom_in.setShortcut(QKeySequence.ZoomIn)
         self.action_zoom_in.setStatusTip("Increase text size")
         self.action_zoom_in.triggered.connect(self.zoom_in)
+        zoom_in_icon = QIcon.fromTheme("zoom-in")
+        if zoom_in_icon.isNull():
+            zoom_in_icon = self.style().standardIcon(QStyle.SP_FileDialogContentsView)
+        self.action_zoom_in.setIcon(zoom_in_icon)
         view_menu.addAction(self.action_zoom_in)
 
         # Zoom Out
@@ -246,6 +251,10 @@ class MainWindow(QMainWindow):
         self.action_zoom_out.setShortcut(QKeySequence.ZoomOut)
         self.action_zoom_out.setStatusTip("Decrease text size")
         self.action_zoom_out.triggered.connect(self.zoom_out)
+        zoom_out_icon = QIcon.fromTheme("zoom-out")
+        if zoom_out_icon.isNull():
+            zoom_out_icon = self.style().standardIcon(QStyle.SP_FileDialogDetailedView)
+        self.action_zoom_out.setIcon(zoom_out_icon)
         view_menu.addAction(self.action_zoom_out)
 
         # Reset Zoom
@@ -253,6 +262,7 @@ class MainWindow(QMainWindow):
         self.action_zoom_reset.setShortcut(QKeySequence("Ctrl+0"))
         self.action_zoom_reset.setStatusTip("Reset text size to default")
         self.action_zoom_reset.triggered.connect(self.zoom_reset)
+        self.action_zoom_reset.setIcon(self.style().standardIcon(QStyle.SP_BrowserReload))
         view_menu.addAction(self.action_zoom_reset)
 
         view_menu.addSeparator()
@@ -275,7 +285,8 @@ class MainWindow(QMainWindow):
     def _setup_toolbar(self):
         """Set up the main toolbar."""
         toolbar = self.addToolBar("Main")
-        toolbar.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
+        toolbar.setToolButtonStyle(Qt.ToolButtonIconOnly)
+        toolbar.setIconSize(QSize(20, 20))
 
         toolbar.addAction(self.action_new)
         toolbar.addAction(self.action_open)
