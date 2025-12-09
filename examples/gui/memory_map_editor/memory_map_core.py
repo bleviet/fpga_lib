@@ -145,14 +145,48 @@ class MemoryMapProject:
         return self.registers + self.register_arrays
 
 
+def _normalize_access(access_str: str) -> str:
+    """
+    Normalize access string to fpga_lib format.
+
+    Maps:
+    - 'read-write' -> 'rw'
+    - 'read-only' -> 'ro'
+    - 'write-only' -> 'wo'
+    - 'write-1-to-clear' -> 'rw1c'
+    """
+    access_map = {
+        'read-write': 'rw',
+        'read-only': 'ro',
+        'write-only': 'wo',
+        'write-1-to-clear': 'rw1c',
+        'rw': 'rw',
+        'ro': 'ro',
+        'wo': 'wo',
+        'rw1c': 'rw1c'
+    }
+    normalized = access_map.get(access_str.lower())
+    if normalized is None:
+        raise ValueError(f"Unknown access type: {access_str}")
+    return normalized
+
+
 def _parse_bits(bits_def: Union[str, int]) -> Tuple[int, int]:
-    """Helper to parse 'bit: 0' or 'bits: [7:4]' into offset and width."""
+    """
+    Helper to parse bit definitions into offset and width.
+
+    Supports formats:
+    - 'bits: "[7:4]"' -> offset=4, width=4
+    - 'bits: "[0:0]"' -> offset=0, width=1
+    - 'bit: 0' (legacy) -> offset=0, width=1
+    - Direct int (legacy) -> offset=int, width=1
+    """
     if isinstance(bits_def, int):
         return bits_def, 1
     if isinstance(bits_def, str):
         if ':' in bits_def:
-            # Handle '[7:4]' format
-            clean_def = bits_def.strip('[]')
+            # Handle '[7:4]' or '7:4' format
+            clean_def = bits_def.strip('[]').strip()
             high, low = map(int, clean_def.split(':'))
             return low, (high - low + 1)
         else:
@@ -164,6 +198,10 @@ def _parse_bits(bits_def: Union[str, int]) -> Tuple[int, int]:
 def load_from_yaml(file_path: Union[str, Path]) -> MemoryMapProject:
     """
     Load a memory map project from a YAML file.
+
+    Supports both formats:
+    - Legacy: {name, description, base_address, registers: [...]}
+    - New: [{name, description, addressBlocks: [...]}]
 
     Args:
         file_path: Path to the YAML file
@@ -184,9 +222,22 @@ def load_from_yaml(file_path: Union[str, Path]) -> MemoryMapProject:
     with open(file_path, 'r', encoding='utf-8') as f:
         data = yaml.safe_load(f)
 
-    if not isinstance(data, dict):
-        raise ValueError("Invalid YAML structure: root must be a dictionary")
+    # Detect format: list (new) or dict (legacy)
+    if isinstance(data, list):
+        # New format: list of memory maps
+        if not data:
+            raise ValueError("Empty memory map list")
+        mem_map = data[0]  # Use first memory map
+        return _load_new_format(mem_map, file_path)
+    elif isinstance(data, dict):
+        # Legacy format: single dict
+        return _load_legacy_format(data, file_path)
+    else:
+        raise ValueError("Invalid YAML structure: root must be a list or dictionary")
 
+
+def _load_legacy_format(data: dict, file_path: Path) -> MemoryMapProject:
+    """Load legacy format: {name, description, base_address, registers}"""
     # Create project with metadata
     project = MemoryMapProject(
         name=data.get('name', file_path.stem),
@@ -197,56 +248,167 @@ def load_from_yaml(file_path: Union[str, Path]) -> MemoryMapProject:
 
     # Load registers
     for reg_info in data.get('registers', []):
-        fields = []
-        for field_info in reg_info.get('fields', []):
-            # Parse bit definition
-            offset, width = _parse_bits(field_info.get('bit') or field_info.get('bits', 0))
-
-            field = BitField(
-                name=field_info['name'],
-                offset=offset,
-                width=width,
-                access=field_info.get('access', 'rw').lower(),
-                description=field_info.get('description', ''),
-                reset_value=field_info.get('reset', None)
-            )
-            fields.append(field)
-
-        # Check if this is a register array
-        if 'count' in reg_info:
-            array = RegisterArrayAccessor(
-                name=reg_info['name'],
-                base_offset=reg_info['offset'],
-                count=reg_info['count'],
-                stride=reg_info.get('stride', 4),
-                field_template=fields,
-                bus_interface=project._bus
-            )
-            project.register_arrays.append(array)
-        else:
-            # Single register
-            register = Register(
-                name=reg_info['name'],
-                offset=reg_info['offset'],
-                bus=project._bus,
-                fields=fields,
-                description=reg_info.get('description', '')
-            )
-            project.registers.append(register)
+        _load_register(project, reg_info, base_offset=0)
 
     return project
 
 
-def save_to_yaml(project: MemoryMapProject, file_path: Union[str, Path]) -> None:
+def _load_new_format(mem_map: dict, file_path: Path) -> MemoryMapProject:
+    """Load new format: {name, description, addressBlocks: [...]}"""
+    # Create project with metadata
+    project = MemoryMapProject(
+        name=mem_map.get('name', file_path.stem),
+        description=mem_map.get('description', ''),
+        base_address=0x40000000,  # Default for new format
+        file_path=file_path
+    )
+
+    # Process address blocks
+    for addr_block in mem_map.get('addressBlocks', []):
+        block_offset = addr_block.get('offset', 0)
+
+        # Load registers within this address block
+        for reg_info in addr_block.get('registers', []):
+            _load_register(project, reg_info, base_offset=block_offset)
+
+    return project
+
+
+def _load_register(project: MemoryMapProject, reg_info: dict, base_offset: int = 0):
+    """
+    Load a register or nested register structure.
+
+    Handles:
+    - Simple registers with fields
+    - Register arrays (count > 1)
+    - Nested registers within arrays (new format)
+    """
+    # Check if this has nested registers (new nested format)
+    if 'registers' in reg_info and 'count' in reg_info:
+        # This is a register array with nested sub-registers
+        _load_nested_register_array(project, reg_info, base_offset)
+        return
+
+    # Parse fields
+    fields = []
+    for field_info in reg_info.get('fields', []):
+        # Parse bit definition (supports both 'bit' and 'bits')
+        bits_value = field_info.get('bits') or field_info.get('bit')
+        if bits_value is None:
+            continue
+
+        offset, width = _parse_bits(bits_value)
+
+        field = BitField(
+            name=field_info['name'],
+            offset=offset,
+            width=width,
+            access=_normalize_access(field_info.get('access', 'read-write')),
+            description=field_info.get('description', ''),
+            reset_value=field_info.get('reset', None)
+        )
+        fields.append(field)
+
+    # Check if this is a register array (simple, without nested registers)
+    if 'count' in reg_info:
+        array = RegisterArrayAccessor(
+            name=reg_info['name'],
+            base_offset=base_offset + reg_info.get('offset', 0),
+            count=reg_info['count'],
+            stride=reg_info.get('stride', 4),
+            field_template=fields,
+            bus_interface=project._bus
+        )
+        project.register_arrays.append(array)
+    else:
+        # Single register
+        register = Register(
+            name=reg_info['name'],
+            offset=base_offset + reg_info.get('offset', 0),
+            bus=project._bus,
+            fields=fields,
+            description=reg_info.get('description', '')
+        )
+        project.registers.append(register)
+
+
+def _load_nested_register_array(project: MemoryMapProject, array_info: dict, base_offset: int = 0):
+    """
+    Load nested register arrays (new format).
+
+    Example: DESCRIPTOR[64] containing SRC_ADDR, DST_ADDR, LENGTH registers
+
+    Creates flattened registers with hierarchical names like:
+    - DESCRIPTOR_0_SRC_ADDR
+    - DESCRIPTOR_0_DST_ADDR
+    - DESCRIPTOR_1_SRC_ADDR
+    """
+    array_name = array_info['name']
+    count = array_info['count']
+    stride = array_info.get('stride', 4)
+    array_base = base_offset + array_info.get('offset', 0)
+
+    # Create individual registers for each array instance
+    for idx in range(count):
+        instance_offset = array_base + (idx * stride)
+
+        # Process each sub-register within this array instance
+        for sub_reg_info in array_info['registers']:
+            sub_reg_name = sub_reg_info['name']
+            sub_reg_offset = sub_reg_info.get('offset', 0)
+
+            # Parse fields
+            fields = []
+            for field_info in sub_reg_info.get('fields', []):
+                bits_value = field_info.get('bits') or field_info.get('bit')
+                if bits_value is None:
+                    continue
+
+                offset, width = _parse_bits(bits_value)
+
+                field = BitField(
+                    name=field_info['name'],
+                    offset=offset,
+                    width=width,
+                    access=_normalize_access(field_info.get('access', 'read-write')),
+                    description=field_info.get('description', ''),
+                    reset_value=field_info.get('reset', None)
+                )
+                fields.append(field)
+
+            # Create flattened register with hierarchical name
+            register = Register(
+                name=f"{array_name}_{idx}_{sub_reg_name}",
+                offset=instance_offset + sub_reg_offset,
+                bus=project._bus,
+                fields=fields,
+                description=sub_reg_info.get('description', '')
+            )
+            project.registers.append(register)
+
+
+def save_to_yaml(project: MemoryMapProject, file_path: Union[str, Path], use_new_format: bool = True) -> None:
     """
     Save a memory map project to a YAML file.
 
     Args:
         project: MemoryMapProject instance to save
         file_path: Destination file path
+        use_new_format: If True, use new addressBlocks format; if False, use legacy format
     """
     file_path = Path(file_path)
 
+    if use_new_format:
+        _save_new_format(project, file_path)
+    else:
+        _save_legacy_format(project, file_path)
+
+    # Update project file path
+    project.file_path = file_path
+
+
+def _save_legacy_format(project: MemoryMapProject, file_path: Path) -> None:
+    """Save in legacy format: {name, description, base_address, registers}"""
     # Build YAML data structure
     data = {
         'name': project.name,
@@ -257,74 +419,114 @@ def save_to_yaml(project: MemoryMapProject, file_path: Union[str, Path]) -> None
 
     # Add regular registers
     for register in project.registers:
-        reg_data = {
-            'name': register.name,
-            'offset': register.offset,
-            'description': register.description,
-            'fields': []
-        }
-
-        for field_name, field in register._fields.items():
-            field_data = {
-                'name': field.name,
-                'access': field.access,
-                'description': field.description
-            }
-
-            # Add reset value if specified
-            if field.reset_value is not None:
-                field_data['reset'] = field.reset_value
-
-            # Format bit definition
-            if field.width == 1:
-                field_data['bit'] = field.offset
-            else:
-                high_bit = field.offset + field.width - 1
-                field_data['bits'] = f'[{high_bit}:{field.offset}]'
-
-            reg_data['fields'].append(field_data)
-
+        reg_data = _register_to_dict(register)
         data['registers'].append(reg_data)
 
     # Add register arrays
     for array in project.register_arrays:
-        array_data = {
-            'name': array._name,
-            'offset': array._base_offset,
-            'count': array._count,
-            'stride': array._stride,
-            'description': f"Register array with {array._count} entries",
-            'fields': []
-        }
-
-        # Add field template
-        for field in array._field_template:
-            field_data = {
-                'name': field.name,
-                'access': field.access,
-                'description': field.description
-            }
-
-            # Add reset value if specified
-            if field.reset_value is not None:
-                field_data['reset'] = field.reset_value
-
-            if field.width == 1:
-                field_data['bit'] = field.offset
-            else:
-                high_bit = field.offset + field.width - 1
-                field_data['bits'] = f'[{high_bit}:{field.offset}]'
-
-            array_data['fields'].append(field_data)
-
+        array_data = _register_array_to_dict(array)
         data['registers'].append(array_data)
 
     # Write YAML file
     with open(file_path, 'w', encoding='utf-8') as f:
         yaml.dump(data, f, default_flow_style=False, sort_keys=False, indent=2)
 
-    # Update project file path
-    project.file_path = file_path
+
+def _save_new_format(project: MemoryMapProject, file_path: Path) -> None:
+    """Save in new format: [{name, description, addressBlocks: [...]}]"""
+    # Group registers by address ranges into blocks
+    address_block = {
+        'name': 'REGISTERS',
+        'offset': 0,
+        'usage': 'register',
+        'defaultRegWidth': 32,
+        'registers': []
+    }
+
+    # Add regular registers
+    for register in project.registers:
+        reg_data = _register_to_dict(register)
+        address_block['registers'].append(reg_data)
+
+    # Add register arrays
+    for array in project.register_arrays:
+        array_data = _register_array_to_dict(array)
+        address_block['registers'].append(array_data)
+
+    # Build memory map structure
+    mem_map = {
+        'name': project.name,
+        'description': project.description,
+        'addressBlocks': [address_block]
+    }
+
+    # Root is a list
+    data = [mem_map]
+
+    # Write YAML file
+    with open(file_path, 'w', encoding='utf-8') as f:
+        yaml.dump(data, f, default_flow_style=False, sort_keys=False, indent=2)
+
+
+def _register_to_dict(register: Register) -> dict:
+    """Convert a Register to dictionary format."""
+    reg_data = {
+        'name': register.name,
+        'offset': register.offset,
+        'description': register.description,
+        'fields': []
+    }
+
+    for field_name, field in register._fields.items():
+        field_data = {
+            'name': field.name,
+            'access': field.access,
+            'description': field.description
+        }
+
+        # Add reset value if specified
+        if field.reset_value is not None:
+            field_data['reset'] = field.reset_value
+
+        # Format bit definition - always use bits: "[msb:lsb]" format
+        high_bit = field.offset + field.width - 1
+        field_data['bits'] = f'[{high_bit}:{field.offset}]'
+
+        reg_data['fields'].append(field_data)
+
+    return reg_data
+
+
+def _register_array_to_dict(array: RegisterArrayAccessor) -> dict:
+    """Convert a RegisterArrayAccessor to dictionary format."""
+    array_data = {
+        'name': array._name,
+        'offset': array._base_offset,
+        'count': array._count,
+        'stride': array._stride,
+        'description': f"Register array with {array._count} entries",
+        'fields': []
+    }
+
+    # Add field template
+    for field in array._field_template:
+        field_data = {
+            'name': field.name,
+            'access': field.access,
+            'description': field.description
+        }
+
+        # Add reset value if specified
+        if field.reset_value is not None:
+            field_data['reset'] = field.reset_value
+
+        # Format bit definition - always use bits: "[msb:lsb]" format
+        high_bit = field.offset + field.width - 1
+        field_data['bits'] = f'[{high_bit}:{field.offset}]'
+
+        array_data['fields'].append(field_data)
+
+    return array_data
 
 
 def create_new_project(name: str = "New Memory Map") -> MemoryMapProject:

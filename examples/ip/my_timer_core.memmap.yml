@@ -1,106 +1,101 @@
-# components/my_timer_core.memmap.yml
-#
-# Defines the memory map for the my_timer_core component.
-# This file is loaded by the 'import' key in the main component.
-
-# A library of register templates, local to this file
-registerTemplates:
-    # Template for a single timer channel's register set
-    TimerChannel:
-        # Note: Names start with '_' to be replaced by the generator.
-        # The generator will auto-calculate all offsets for these 4 registers.
-        - name: "_CTRL"
-          description: "Channel Control Register"
-          fields:
-              # Fields are auto-stacked from LSB (bit 0)
-              - { name: "ENABLE", bitWidth: 1 }
-              - {
-                    name: "MODE",
-                    bitWidth: 1,
-                    description: "0=periodic, 1=one-shot",
-                }
-              - { name: "IE", bitWidth: 1, description: "Interrupt enable" }
-              - { name: "RESERVED", bitWidth: 29, access: "read-only" }
-
-        - name: "_STATUS"
-          description: "Channel Status Register (Write 1 to clear)"
-          access: "write-1-to-clear"
-          fields:
-              - { name: "IRQ_PENDING", bitWidth: 1 }
-              - { name: "RESERVED", bitWidth: 31, access: "read-only" }
-
-        - name: "_PERIOD"
-          description: "Timer reload period value"
-          access: "read-write"
-
-        - name: "_VALUE"
-          description: "Current timer value (read-only)"
-          access: "read-only"
-
----
-# The list of memory maps starts after the '---' separator
-- name: "CSR_MAP"
-  description: "Control/Status Registers and Scratchpad RAM"
-
+- name: CSR_MAP
+  description: Control/Status Registers and Scratchpad RAM
   addressBlocks:
-      # --- Block 1: Global Control Registers ---
-      - name: "GLOBAL_REGS"
-        baseAddress: 0x0
-        range: "1K" # 0x0 - 0x3FF
-        usage: "register"
-        defaultRegWidth: 32 # Assumed for all registers unless overridden
-
-        registers:
-            # Generator assigns offset: 0x00
-            - name: "GLOBAL_CTRL"
-              description: "Global enable for all timers"
-              fields:
-                  - { name: "ENABLE_ALL", bitWidth: 1 }
-                  - { name: "RESERVED", bitWidth: 31, access: "read-only" }
-
-            # Generator assigns offset: 0x04
-            - name: "GLOBAL_STATUS"
-              description: "OR-reduced interrupt status of all channels"
-              access: "read-only"
-              fields:
-                  - { name: "IRQ_PENDING", bitWidth: 1 }
-
-            # Creates a gap from 0x08 to 0x0F
-            - reserved: 8 # 8 bytes
-
-            # Generator assigns offset: 0x10
-            - name: "SCRATCHPAD_USER"
-              description: "A general purpose user register"
-
-            # Create a large gap from 0x14 to 0xFF
-            - reserved: 236 # bytes (0x100 - 0x14 = 0xEC = 236)
-
-      # --- Block 2: Timer Channel Register Array ---
-      - name: "TIMER_CHANNELS"
-        baseAddress: 0x400 # 1K
-        range: "3K" # 0x400 - 0xFFF
-        usage: "register"
+      - name: GLOBAL_REGS
+        offset: 0
+        usage: register
         defaultRegWidth: 32
-
         registers:
-            # This one keyword generates all the timer channel registers
-            - generateArray:
-                  name: "TIMER" # Base name, e.g., "TIMER"
-                  count: 4 # Number of copies to create
-                  # You could also use: count: $NUM_CHANNELS (to link to parameter)
-                  template: "TimerChannel" # Use template defined above
-            # Generator Output (conceptually):
-            # - TIMER1_CTRL (at 0x400)
-            # - TIMER1_STATUS (at 0x404)
-            # - TIMER1_PERIOD (at 0x408)
-            # - TIMER1_VALUE (at 0x40C)
-            # - TIMER2_CTRL (at 0x410)
-            # - ...and so on up to TIMER4...
-
-      # --- Block 3: Local Scratchpad RAM ---
-      - name: "LOCAL_RAM"
-        baseAddress: 0x1000 # 4K
-        range: "4K"
-        usage: "memory" # This block is a memory, not registers
-        access: "read-write"
-        description: "4K local scratchpad RAM"
+            - name: GLOBAL_CTRL
+              description: Global enable for all timers
+              fields:
+                  - name: ENABLE_ALL
+                    bits: "[0:0]"
+                    access: read-write
+                    description: Enable all timer channels
+                  - name: RESERVED
+                    bits: "[31:1]"
+                    access: read-only
+            - name: GLOBAL_STATUS
+              description: OR-reduced interrupt status of all channels
+              access: read-only
+              fields:
+                  - name: IRQ_PENDING
+                    bits: "[0:0]"
+                    access: read-only
+                    description: Global interrupt pending flag
+                  - name: RESERVED
+                    bits: "[31:1]"
+                    access: read-only
+            - name: SCRATCHPAD_USER
+              offset: 16
+              description: A general purpose user register
+              fields:
+                  - name: DATA
+                    bits: "[31:0]"
+                    access: read-write
+                    description: User scratchpad data
+      - name: TIMER_CHANNELS
+        offset: 1024
+        usage: register
+        defaultRegWidth: 32
+        registers:
+            - name: TIMER
+              count: 4
+              stride: 16
+              description: Timer channel configuration and status
+              registers:
+                  - name: CTRL
+                    offset: 0
+                    description: Channel Control Register
+                    fields:
+                        - name: ENABLE
+                          bits: "[0:0]"
+                          access: read-write
+                          description: Enable timer channel
+                        - name: MODE
+                          bits: "[1:1]"
+                          access: read-write
+                          description: Timer mode (0=periodic, 1=one-shot)
+                        - name: IE
+                          bits: "[2:2]"
+                          access: read-write
+                          description: Interrupt enable
+                        - name: RESERVED
+                          bits: "[31:3]"
+                          access: read-only
+                  - name: STATUS
+                    offset: 4
+                    description: Channel Status Register (Write 1 to clear)
+                    access: write-1-to-clear
+                    fields:
+                        - name: IRQ_PENDING
+                          bits: "[0:0]"
+                          access: write-1-to-clear
+                          description: Interrupt pending flag
+                        - name: RESERVED
+                          bits: "[31:1]"
+                          access: read-only
+                  - name: PERIOD
+                    offset: 8
+                    description: Timer reload period value
+                    access: read-write
+                    fields:
+                        - name: PERIOD_VALUE
+                          bits: "[31:0]"
+                          access: read-write
+                          description: Timer period in clock cycles
+                  - name: VALUE
+                    offset: 12
+                    description: Current timer value (read-only)
+                    access: read-only
+                    fields:
+                        - name: CURRENT_VALUE
+                          bits: "[31:0]"
+                          access: read-only
+                          description: Current timer count value
+      - name: LOCAL_RAM
+        offset: 4096
+        usage: memory
+        access: read-write
+        description: 4K local scratchpad RAM
