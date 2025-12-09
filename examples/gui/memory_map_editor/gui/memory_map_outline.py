@@ -52,53 +52,65 @@ class MemoryMapOutline(QWidget):
         header_layout.addStretch()
 
         # Expand/Collapse all buttons for arrays
-        self.expand_all_btn = QPushButton("▼ Expand All")
+        self.expand_all_btn = QPushButton("⊞")
         self.expand_all_btn.setToolTip("Expand All Register Arrays")
-        self.expand_all_btn.setMaximumWidth(90)
+        self.expand_all_btn.setFixedSize(32, 32)
         header_layout.addWidget(self.expand_all_btn)
 
-        self.collapse_all_btn = QPushButton("▶ Collapse All")
+        self.collapse_all_btn = QPushButton("⊟")
         self.collapse_all_btn.setToolTip("Collapse All Register Arrays")
-        self.collapse_all_btn.setMaximumWidth(90)
+        self.collapse_all_btn.setFixedSize(32, 32)
         header_layout.addWidget(self.collapse_all_btn)
 
+        # Separator
+        header_layout.addSpacing(10)
+
         # Register insertion buttons
-        self.insert_register_before_btn = QPushButton("Reg ↑")
+        self.insert_register_before_btn = QPushButton("⬆")
         self.insert_register_before_btn.setToolTip("Insert Register Before Selected")
-        self.insert_register_before_btn.setMaximumWidth(60)
+        self.insert_register_before_btn.setFixedSize(32, 32)
         header_layout.addWidget(self.insert_register_before_btn)
 
-        self.insert_register_after_btn = QPushButton("Reg ↓")
+        self.insert_register_after_btn = QPushButton("⬇")
         self.insert_register_after_btn.setToolTip("Insert Register After Selected")
-        self.insert_register_after_btn.setMaximumWidth(60)
+        self.insert_register_after_btn.setFixedSize(32, 32)
         header_layout.addWidget(self.insert_register_after_btn)
 
+        # Separator
+        header_layout.addSpacing(10)
+
         # Array insertion buttons
-        self.insert_array_before_btn = QPushButton("Array ↑")
+        self.insert_array_before_btn = QPushButton("⇈")
         self.insert_array_before_btn.setToolTip("Insert Array Before Selected")
-        self.insert_array_before_btn.setMaximumWidth(70)
+        self.insert_array_before_btn.setFixedSize(32, 32)
         header_layout.addWidget(self.insert_array_before_btn)
 
-        self.insert_array_after_btn = QPushButton("Array ↓")
+        self.insert_array_after_btn = QPushButton("⇊")
         self.insert_array_after_btn.setToolTip("Insert Array After Selected")
-        self.insert_array_after_btn.setMaximumWidth(70)
+        self.insert_array_after_btn.setFixedSize(32, 32)
         header_layout.addWidget(self.insert_array_after_btn)
 
+        # Separator
+        header_layout.addSpacing(10)
+
         # Remove button
-        self.remove_register_btn = QPushButton("✗ Remove")
-        self.remove_register_btn.setToolTip("Remove Selected Register")
-        self.remove_register_btn.setMaximumWidth(70)
+        self.remove_register_btn = QPushButton("🗑")
+        self.remove_register_btn.setToolTip("Remove Selected Register/Array")
+        self.remove_register_btn.setFixedSize(32, 32)
         header_layout.addWidget(self.remove_register_btn)
 
+        # Separator
+        header_layout.addSpacing(10)
+
         # Move up/down buttons for reordering
-        self.move_up_btn = QPushButton("⬆ Up")
-        self.move_up_btn.setToolTip("Move Selected Register Up (Alt+Up)")
-        self.move_up_btn.setMaximumWidth(60)
+        self.move_up_btn = QPushButton("△")
+        self.move_up_btn.setToolTip("Move Selected Item Up (Alt+Up)")
+        self.move_up_btn.setFixedSize(32, 32)
         header_layout.addWidget(self.move_up_btn)
 
-        self.move_down_btn = QPushButton("⬇ Down")
-        self.move_down_btn.setToolTip("Move Selected Register Down (Alt+Down)")
-        self.move_down_btn.setMaximumWidth(60)
+        self.move_down_btn = QPushButton("▽")
+        self.move_down_btn.setToolTip("Move Selected Item Down (Alt+Down)")
+        self.move_down_btn.setFixedSize(32, 32)
         header_layout.addWidget(self.move_down_btn)
 
         layout.addLayout(header_layout)

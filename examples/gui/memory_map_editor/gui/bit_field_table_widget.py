@@ -34,6 +34,62 @@ class BitFieldTableWidget(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
 
+        # Control buttons toolbar at the top
+        button_layout = QHBoxLayout()
+
+        # Add field button
+        self.add_field_btn = QPushButton("+")
+        self.add_field_btn.setToolTip("Add New Field")
+        self.add_field_btn.setFixedSize(32, 32)
+        button_layout.addWidget(self.add_field_btn)
+
+        # Insert before/after buttons
+        self.insert_before_btn = QPushButton("⬆")
+        self.insert_before_btn.setToolTip("Insert Field Before Selected")
+        self.insert_before_btn.setFixedSize(32, 32)
+        button_layout.addWidget(self.insert_before_btn)
+
+        self.insert_after_btn = QPushButton("⬇")
+        self.insert_after_btn.setToolTip("Insert Field After Selected")
+        self.insert_after_btn.setFixedSize(32, 32)
+        button_layout.addWidget(self.insert_after_btn)
+
+        # Separator
+        button_layout.addSpacing(10)
+
+        # Remove button
+        self.remove_field_btn = QPushButton("🗑")
+        self.remove_field_btn.setToolTip("Remove Selected Field")
+        self.remove_field_btn.setFixedSize(32, 32)
+        button_layout.addWidget(self.remove_field_btn)
+
+        # Separator
+        button_layout.addSpacing(10)
+
+        # Move up/down buttons
+        self.move_field_up_btn = QPushButton("△")
+        self.move_field_up_btn.setToolTip("Move Field Up (Alt+Up)")
+        self.move_field_up_btn.setFixedSize(32, 32)
+        button_layout.addWidget(self.move_field_up_btn)
+
+        self.move_field_down_btn = QPushButton("▽")
+        self.move_field_down_btn.setToolTip("Move Field Down (Alt+Down)")
+        self.move_field_down_btn.setFixedSize(32, 32)
+        button_layout.addWidget(self.move_field_down_btn)
+
+        # Separator
+        button_layout.addSpacing(10)
+
+        # Recalculate offsets button
+        self.recalc_offsets_btn = QPushButton("⚡")
+        self.recalc_offsets_btn.setToolTip("Recalculate Bit Offsets (Pack Sequentially)")
+        self.recalc_offsets_btn.setFixedSize(32, 32)
+        button_layout.addWidget(self.recalc_offsets_btn)
+
+        button_layout.addStretch()
+
+        layout.addLayout(button_layout)
+
         # Create table
         self.table = QTableWidget()
         self.table.setColumnCount(7)
@@ -66,28 +122,6 @@ class BitFieldTableWidget(QWidget):
         )
 
         layout.addWidget(self.table)
-
-        # Control buttons
-        button_layout = QHBoxLayout()
-
-        self.add_field_btn = QPushButton("Add Field")
-        self.insert_before_btn = QPushButton("Insert Before")
-        self.insert_after_btn = QPushButton("Insert After")
-        self.remove_field_btn = QPushButton("Remove Field")
-        self.move_field_up_btn = QPushButton("Move Up")
-        self.move_field_down_btn = QPushButton("Move Down")
-        self.recalc_offsets_btn = QPushButton("Recalculate Offsets")
-
-        button_layout.addWidget(self.add_field_btn)
-        button_layout.addWidget(self.insert_before_btn)
-        button_layout.addWidget(self.insert_after_btn)
-        button_layout.addWidget(self.remove_field_btn)
-        button_layout.addWidget(self.move_field_up_btn)
-        button_layout.addWidget(self.move_field_down_btn)
-        button_layout.addWidget(self.recalc_offsets_btn)
-        button_layout.addStretch()
-
-        layout.addLayout(button_layout)
 
         # Initially disable buttons
         self.insert_before_btn.setEnabled(False)
