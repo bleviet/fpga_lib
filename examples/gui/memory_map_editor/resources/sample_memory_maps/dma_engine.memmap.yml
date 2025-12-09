@@ -1,224 +1,168 @@
-# dma_engine.memmap.yml
-#
-# Defines the memory map for the DMA Engine component.
-# Multi-channel DMA engine with descriptor rings.
-
----
-# The list of memory maps
-- name: "CSR_MAP"
-  description: "Control/Status Registers for DMA Engine"
-
+- name: CSR_MAP
+  description: Control/Status Registers for DMA Engine
   addressBlocks:
-      # --- Block 1: Global Control Registers ---
-      - name: "GLOBAL_REGS"
-        offset: 0x0000
-        usage: "register"
-        defaultRegWidth: 32
-
-        registers:
-            # Generator assigns offset: 0x00
-            - name: "GLOBAL_CONTROL"
-              description: "Global DMA control register"
-              fields:
-                  - {
-                        name: "ENABLE",
-                        bitWidth: 1,
-                        access: "read-write",
-                        description: "Global DMA enable",
-                    }
-                  - {
-                        name: "INTERRUPT_ENABLE",
-                        bitWidth: 1,
-                        access: "read-write",
-                        description: "Global interrupt enable",
-                    }
-                  - {
-                        name: "PRIORITY_MODE",
-                        bitWidth: 2,
-                        access: "read-write",
-                        description: "Channel priority mode",
-                    }
-                  - { name: "RESERVED_LOW", bitWidth: 4, access: "read-only" }
-                  - {
-                        name: "ACTIVE_CHANNELS",
-                        bitWidth: 8,
-                        access: "read-only",
-                        description: "Currently active channels",
-                    }
-                  - { name: "RESERVED_HIGH", bitWidth: 16, access: "read-only" }
-
-            # Generator assigns offset: 0x04
-            - name: "GLOBAL_STATUS"
-              description: "Global DMA status register"
-              access: "read-only"
-              fields:
-                  - {
-                        name: "BUSY",
-                        bitWidth: 1,
-                        access: "read-only",
-                        description: "DMA engine busy",
-                    }
-                  - {
-                        name: "ERROR",
-                        bitWidth: 1,
-                        access: "read-only",
-                        description: "Global error flag",
-                    }
-                  - { name: "RESERVED_LOW", bitWidth: 6, access: "read-only" }
-                  - {
-                        name: "CHANNEL_DONE",
-                        bitWidth: 8,
-                        access: "read-only",
-                        description: "Channel completion flags",
-                    }
-                  - { name: "RESERVED_HIGH", bitWidth: 16, access: "read-only" }
-
-      # --- Block 2: DMA Descriptor Rings ---
-      - name: "DESCRIPTOR_RINGS"
-        offset: 0x1000
-        usage: "register"
-        defaultRegWidth: 32
-
-        registers:
-            # DMA descriptor source address (64 instances)
-            # Generator will create: DESC_SRC_ADDR_0, DESC_SRC_ADDR_1, ..., DESC_SRC_ADDR_63
-            - name: "DESC_SRC_ADDR"
-              count: 64
-              stride: 16
-              description: "Source address for DMA descriptor"
-              fields:
-                  - { name: "ADDRESS", bitWidth: 32, access: "read-write" }
-
-            # DMA descriptor destination address (64 instances, offset +4 from src)
-            # Generator will create: DESC_DST_ADDR_0, DESC_DST_ADDR_1, ..., DESC_DST_ADDR_63
-            - name: "DESC_DST_ADDR"
-              count: 64
-              stride: 16
-              offset: 0x1004
-              description: "Destination address for DMA descriptor"
-              fields:
-                  - { name: "ADDRESS", bitWidth: 32, access: "read-write" }
-
-            # DMA descriptor length and control (64 instances, offset +8 from src)
-            # Generator will create: DESC_LENGTH_0, DESC_LENGTH_1, ..., DESC_LENGTH_63
-            - name: "DESC_LENGTH"
-              count: 64
-              stride: 16
-              offset: 0x1008
-              description: "Transfer length and control for DMA descriptor"
-              fields:
-                  - {
-                        name: "LENGTH",
-                        bitWidth: 24,
-                        access: "read-write",
-                        description: "Transfer length in bytes",
-                    }
-                  - {
-                        name: "CONTROL",
-                        bitWidth: 8,
-                        access: "read-write",
-                        description: "Transfer control flags",
-                    }
-
-      # --- Block 3: Channel Configuration Registers ---
-      - name: "CHANNEL_CONFIGS"
-        offset: 0x2000
-        usage: "register"
-        defaultRegWidth: 32
-
-        registers:
-            # Channel configuration registers (8 instances)
-            # Generator will create: CHANNEL_CONFIG_0, CHANNEL_CONFIG_1, ..., CHANNEL_CONFIG_7
-            - name: "CHANNEL_CONFIG"
-              count: 8
-              stride: 32
-              description: "Channel configuration register"
-              fields:
-                  - {
-                        name: "ENABLE",
-                        bitWidth: 1,
-                        access: "read-write",
-                        description: "Channel enable",
-                    }
-                  - {
-                        name: "PRIORITY",
-                        bitWidth: 3,
-                        access: "read-write",
-                        description: "Channel priority (0-7)",
-                    }
-                  - {
-                        name: "DIRECTION",
-                        bitWidth: 1,
-                        access: "read-write",
-                        description: "Transfer direction",
-                    }
-                  - {
-                        name: "INCREMENT_SRC",
-                        bitWidth: 1,
-                        access: "read-write",
-                        description: "Increment source address",
-                    }
-                  - {
-                        name: "INCREMENT_DST",
-                        bitWidth: 1,
-                        access: "read-write",
-                        description: "Increment destination address",
-                    }
-                  - {
-                        name: "INTERRUPT_ENABLE",
-                        bitWidth: 1,
-                        access: "read-write",
-                        description: "Channel interrupt enable",
-                    }
-                  - { name: "RESERVED", bitWidth: 24, access: "read-only" }
-
-            # Channel status registers (8 instances, offset +4)
-            # Generator will create: CHANNEL_STATUS_0, CHANNEL_STATUS_1, ..., CHANNEL_STATUS_7
-            - name: "CHANNEL_STATUS"
-              count: 8
-              stride: 32
-              offset: 0x2004
-              access: "read-only"
-              description: "Channel status register"
-              fields:
-                  - {
-                        name: "ACTIVE",
-                        bitWidth: 1,
-                        access: "read-only",
-                        description: "Channel active",
-                    }
-                  - {
-                        name: "DONE",
-                        bitWidth: 1,
-                        access: "read-only",
-                        description: "Transfer complete",
-                    }
-                  - {
-                        name: "ERROR",
-                        bitWidth: 1,
-                        access: "read-only",
-                        description: "Transfer error",
-                    }
-                  - { name: "RESERVED", bitWidth: 29, access: "read-only" }
-
-            # Channel current source address (8 instances, offset +8)
-            # Generator will create: CHANNEL_CURRENT_SRC_0, ..., CHANNEL_CURRENT_SRC_7
-            - name: "CHANNEL_CURRENT_SRC"
-              count: 8
-              stride: 32
-              offset: 0x2008
-              access: "read-only"
-              description: "Current source address"
-              fields:
-                  - { name: "ADDRESS", bitWidth: 32, access: "read-only" }
-
-            # Channel current destination address (8 instances, offset +12)
-            # Generator will create: CHANNEL_CURRENT_DST_0, ..., CHANNEL_CURRENT_DST_7
-            - name: "CHANNEL_CURRENT_DST"
-              count: 8
-              stride: 32
-              offset: 0x200C
-              access: "read-only"
-              description: "Current destination address"
-              fields:
-                  - { name: "ADDRESS", bitWidth: 32, access: "read-only" }
+  - name: GLOBAL_REGS
+    offset: 0
+    usage: register
+    defaultRegWidth: 32
+    registers:
+    - name: GLOBAL_CONTROL
+      description: Global DMA control register
+      fields:
+      - name: ENABLE
+        bits: '[0:0]'
+        access: read-write
+        description: Global DMA enable
+      - name: INTERRUPT_ENABLE
+        bits: '[1:1]'
+        access: read-write
+        description: Global interrupt enable
+      - name: PRIORITY_MODE
+        bits: '[3:2]'
+        access: read-write
+        description: Channel priority mode
+      - name: RESERVED_LOW
+        bits: '[7:4]'
+        access: read-only
+      - name: ACTIVE_CHANNELS
+        bits: '[15:8]'
+        access: read-only
+        description: Currently active channels
+      - name: RESERVED_HIGH
+        bits: '[31:16]'
+        access: read-only
+    - name: GLOBAL_STATUS
+      description: Global DMA status register
+      access: read-only
+      fields:
+      - name: BUSY
+        bits: '[0:0]'
+        access: read-only
+        description: DMA engine busy
+      - name: ERROR
+        bits: '[1:1]'
+        access: read-only
+        description: Global error flag
+      - name: RESERVED_LOW
+        bits: '[7:2]'
+        access: read-only
+      - name: CHANNEL_DONE
+        bits: '[15:8]'
+        access: read-only
+        description: Channel completion flags
+      - name: RESERVED_HIGH
+        bits: '[31:16]'
+        access: read-only
+  - name: DESCRIPTOR_RINGS
+    offset: 4096
+    usage: register
+    defaultRegWidth: 32
+    registers:
+    - name: DESCRIPTOR
+      count: 64
+      stride: 16
+      description: DMA descriptor (source, destination, length, control)
+      registers:
+      - name: SRC_ADDR
+        offset: 0
+        description: Source address for DMA transfer
+        fields:
+        - name: ADDRESS
+          bits: '[31:0]'
+          access: read-write
+      - name: DST_ADDR
+        offset: 4
+        description: Destination address for DMA transfer
+        fields:
+        - name: ADDRESS
+          bits: '[31:0]'
+          access: read-write
+      - name: LENGTH
+        offset: 8
+        description: Transfer length and control flags
+        fields:
+        - name: LENGTH
+          bits: '[23:0]'
+          access: read-write
+          description: Transfer length in bytes
+        - name: CONTROL
+          bits: '[31:24]'
+          access: read-write
+          description: Transfer control flags
+  - name: CHANNEL_CONFIGS
+    offset: 8192
+    usage: register
+    defaultRegWidth: 32
+    registers:
+    - name: CHANNEL
+      count: 8
+      stride: 32
+      description: DMA channel configuration and status
+      registers:
+      - name: CONFIG
+        offset: 0
+        description: Channel configuration register
+        fields:
+        - name: ENABLE
+          bits: '[0:0]'
+          access: read-write
+          description: Channel enable
+        - name: PRIORITY
+          bits: '[3:1]'
+          access: read-write
+          description: Channel priority (0-7)
+        - name: DIRECTION
+          bits: '[4:4]'
+          access: read-write
+          description: Transfer direction
+        - name: INCREMENT_SRC
+          bits: '[5:5]'
+          access: read-write
+          description: Increment source address
+        - name: INCREMENT_DST
+          bits: '[6:6]'
+          access: read-write
+          description: Increment destination address
+        - name: INTERRUPT_ENABLE
+          bits: '[7:7]'
+          access: read-write
+          description: Channel interrupt enable
+        - name: RESERVED
+          bits: '[31:8]'
+          access: read-only
+      - name: STATUS
+        offset: 4
+        access: read-only
+        description: Channel status register
+        fields:
+        - name: ACTIVE
+          bits: '[0:0]'
+          access: read-only
+          description: Channel active
+        - name: DONE
+          bits: '[1:1]'
+          access: read-only
+          description: Transfer complete
+        - name: ERROR
+          bits: '[2:2]'
+          access: read-only
+          description: Transfer error
+        - name: RESERVED
+          bits: '[31:3]'
+          access: read-only
+      - name: CURRENT_SRC
+        offset: 8
+        access: read-only
+        description: Current source address
+        fields:
+        - name: ADDRESS
+          bits: '[31:0]'
+          access: read-only
+      - name: CURRENT_DST
+        offset: 12
+        access: read-only
+        description: Current destination address
+        fields:
+        - name: ADDRESS
+          bits: '[31:0]'
+          access: read-only
