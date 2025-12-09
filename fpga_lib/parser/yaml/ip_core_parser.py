@@ -340,7 +340,7 @@ class YamlIpCoreParser:
         Parse memory maps, handling imports.
 
         Supports both:
-        - memoryMaps: { import: "file.yml" }
+        - memoryMaps: { import: "file.yml" } or { import: "file.memmap.yml" }
         - memoryMaps: [{ name: "MAP1", ... }]
         """
         if not data:
@@ -358,28 +358,43 @@ class YamlIpCoreParser:
         raise ParseError("memoryMaps must be either {import: ...} or a list", file_path)
 
     def _load_memory_maps_from_file(self, file_path: Path) -> List[MemoryMap]:
-        """Load memory maps from an external YAML file."""
+        """
+        Load memory maps from an external YAML file.
+
+        Supports both:
+        - Legacy multi-document format with registerTemplates
+        - New .memmap.yml format (list at root with addressBlocks)
+        """
         if not file_path.exists():
             raise ParseError(f"Memory map file not found: {file_path}")
 
         try:
             with open(file_path, "r", encoding="utf-8") as f:
-                docs = list(yaml.safe_load_all(f))  # Support multi-document YAML
+                content = f.read()
+
+            # Try parsing as multi-document YAML first (legacy format)
+            docs = list(yaml.safe_load_all(content))
         except yaml.YAMLError as e:
             raise ParseError(f"YAML syntax error in memory map file: {e}", file_path)
 
-        # First document might contain templates
+        # Detect format based on structure
         if len(docs) > 1 and isinstance(docs[0], dict) and "registerTemplates" in docs[0]:
+            # Legacy multi-document format with templates
             self._register_templates = docs[0]["registerTemplates"]
             map_data = docs[1]  # Second document has the actual maps
         else:
-            # Single document or no templates
+            # Single document or new format
             map_data = docs[-1] if docs else []
 
-        if not isinstance(map_data, list):
-            map_data = [map_data]
-
-        return self._parse_memory_map_list(map_data, file_path)
+        # Check if map_data is a list (new .memmap.yml format) or dict (legacy)
+        if isinstance(map_data, list):
+            # New format: list of memory maps with addressBlocks
+            return self._parse_memory_map_list(map_data, file_path)
+        elif isinstance(map_data, dict):
+            # Legacy format: single dict, convert to list
+            return self._parse_memory_map_list([map_data], file_path)
+        else:
+            raise ParseError(f"Invalid memory map structure in {file_path}", file_path)
 
     def _parse_memory_map_list(
         self, data: List[Dict[str, Any]], file_path: Path
@@ -408,18 +423,31 @@ class YamlIpCoreParser:
     def _parse_address_blocks(
         self, data: List[Dict[str, Any]], file_path: Path
     ) -> List[AddressBlock]:
-        """Parse address block definitions."""
+        """Parse address block definitions. Supports both 'baseAddress' (legacy) and 'offset' (new)."""
         blocks = []
         for idx, block_data in enumerate(data):
             try:
+                # Support both 'baseAddress' (legacy) and 'offset' (new format)
+                base_address = block_data.get("baseAddress") or block_data.get("offset", 0)
+
                 registers = self._parse_registers(block_data.get("registers", []), file_path)
+
+                # Calculate range if not provided (new format compatibility)
+                range_value = block_data.get("range")
+                if range_value is None and registers:
+                    # Calculate range based on last register
+                    max_offset = max(reg.address_offset + (reg.size // 8) for reg in registers)
+                    # Round up to nearest power of 2 or use max_offset + padding
+                    range_value = max(max_offset, 64)  # Minimum 64 bytes
+                elif range_value is None:
+                    range_value = 4096  # Default 4KB if no registers
 
                 blocks.append(
                     AddressBlock(
                         **self._filter_none({
                             "name": block_data.get("name"),
-                            "base_address": block_data.get("baseAddress", 0),
-                            "range": block_data.get("range"),
+                            "base_address": base_address,
+                            "range": range_value,
                             "description": block_data.get("description"),
                             "usage": block_data.get("usage", "register"),
                             "registers": registers if registers else None,
@@ -431,7 +459,13 @@ class YamlIpCoreParser:
         return blocks
 
     def _parse_registers(self, data: List[Dict[str, Any]], file_path: Path) -> List[Register]:
-        """Parse register definitions, including template expansion."""
+        """
+        Parse register definitions, including template expansion and nested arrays.
+
+        Supports:
+        - Legacy: addressOffset, generateArray with templates
+        - New: offset, nested 'registers' arrays with count/stride
+        """
         registers = []
         current_offset = 0
 
@@ -442,7 +476,20 @@ class YamlIpCoreParser:
                     current_offset += reg_data["reserved"]
                     continue
 
-                # Handle generateArray - expand template into multiple registers
+                # Handle nested register arrays (new .memmap.yml format)
+                # Example: TIMER with count=4 containing nested CTRL, STATUS registers
+                if "registers" in reg_data and "count" in reg_data:
+                    expanded_regs = self._expand_nested_register_array(
+                        reg_data, current_offset, file_path
+                    )
+                    registers.extend(expanded_regs)
+                    # Update offset after expanded registers
+                    if expanded_regs:
+                        last_reg = expanded_regs[-1]
+                        current_offset = last_reg.address_offset + (last_reg.size // 8)
+                    continue
+
+                # Handle generateArray - expand template into multiple registers (legacy)
                 if "generateArray" in reg_data:
                     expanded_regs = self._expand_register_array(
                         reg_data["generateArray"], current_offset, file_path
@@ -455,7 +502,8 @@ class YamlIpCoreParser:
                     continue
 
                 # Parse regular register
-                address_offset = reg_data.get("addressOffset")
+                # Support both 'addressOffset' (legacy) and 'offset' (new)
+                address_offset = reg_data.get("addressOffset") or reg_data.get("offset")
                 if address_offset is None:
                     address_offset = current_offset
 
@@ -490,6 +538,93 @@ class YamlIpCoreParser:
 
             except Exception as e:
                 raise ParseError(f"Error parsing register[{idx}]: {e}", file_path)
+
+        return registers
+
+    def _expand_nested_register_array(
+        self,
+        array_spec: Dict[str, Any],
+        base_offset: int,
+        file_path: Path
+    ) -> List[Register]:
+        """
+        Expand a nested register array (new .memmap.yml format).
+
+        Example:
+            - name: TIMER
+              count: 4
+              stride: 16
+              registers:
+                - name: CTRL
+                  offset: 0
+                - name: STATUS
+                  offset: 4
+
+        Creates:
+            TIMER_0_CTRL @ base + 0
+            TIMER_0_STATUS @ base + 4
+            TIMER_1_CTRL @ base + 16
+            TIMER_1_STATUS @ base + 20
+            ...
+
+        Args:
+            array_spec: Dict with 'name', 'count', 'stride', 'registers' keys
+            base_offset: Starting address offset
+            file_path: File path for error reporting
+
+        Returns:
+            List of Register instances with hierarchical names
+        """
+        base_name = array_spec.get("name", "REG")
+        count = array_spec.get("count", 1)
+        stride = array_spec.get("stride", 4)
+        sub_registers = array_spec.get("registers", [])
+
+        if not sub_registers:
+            raise ParseError(
+                f"Nested register array '{base_name}' has no sub-registers",
+                file_path
+            )
+
+        registers = []
+
+        # Generate instances for each array element
+        for instance_idx in range(count):
+            instance_offset = base_offset + (instance_idx * stride)
+
+            # Expand each sub-register
+            for sub_reg in sub_registers:
+                # Create hierarchical name: TIMER_0_CTRL, TIMER_1_STATUS, etc.
+                reg_name = f"{base_name}_{instance_idx}_{sub_reg['name']}"
+
+                # Get offset relative to array instance
+                sub_offset = sub_reg.get("offset", 0)
+                final_offset = instance_offset + sub_offset
+
+                size = sub_reg.get("size", 32)
+                access = sub_reg.get("access", "read-write")
+
+                # Normalize access type
+                if access in AccessType.__members__.values():
+                    access_type = AccessType(access)
+                else:
+                    access_type = AccessType.normalize(access)
+
+                fields = self._parse_bit_fields(sub_reg.get("fields", []), file_path)
+
+                registers.append(
+                    Register(
+                        **self._filter_none({
+                            "name": reg_name,
+                            "address_offset": final_offset,
+                            "size": size,
+                            "access": access_type,
+                            "description": sub_reg.get("description"),
+                            "reset_value": sub_reg.get("resetValue"),
+                            "fields": fields if fields else None,
+                        })
+                    )
+                )
 
         return registers
 
@@ -573,18 +708,37 @@ class YamlIpCoreParser:
         return registers
 
     def _parse_bit_fields(self, data: List[Dict[str, Any]], file_path: Path) -> List[BitField]:
-        """Parse bit field definitions."""
+        """
+        Parse bit field definitions.
+
+        Supports both:
+        - Legacy: bitOffset, bitWidth
+        - New: bits: "[msb:lsb]" or bits: "[n:n]" for single bit
+        """
         fields = []
         current_bit = 0
 
         for idx, field_data in enumerate(data):
             try:
+                bit_offset = None
+                bit_width = None
+
+                # Check for new 'bits' format first
+                if "bits" in field_data:
+                    bits_str = field_data["bits"]
+                    bit_offset, bit_width = self._parse_bits_notation(bits_str)
+                else:
+                    # Legacy format: bitOffset and bitWidth
+                    bit_offset = field_data.get("bitOffset")
+                    bit_width = field_data.get("bitWidth", 1)
+
                 # Auto-calculate bit offset if not provided
-                bit_offset = field_data.get("bitOffset")
                 if bit_offset is None:
                     bit_offset = current_bit
 
-                bit_width = field_data.get("bitWidth", 1)
+                if bit_width is None:
+                    bit_width = 1
+
                 access = field_data.get("access", "read-write")
 
                 # Normalize access type
@@ -601,7 +755,7 @@ class YamlIpCoreParser:
                             "bit_width": bit_width,
                             "access": access_type,
                             "description": field_data.get("description"),
-                            "reset_value": field_data.get("resetValue"),
+                            "reset_value": field_data.get("resetValue") or field_data.get("reset"),
                         })
                     )
                 )
@@ -613,6 +767,52 @@ class YamlIpCoreParser:
                 raise ParseError(f"Error parsing bitField[{idx}]: {e}", file_path)
 
         return fields
+
+    def _parse_bits_notation(self, bits_str: str) -> tuple[int, int]:
+        """
+        Parse bits notation like "[7:4]" or "[0:0]" into (offset, width).
+
+        Args:
+            bits_str: String like "[7:4]" or "[0:0]"
+
+        Returns:
+            Tuple of (bit_offset, bit_width)
+
+        Raises:
+            ValueError: If format is invalid
+
+        Examples:
+            "[7:4]" -> (4, 4)   # offset=4, width=4
+            "[0:0]" -> (0, 1)   # offset=0, width=1
+            "[31:0]" -> (0, 32) # offset=0, width=32
+        """
+        if not bits_str:
+            raise ValueError("Empty bits notation")
+
+        # Remove brackets and whitespace
+        clean_str = bits_str.strip().strip("[]").strip()
+
+        if ":" not in clean_str:
+            raise ValueError(f"Invalid bits notation (missing colon): {bits_str}")
+
+        try:
+            parts = clean_str.split(":")
+            if len(parts) != 2:
+                raise ValueError(f"Invalid bits notation (expected MSB:LSB): {bits_str}")
+
+            msb = int(parts[0].strip())
+            lsb = int(parts[1].strip())
+
+            if msb < lsb:
+                raise ValueError(f"Invalid bits notation (MSB < LSB): {bits_str}")
+
+            bit_offset = lsb
+            bit_width = msb - lsb + 1
+
+            return bit_offset, bit_width
+
+        except ValueError as e:
+            raise ValueError(f"Failed to parse bits notation '{bits_str}': {e}")
 
     def _parse_file_sets(self, data: List[Dict[str, Any]], file_path: Path) -> List[FileSet]:
         """Parse file set definitions, handling imports."""
