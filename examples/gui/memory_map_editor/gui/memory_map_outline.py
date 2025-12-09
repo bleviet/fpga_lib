@@ -25,7 +25,7 @@ class MemoryMapOutline(QWidget):
     """
 
     # Signals
-    current_item_changed = Signal(object)  # Emits Register or RegisterArrayAccessor
+    current_item_changed = Signal(object, object)  # Emits (Register or RegisterArrayAccessor, parent_array if applicable)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -196,6 +196,12 @@ class MemoryMapOutline(QWidget):
         """Refresh the tree view with current project data."""
         # Remember the currently selected item before clearing
         current_selection = self.get_selected_item()
+        current_selection_name = None
+        if current_selection:
+            if isinstance(current_selection, Register):
+                current_selection_name = current_selection.name
+            elif isinstance(current_selection, RegisterArrayAccessor):
+                current_selection_name = current_selection._name
 
         self.tree.clear()
 
@@ -361,14 +367,43 @@ class MemoryMapOutline(QWidget):
         self.tree.sortItems(1, Qt.AscendingOrder)
 
         # Try to restore the previous selection, otherwise select first item
-        if current_selection and self.tree.topLevelItemCount() > 0:
-            # Try to find and select the previously selected item
+        if current_selection_name and self.tree.topLevelItemCount() > 0:
+            # Try to find and select the previously selected item by name
             selection_restored = False
             for i in range(self.tree.topLevelItemCount()):
                 item = self.tree.topLevelItem(i)
-                if item.data(0, Qt.UserRole) == current_selection:
+                item_data = item.data(0, Qt.UserRole)
+
+                # Check if this top-level item matches
+                item_name = None
+                if isinstance(item_data, Register):
+                    item_name = item_data.name
+                elif isinstance(item_data, RegisterArrayAccessor):
+                    item_name = item_data._name
+
+                if item_name == current_selection_name:
                     self.tree.setCurrentItem(item)
                     selection_restored = True
+                    break
+
+                # Check child items (array elements)
+                for j in range(item.childCount()):
+                    child = item.child(j)
+                    child_data = child.data(0, Qt.UserRole)
+
+                    child_name = None
+                    if isinstance(child_data, Register):
+                        child_name = child_data.name
+                    elif isinstance(child_data, RegisterArrayAccessor):
+                        child_name = child_data._name
+
+                    if child_name == current_selection_name:
+                        item.setExpanded(True)  # Expand parent
+                        self.tree.setCurrentItem(child)
+                        selection_restored = True
+                        break
+
+                if selection_restored:
                     break
 
             # If we couldn't restore selection, select first item
@@ -405,11 +440,13 @@ class MemoryMapOutline(QWidget):
         """Handle tree selection changes."""
         if current:
             memory_item = current.data(0, Qt.UserRole)
-            self.current_item_changed.emit(memory_item)
+            # Check if this is an array element - get parent array from UserRole+2
+            parent_array = current.data(0, Qt.UserRole + 2)
+            self.current_item_changed.emit(memory_item, parent_array)
             # Enable register management buttons when an item is selected
             self._update_button_states(True)
         else:
-            self.current_item_changed.emit(None)
+            self.current_item_changed.emit(None, None)
             # Disable register management buttons when no item is selected
             self._update_button_states(False)
 

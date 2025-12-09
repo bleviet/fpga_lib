@@ -327,6 +327,7 @@ class MainWindow(QMainWindow):
         # Detail form changes
         self.detail_form.register_changed.connect(self.on_register_changed)
         self.detail_form.field_changed.connect(self.on_field_changed)
+        self.detail_form.array_template_changed.connect(self.on_array_template_changed)
 
         # Auto-validation timer
         self.validation_timer = QTimer()
@@ -791,7 +792,7 @@ class MainWindow(QMainWindow):
                 self.current_project.registers.remove(item_to_remove)
 
         elif isinstance(item_to_remove, RegisterArrayAccessor):
-            item_name = f"Register Array '{item_to_remove.name}'"
+            item_name = f"Register Array '{item_to_remove._name}'"
             reply = QMessageBox.question(
                 self,
                 "Confirm Removal",
@@ -832,9 +833,14 @@ class MainWindow(QMainWindow):
             else:
                 self.validation_label.setText("✅ Valid")
 
-    def on_item_selected(self, item):
-        """Handle selection change in the outline."""
-        self.detail_form.set_current_item(item)
+    def on_item_selected(self, item, parent_array):
+        """Handle selection change in the outline.
+
+        Args:
+            item: Selected Register or RegisterArrayAccessor
+            parent_array: If item is an array element, this is the parent RegisterArrayAccessor
+        """
+        self.detail_form.set_current_item(item, parent_array)
 
     def on_register_changed(self):
         """Handle register property changes."""
@@ -844,6 +850,12 @@ class MainWindow(QMainWindow):
 
     def on_field_changed(self):
         """Handle bit field changes."""
+        self.schedule_validation()
+        self.project_changed.emit()
+
+    def on_array_template_changed(self):
+        """Handle array template changes - refresh outline to show updates across all elements."""
+        self.outline.refresh()
         self.schedule_validation()
         self.project_changed.emit()
 

@@ -28,6 +28,7 @@ class RegisterDetailForm(QWidget):
     # Signals
     register_changed = Signal()  # Emitted when register properties change
     field_changed = Signal()     # Emitted when bit fields change
+    array_template_changed = Signal()  # Emitted when an array template is modified
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -91,19 +92,29 @@ class RegisterDetailForm(QWidget):
 
         # Bit field table signals
         self.bit_field_table.field_changed.connect(self._on_field_changed)
+        self.bit_field_table.array_template_changed.connect(self._on_array_template_changed)
 
     def set_project(self, project: MemoryMapProject):
         """Set the current project."""
         self.current_project = project
         self.bit_visualizer.set_project(project)
 
-    def set_current_item(self, item):
-        """Set the currently selected memory map item."""
-        self.current_item = item
-        self._update_all_widgets()
+    def set_current_item(self, item, parent_array=None):
+        """Set the currently selected memory map item.
 
-    def _update_all_widgets(self):
-        """Update all composed widgets with current item."""
+        Args:
+            item: Register or RegisterArrayAccessor to display
+            parent_array: If item is an array element, this is the parent RegisterArrayAccessor
+        """
+        self.current_item = item
+        self._update_all_widgets(parent_array)
+
+    def _update_all_widgets(self, parent_array=None):
+        """Update all composed widgets with current item.
+
+        Args:
+            parent_array: If current_item is an array element, this is the parent RegisterArrayAccessor
+        """
         if self.current_item is None:
             self._set_controls_enabled(False)
             self.properties_widget.set_item(None)
@@ -116,7 +127,8 @@ class RegisterDetailForm(QWidget):
             self.properties_widget.set_item(self.current_item)
 
             # Update bit field table - will now see initialized live values
-            self.bit_field_table.set_current_item(self.current_item)
+            # Pass parent_array so changes can be propagated to all array elements
+            self.bit_field_table.set_current_item(self.current_item, parent_array)
 
             # Update visualizer
             self.bit_visualizer.set_current_item(self.current_item)
@@ -167,4 +179,11 @@ class RegisterDetailForm(QWidget):
         self.bit_visualizer.refresh()
 
         # Forward signal
+        self.field_changed.emit()
+
+    def _on_array_template_changed(self, array):
+        """Handle array template changes - refresh outline to show all elements updated."""
+        # Emit specialized signal for array template changes
+        self.array_template_changed.emit()
+        # Also emit field_changed for validation
         self.field_changed.emit()

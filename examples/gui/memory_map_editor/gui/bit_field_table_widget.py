@@ -21,10 +21,12 @@ class BitFieldTableWidget(QWidget):
 
     # Signals
     field_changed = Signal()  # Emitted when any field is modified
+    array_template_changed = Signal(object)  # Emitted when array template is modified (passes RegisterArrayAccessor)
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.current_item = None
+        self.parent_array = None  # Track parent array if editing an array element
         self._updating = False
         self._setup_ui()
         self._connect_signals()
@@ -155,9 +157,15 @@ class BitFieldTableWidget(QWidget):
         self.table.cellChanged.connect(self._on_cell_changed)
         self.table.itemSelectionChanged.connect(self._on_selection_changed)
 
-    def set_current_item(self, item):
-        """Set the current register or array item."""
+    def set_current_item(self, item, parent_array=None):
+        """Set the current register or array item.
+
+        Args:
+            item: Register or RegisterArrayAccessor to edit
+            parent_array: If item is an array element Register, this should be the parent RegisterArrayAccessor
+        """
         self.current_item = item
+        self.parent_array = parent_array
         self.refresh()
 
     def refresh(self):
@@ -303,6 +311,11 @@ class BitFieldTableWidget(QWidget):
         # Add to current item
         self._add_field_to_item(new_field)
 
+        # If editing an array element, also update the parent array template
+        if self.parent_array is not None:
+            self.parent_array._field_template.append(new_field)
+            self.array_template_changed.emit(self.parent_array)
+
         # Refresh table and emit signal
         self.refresh()
         self.field_changed.emit()
@@ -424,6 +437,11 @@ class BitFieldTableWidget(QWidget):
         BitFieldOperations.recalculate_offsets(fields_list)
         BitFieldOperations.update_item_fields(self.current_item, fields_list)
 
+        # If editing an array element, also update the parent array template
+        if self.parent_array is not None:
+            self.parent_array._field_template = fields_list.copy()
+            self.array_template_changed.emit(self.parent_array)
+
         # Refresh table
         self.refresh()
         self.field_changed.emit()
@@ -484,6 +502,11 @@ class BitFieldTableWidget(QWidget):
         # Update the item with the new field order
         BitFieldOperations.update_item_fields(self.current_item, fields_list)
 
+        # If editing an array element, also update the parent array template
+        if self.parent_array is not None:
+            self.parent_array._field_template = fields_list.copy()
+            self.array_template_changed.emit(self.parent_array)
+
         # Refresh and maintain selection
         self.refresh()
 
@@ -504,6 +527,12 @@ class BitFieldTableWidget(QWidget):
         fields_list = BitFieldOperations.get_sorted_fields(self.current_item)
         BitFieldOperations.recalculate_offsets(fields_list)
         BitFieldOperations.update_item_fields(self.current_item, fields_list)
+
+        # If editing an array element, also update the parent array template
+        if self.parent_array is not None:
+            self.parent_array._field_template = fields_list.copy()
+            self.array_template_changed.emit(self.parent_array)
+
         self.refresh()
         self.field_changed.emit()
 
@@ -562,6 +591,11 @@ class BitFieldTableWidget(QWidget):
             # Ensure fields are synchronized
             fields_list = BitFieldOperations.get_sorted_fields(self.current_item)
             BitFieldOperations.update_item_fields(self.current_item, fields_list)
+
+            # If editing an array element, also update the parent array template
+            if self.parent_array is not None:
+                self.parent_array._field_template = fields_list.copy()
+                self.array_template_changed.emit(self.parent_array)
 
         except Exception as e:
             QMessageBox.warning(self, "Edit Error", f"Error updating field: {str(e)}")
