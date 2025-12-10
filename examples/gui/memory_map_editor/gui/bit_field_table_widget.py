@@ -47,12 +47,12 @@ class BitFieldTableWidget(QWidget):
 
         # Insert before/after buttons
         self.insert_before_btn = QPushButton("⬆")
-        self.insert_before_btn.setToolTip("Insert Field Before Selected")
+        self.insert_before_btn.setToolTip("Insert Field Before Selected (Shift+O)")
         self.insert_before_btn.setFixedSize(32, 32)
         button_layout.addWidget(self.insert_before_btn)
 
         self.insert_after_btn = QPushButton("⬇")
-        self.insert_after_btn.setToolTip("Insert Field After Selected")
+        self.insert_after_btn.setToolTip("Insert Field After Selected (o)")
         self.insert_after_btn.setFixedSize(32, 32)
         button_layout.addWidget(self.insert_after_btn)
 
@@ -61,7 +61,7 @@ class BitFieldTableWidget(QWidget):
 
         # Remove button
         self.remove_field_btn = QPushButton()
-        self.remove_field_btn.setToolTip("Remove Selected Field")
+        self.remove_field_btn.setToolTip("Remove Selected Field (dd)")
         self.remove_field_btn.setFixedSize(32, 32)
         trash_icon = self.style().standardIcon(QStyle.SP_TrashIcon)
         self.remove_field_btn.setIcon(trash_icon)
@@ -73,12 +73,12 @@ class BitFieldTableWidget(QWidget):
 
         # Move up/down buttons
         self.move_field_up_btn = QPushButton("△")
-        self.move_field_up_btn.setToolTip("Move Field Up (Alt+Up)")
+        self.move_field_up_btn.setToolTip("Move Field Up (Alt+Up or Alt+k)")
         self.move_field_up_btn.setFixedSize(32, 32)
         button_layout.addWidget(self.move_field_up_btn)
 
         self.move_field_down_btn = QPushButton("▽")
-        self.move_field_down_btn.setToolTip("Move Field Down (Alt+Down)")
+        self.move_field_down_btn.setToolTip("Move Field Down (Alt+Down or Alt+j)")
         self.move_field_down_btn.setFixedSize(32, 32)
         button_layout.addWidget(self.move_field_down_btn)
 
@@ -153,6 +153,37 @@ class BitFieldTableWidget(QWidget):
         self.move_field_down_shortcut = QShortcut(QKeySequence("Alt+Down"), self.table)
         self.move_field_down_shortcut.setContext(Qt.WidgetShortcut)
         self.move_field_down_shortcut.activated.connect(self._move_field_down)
+
+        # Alt+vim keys for moving fields
+        self.move_field_up_vim_shortcut = QShortcut(QKeySequence("Alt+k"), self.table)
+        self.move_field_up_vim_shortcut.setContext(Qt.WidgetShortcut)
+        self.move_field_up_vim_shortcut.activated.connect(self._move_field_up)
+
+        self.move_field_down_vim_shortcut = QShortcut(QKeySequence("Alt+j"), self.table)
+        self.move_field_down_vim_shortcut.setContext(Qt.WidgetShortcut)
+        self.move_field_down_vim_shortcut.activated.connect(self._move_field_down)
+
+        # Vim-style keyboard shortcuts
+        self.insert_field_after_shortcut = QShortcut(QKeySequence("o"), self.table)
+        self.insert_field_after_shortcut.setContext(Qt.WidgetShortcut)
+        self.insert_field_after_shortcut.activated.connect(lambda: self._insert_field('after'))
+
+        self.insert_field_before_shortcut = QShortcut(QKeySequence("Shift+O"), self.table)
+        self.insert_field_before_shortcut.setContext(Qt.WidgetShortcut)
+        self.insert_field_before_shortcut.activated.connect(lambda: self._insert_field('before'))
+
+        self.delete_field_shortcut = QShortcut(QKeySequence("d,d"), self.table)
+        self.delete_field_shortcut.setContext(Qt.WidgetShortcut)
+        self.delete_field_shortcut.activated.connect(self._remove_field)
+
+        # Vim movement keys
+        self.vim_down_shortcut = QShortcut(QKeySequence("j"), self.table)
+        self.vim_down_shortcut.setContext(Qt.WidgetShortcut)
+        self.vim_down_shortcut.activated.connect(self._vim_move_down)
+
+        self.vim_up_shortcut = QShortcut(QKeySequence("k"), self.table)
+        self.vim_up_shortcut.setContext(Qt.WidgetShortcut)
+        self.vim_up_shortcut.activated.connect(self._vim_move_up)
 
         self.table.cellChanged.connect(self._on_cell_changed)
         self.table.itemSelectionChanged.connect(self._on_selection_changed)
@@ -883,3 +914,19 @@ class BitFieldTableWidget(QWidget):
         if not enabled:
             self.move_field_up_btn.setEnabled(False)
             self.move_field_down_btn.setEnabled(False)
+
+    def _vim_move_down(self):
+        """Move selection down one row (vim j key)."""
+        current_row = self.table.currentRow()
+        if current_row < self.table.rowCount() - 1:
+            self.table.setCurrentCell(current_row + 1, self.table.currentColumn())
+        elif self.table.rowCount() > 0 and current_row == -1:
+            self.table.setCurrentCell(0, 0)
+
+    def _vim_move_up(self):
+        """Move selection up one row (vim k key)."""
+        current_row = self.table.currentRow()
+        if current_row > 0:
+            self.table.setCurrentCell(current_row - 1, self.table.currentColumn())
+        elif self.table.rowCount() > 0 and current_row == -1:
+            self.table.setCurrentCell(self.table.rowCount() - 1, 0)

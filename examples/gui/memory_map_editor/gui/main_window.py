@@ -12,7 +12,7 @@ from PySide6.QtWidgets import (
     QFormLayout, QSpinBox, QComboBox, QStyle
 )
 from PySide6.QtCore import Qt, Signal, QTimer, QSettings, QSize
-from PySide6.QtGui import QAction, QKeySequence, QIcon, QFont
+from PySide6.QtGui import QAction, QKeySequence, QIcon, QFont, QShortcut
 from pathlib import Path
 
 from .memory_map_outline import MemoryMapOutline
@@ -116,6 +116,87 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("FPGA Memory Map Editor")
         self.setMinimumSize(1200, 800)
         self.resize(1400, 900)
+
+    def showEvent(self, event):
+        """Handle window show event to set initial focus."""
+        super().showEvent(event)
+        # Set focus on the memory outline tree for vim-style navigation
+        self.outline.tree.setFocus()
+        self._update_panel_focus_style()
+
+    def _focus_left_panel(self):
+        """Switch focus to left panel (memory outline)."""
+        self.outline.tree.setFocus()
+        self._update_panel_focus_style()
+
+    def _focus_right_panel(self):
+        """Switch focus to right panel (bit field table)."""
+        self.detail_form.bit_field_table.table.setFocus()
+        self._update_panel_focus_style()
+
+    def _on_outline_focus(self, event):
+        """Handle focus event for outline panel."""
+        from PySide6.QtWidgets import QTreeWidget
+        QTreeWidget.focusInEvent(self.outline.tree, event)
+        self._update_panel_focus_style()
+
+    def _on_detail_focus(self, event):
+        """Handle focus event for detail panel."""
+        from PySide6.QtWidgets import QTableWidget
+        QTableWidget.focusInEvent(self.detail_form.bit_field_table.table, event)
+        self._update_panel_focus_style()
+
+    def _update_panel_focus_style(self):
+        """Update visual style to indicate which panel has focus."""
+        outline_focused = self.outline.tree.hasFocus()
+        detail_focused = self.detail_form.bit_field_table.table.hasFocus()
+
+        # Apply focused style with blue border
+        focused_style = """
+            QTreeWidget:focus, QTableWidget:focus {
+                border: 2px solid #4A90E2;
+            }
+            QTreeWidget, QTableWidget {
+                border: 1px solid #CCCCCC;
+            }
+        """
+
+        if outline_focused:
+            self.outline.tree.setStyleSheet("""
+                QTreeWidget {
+                    border: 2px solid #4A90E2;
+                }
+            """)
+            self.detail_form.bit_field_table.table.setStyleSheet("""
+                QTableWidget {
+                    border: 1px solid #CCCCCC;
+                }
+            """)
+            self.status_bar.showMessage("Focus: Memory Map Outline", 1000)
+        elif detail_focused:
+            self.outline.tree.setStyleSheet("""
+                QTreeWidget {
+                    border: 1px solid #CCCCCC;
+                }
+            """)
+            self.detail_form.bit_field_table.table.setStyleSheet("""
+                QTableWidget {
+                    border: 2px solid #4A90E2;
+                }
+            """)
+            self.status_bar.showMessage("Focus: Bit Field Table", 1000)
+        else:
+            # No focus - reset both
+            self.outline.tree.setStyleSheet("""
+                QTreeWidget {
+                    border: 1px solid #CCCCCC;
+                }
+            """)
+            self.detail_form.bit_field_table.table.setStyleSheet("""
+                QTableWidget {
+                    border: 1px solid #CCCCCC;
+                }
+            """)
 
     def _load_display_settings(self):
         """Load and apply saved display settings."""
@@ -276,6 +357,15 @@ class MainWindow(QMainWindow):
         # Help menu
         help_menu = menubar.addMenu("&Help")
 
+        # Keyboard Shortcuts
+        self.action_shortcuts = QAction("&Keyboard Shortcuts", self)
+        self.action_shortcuts.setShortcut(QKeySequence("F1"))
+        self.action_shortcuts.setStatusTip("Show keyboard shortcuts")
+        self.action_shortcuts.triggered.connect(self.show_keyboard_shortcuts)
+        help_menu.addAction(self.action_shortcuts)
+
+        help_menu.addSeparator()
+
         # About
         self.action_about = QAction("&About", self)
         self.action_about.setStatusTip("About this application")
@@ -333,6 +423,17 @@ class MainWindow(QMainWindow):
         self.validation_timer = QTimer()
         self.validation_timer.setSingleShot(True)
         self.validation_timer.timeout.connect(self.auto_validate)
+
+        # Panel focus switching shortcuts (Ctrl+H/L)
+        self.focus_left_shortcut = QShortcut(QKeySequence("Ctrl+H"), self)
+        self.focus_left_shortcut.activated.connect(self._focus_left_panel)
+
+        self.focus_right_shortcut = QShortcut(QKeySequence("Ctrl+L"), self)
+        self.focus_right_shortcut.activated.connect(self._focus_right_panel)
+
+        # Track focus changes for visual feedback
+        self.outline.tree.focusInEvent = lambda e: self._on_outline_focus(e)
+        self.detail_form.bit_field_table.table.focusInEvent = lambda e: self._on_detail_focus(e)
 
         # Project change notifications
         self.project_changed.connect(self.update_status)
@@ -900,6 +1001,69 @@ class MainWindow(QMainWindow):
         # For now, always return True (proceed)
         # TODO: Implement proper change tracking
         return True
+
+    def show_keyboard_shortcuts(self):
+        """Show keyboard shortcuts help dialog."""
+        help_text = """<h3>Keyboard Shortcuts</h3>
+
+        <h4>File Operations</h4>
+        <table>
+        <tr><td><b>Ctrl+N</b></td><td>New Project</td></tr>
+        <tr><td><b>Ctrl+O</b></td><td>Open Project</td></tr>
+        <tr><td><b>Ctrl+S</b></td><td>Save Project</td></tr>
+        <tr><td><b>Ctrl+Shift+S</b></td><td>Save As</td></tr>
+        <tr><td><b>Ctrl+Q</b></td><td>Quit</td></tr>
+        </table>
+
+        <h4>View Operations</h4>
+        <table>
+        <tr><td><b>Ctrl+R</b></td><td>Validate Memory Map</td></tr>
+        <tr><td><b>Ctrl++</b></td><td>Zoom In</td></tr>
+        <tr><td><b>Ctrl+-</b></td><td>Zoom Out</td></tr>
+        <tr><td><b>Ctrl+0</b></td><td>Reset Zoom</td></tr>
+        <tr><td><b>F5</b></td><td>Refresh</td></tr>
+        <tr><td><b>Ctrl+H</b></td><td>Focus Memory Map Outline (Left Panel)</td></tr>
+        <tr><td><b>Ctrl+L</b></td><td>Focus Bit Field Table (Right Panel)</td></tr>
+        </table>
+
+        <h4>Memory Map Outline (Vim-style)</h4>
+        <table>
+        <tr><td><b>j</b></td><td>Move Down</td></tr>
+        <tr><td><b>k</b></td><td>Move Up</td></tr>
+        <tr><td><b>h</b></td><td>Collapse Array / Move to Parent</td></tr>
+        <tr><td><b>l</b></td><td>Expand Array / Move to Child</td></tr>
+        <tr><td><b>o</b></td><td>Insert Register After</td></tr>
+        <tr><td><b>Shift+O</b></td><td>Insert Register Before</td></tr>
+        <tr><td><b>a</b></td><td>Insert Array After</td></tr>
+        <tr><td><b>Shift+A</b></td><td>Insert Array Before</td></tr>
+        <tr><td><b>dd</b></td><td>Delete Selected</td></tr>
+        <tr><td><b>Alt+Up/Down</b></td><td>Move Item Up/Down</td></tr>
+        <tr><td><b>Alt+k/j</b></td><td>Move Item Up/Down (vim-style)</td></tr>
+        </table>
+
+        <h4>Bit Field Table (Vim-style)</h4>
+        <table>
+        <tr><td><b>j</b></td><td>Move Down</td></tr>
+        <tr><td><b>k</b></td><td>Move Up</td></tr>
+        <tr><td><b>o</b></td><td>Insert Field After</td></tr>
+        <tr><td><b>Shift+O</b></td><td>Insert Field Before</td></tr>
+        <tr><td><b>dd</b></td><td>Delete Selected Field</td></tr>
+        <tr><td><b>Alt+Up/Down</b></td><td>Move Field Up/Down</td></tr>
+        <tr><td><b>Alt+k/j</b></td><td>Move Field Up/Down (vim-style)</td></tr>
+        </table>
+
+        <h4>Help</h4>
+        <table>
+        <tr><td><b>F1</b></td><td>Show This Help</td></tr>
+        </table>
+        """
+
+        msg_box = QMessageBox(self)
+        msg_box.setWindowTitle("Keyboard Shortcuts")
+        msg_box.setTextFormat(Qt.RichText)
+        msg_box.setText(help_text)
+        msg_box.setStandardButtons(QMessageBox.Ok)
+        msg_box.exec()
 
     def show_about(self):
         """Show the about dialog."""

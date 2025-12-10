@@ -67,12 +67,12 @@ class MemoryMapOutline(QWidget):
 
         # Register insertion buttons
         self.insert_register_before_btn = QPushButton("⬆")
-        self.insert_register_before_btn.setToolTip("Insert Register Before Selected")
+        self.insert_register_before_btn.setToolTip("Insert Register Before Selected (Shift+O)")
         self.insert_register_before_btn.setFixedSize(32, 32)
         header_layout.addWidget(self.insert_register_before_btn)
 
         self.insert_register_after_btn = QPushButton("⬇")
-        self.insert_register_after_btn.setToolTip("Insert Register After Selected")
+        self.insert_register_after_btn.setToolTip("Insert Register After Selected (o)")
         self.insert_register_after_btn.setFixedSize(32, 32)
         header_layout.addWidget(self.insert_register_after_btn)
 
@@ -81,12 +81,12 @@ class MemoryMapOutline(QWidget):
 
         # Array insertion buttons
         self.insert_array_before_btn = QPushButton("⇈")
-        self.insert_array_before_btn.setToolTip("Insert Array Before Selected")
+        self.insert_array_before_btn.setToolTip("Insert Array Before Selected (Shift+A)")
         self.insert_array_before_btn.setFixedSize(32, 32)
         header_layout.addWidget(self.insert_array_before_btn)
 
         self.insert_array_after_btn = QPushButton("⇊")
-        self.insert_array_after_btn.setToolTip("Insert Array After Selected")
+        self.insert_array_after_btn.setToolTip("Insert Array After Selected (a)")
         self.insert_array_after_btn.setFixedSize(32, 32)
         header_layout.addWidget(self.insert_array_after_btn)
 
@@ -95,7 +95,7 @@ class MemoryMapOutline(QWidget):
 
         # Remove button
         self.remove_register_btn = QPushButton()
-        self.remove_register_btn.setToolTip("Remove Selected Register/Array")
+        self.remove_register_btn.setToolTip("Remove Selected Register/Array (dd)")
         self.remove_register_btn.setFixedSize(32, 32)
         trash_icon = self.style().standardIcon(QStyle.SP_TrashIcon)
         self.remove_register_btn.setIcon(trash_icon)
@@ -107,12 +107,12 @@ class MemoryMapOutline(QWidget):
 
         # Move up/down buttons for reordering
         self.move_up_btn = QPushButton("△")
-        self.move_up_btn.setToolTip("Move Selected Item Up (Alt+Up)")
+        self.move_up_btn.setToolTip("Move Selected Item Up (Alt+Up or Alt+k)")
         self.move_up_btn.setFixedSize(32, 32)
         header_layout.addWidget(self.move_up_btn)
 
         self.move_down_btn = QPushButton("▽")
-        self.move_down_btn.setToolTip("Move Selected Item Down (Alt+Down)")
+        self.move_down_btn.setToolTip("Move Selected Item Down (Alt+Down or Alt+j)")
         self.move_down_btn.setFixedSize(32, 32)
         header_layout.addWidget(self.move_down_btn)
 
@@ -186,6 +186,53 @@ class MemoryMapOutline(QWidget):
         self.move_down_shortcut = QShortcut(QKeySequence("Alt+Down"), self.tree)
         self.move_down_shortcut.setContext(Qt.WidgetShortcut)
         self.move_down_shortcut.activated.connect(self._move_down_clicked)
+
+        # Alt+vim keys for moving items
+        self.move_up_vim_shortcut = QShortcut(QKeySequence("Alt+k"), self.tree)
+        self.move_up_vim_shortcut.setContext(Qt.WidgetShortcut)
+        self.move_up_vim_shortcut.activated.connect(self._move_up_clicked)
+
+        self.move_down_vim_shortcut = QShortcut(QKeySequence("Alt+j"), self.tree)
+        self.move_down_vim_shortcut.setContext(Qt.WidgetShortcut)
+        self.move_down_vim_shortcut.activated.connect(self._move_down_clicked)
+
+        # Vim-style keyboard shortcuts
+        self.insert_register_after_shortcut = QShortcut(QKeySequence("o"), self.tree)
+        self.insert_register_after_shortcut.setContext(Qt.WidgetShortcut)
+        self.insert_register_after_shortcut.activated.connect(self._insert_register_after_clicked)
+
+        self.insert_register_before_shortcut = QShortcut(QKeySequence("Shift+O"), self.tree)
+        self.insert_register_before_shortcut.setContext(Qt.WidgetShortcut)
+        self.insert_register_before_shortcut.activated.connect(self._insert_register_before_clicked)
+
+        self.insert_array_after_shortcut = QShortcut(QKeySequence("a"), self.tree)
+        self.insert_array_after_shortcut.setContext(Qt.WidgetShortcut)
+        self.insert_array_after_shortcut.activated.connect(self._insert_array_after_clicked)
+
+        self.insert_array_before_shortcut = QShortcut(QKeySequence("Shift+A"), self.tree)
+        self.insert_array_before_shortcut.setContext(Qt.WidgetShortcut)
+        self.insert_array_before_shortcut.activated.connect(self._insert_array_before_clicked)
+
+        self.delete_shortcut = QShortcut(QKeySequence("d,d"), self.tree)
+        self.delete_shortcut.setContext(Qt.WidgetShortcut)
+        self.delete_shortcut.activated.connect(self._remove_register_clicked)
+
+        # Vim movement keys
+        self.vim_down_shortcut = QShortcut(QKeySequence("j"), self.tree)
+        self.vim_down_shortcut.setContext(Qt.WidgetShortcut)
+        self.vim_down_shortcut.activated.connect(self._vim_move_down)
+
+        self.vim_up_shortcut = QShortcut(QKeySequence("k"), self.tree)
+        self.vim_up_shortcut.setContext(Qt.WidgetShortcut)
+        self.vim_up_shortcut.activated.connect(self._vim_move_up)
+
+        self.vim_collapse_shortcut = QShortcut(QKeySequence("h"), self.tree)
+        self.vim_collapse_shortcut.setContext(Qt.WidgetShortcut)
+        self.vim_collapse_shortcut.activated.connect(self._vim_collapse)
+
+        self.vim_expand_shortcut = QShortcut(QKeySequence("l"), self.tree)
+        self.vim_expand_shortcut.setContext(Qt.WidgetShortcut)
+        self.vim_expand_shortcut.activated.connect(self._vim_expand)
 
     def set_project(self, project: MemoryMapProject):
         """Set the current project and populate the tree."""
@@ -622,3 +669,106 @@ class MemoryMapOutline(QWidget):
                 array = item.data(0, Qt.UserRole)
                 if hasattr(array, '_name'):
                     self._expanded_arrays.discard(array._name)
+
+    def _vim_move_down(self):
+        """Move selection down (vim j key)."""
+        current = self.tree.currentItem()
+        if not current:
+            if self.tree.topLevelItemCount() > 0:
+                self.tree.setCurrentItem(self.tree.topLevelItem(0))
+            return
+
+        # Try to move to next item
+        if current.childCount() > 0 and current.isExpanded():
+            # If expanded with children, move to first child
+            self.tree.setCurrentItem(current.child(0))
+        else:
+            # Try next sibling
+            parent = current.parent()
+            if parent:
+                index = parent.indexOfChild(current)
+                if index < parent.childCount() - 1:
+                    self.tree.setCurrentItem(parent.child(index + 1))
+                else:
+                    # Move to parent's next sibling
+                    self._move_to_next_top_level(parent)
+            else:
+                # Top level item - move to next top level
+                index = self.tree.indexOfTopLevelItem(current)
+                if index < self.tree.topLevelItemCount() - 1:
+                    self.tree.setCurrentItem(self.tree.topLevelItem(index + 1))
+
+    def _move_to_next_top_level(self, item):
+        """Helper to move to next top level item after current item's parent."""
+        parent = item.parent() if hasattr(item, 'parent') and item.parent() else item
+        while parent.parent():
+            parent = parent.parent()
+        index = self.tree.indexOfTopLevelItem(parent)
+        if index >= 0 and index < self.tree.topLevelItemCount() - 1:
+            self.tree.setCurrentItem(self.tree.topLevelItem(index + 1))
+
+    def _vim_move_up(self):
+        """Move selection up (vim k key)."""
+        current = self.tree.currentItem()
+        if not current:
+            if self.tree.topLevelItemCount() > 0:
+                self.tree.setCurrentItem(self.tree.topLevelItem(self.tree.topLevelItemCount() - 1))
+            return
+
+        parent = current.parent()
+        if parent:
+            index = parent.indexOfChild(current)
+            if index > 0:
+                # Move to previous sibling (and its last descendant if expanded)
+                prev_sibling = parent.child(index - 1)
+                self.tree.setCurrentItem(self._get_last_visible_item(prev_sibling))
+            else:
+                # Move to parent
+                self.tree.setCurrentItem(parent)
+        else:
+            # Top level item
+            index = self.tree.indexOfTopLevelItem(current)
+            if index > 0:
+                prev_item = self.tree.topLevelItem(index - 1)
+                self.tree.setCurrentItem(self._get_last_visible_item(prev_item))
+
+    def _get_last_visible_item(self, item):
+        """Get the last visible descendant of an item."""
+        if item.childCount() > 0 and item.isExpanded():
+            return self._get_last_visible_item(item.child(item.childCount() - 1))
+        return item
+
+    def _vim_collapse(self):
+        """Collapse current item or move to parent (vim h key)."""
+        current = self.tree.currentItem()
+        if not current:
+            return
+
+        if current.childCount() > 0 and current.isExpanded():
+            # Collapse if expanded
+            current.setExpanded(False)
+            array = current.data(0, Qt.UserRole)
+            if hasattr(array, '_name'):
+                self._expanded_arrays.discard(array._name)
+        else:
+            # Move to parent if has one
+            parent = current.parent()
+            if parent:
+                self.tree.setCurrentItem(parent)
+
+    def _vim_expand(self):
+        """Expand current item or move to first child (vim l key)."""
+        current = self.tree.currentItem()
+        if not current:
+            return
+
+        if current.childCount() > 0:
+            if not current.isExpanded():
+                # Expand if collapsed
+                current.setExpanded(True)
+                array = current.data(0, Qt.UserRole)
+                if hasattr(array, '_name'):
+                    self._expanded_arrays.add(array._name)
+            else:
+                # Move to first child if already expanded
+                self.tree.setCurrentItem(current.child(0))
