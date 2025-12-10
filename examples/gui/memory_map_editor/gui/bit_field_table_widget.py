@@ -28,8 +28,12 @@ class BitFieldTableWidget(QWidget):
         self.current_item = None
         self.parent_array = None  # Track parent array if editing an array element
         self._updating = False
+        self._vim_mode = 'normal'  # 'normal' or 'insert'
+        self._last_row = 0  # Remember last selected row
+        self._last_col = 0  # Remember last selected column
         self._setup_ui()
         self._connect_signals()
+        self._update_mode_indicator()
 
     def _setup_ui(self):
         """Setup the table and control buttons."""
@@ -93,6 +97,20 @@ class BitFieldTableWidget(QWidget):
 
         button_layout.addStretch()
 
+        # Mode indicator
+        from PySide6.QtWidgets import QLabel
+        self.mode_label = QLabel("-- NORMAL --")
+        self.mode_label.setStyleSheet("""
+            QLabel {
+                color: #2E7D32;
+                font-weight: bold;
+                padding: 5px 10px;
+                background-color: #E8F5E9;
+                border-radius: 3px;
+            }
+        """)
+        button_layout.addWidget(self.mode_label)
+
         layout.addLayout(button_layout)
 
         # Create table
@@ -117,14 +135,9 @@ class BitFieldTableWidget(QWidget):
         access_delegate = AccessTypeDelegate(self.table)
         self.table.setItemDelegateForColumn(3, access_delegate)
 
-        # Enable single-click editing for Access column
+        # Start in normal mode - disable editing
         from PySide6.QtWidgets import QAbstractItemView
-        self.table.setEditTriggers(
-            QAbstractItemView.CurrentChanged |
-            QAbstractItemView.DoubleClicked |
-            QAbstractItemView.SelectedClicked |
-            QAbstractItemView.EditKeyPressed
-        )
+        self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
 
         layout.addWidget(self.table)
 
@@ -163,30 +176,57 @@ class BitFieldTableWidget(QWidget):
         self.move_field_down_vim_shortcut.setContext(Qt.WidgetShortcut)
         self.move_field_down_vim_shortcut.activated.connect(self._move_field_down)
 
-        # Vim-style keyboard shortcuts
+        # Vim-style keyboard shortcuts (work in normal mode)
         self.insert_field_after_shortcut = QShortcut(QKeySequence("o"), self.table)
         self.insert_field_after_shortcut.setContext(Qt.WidgetShortcut)
-        self.insert_field_after_shortcut.activated.connect(lambda: self._insert_field('after'))
+        self.insert_field_after_shortcut.activated.connect(self._vim_o)
 
         self.insert_field_before_shortcut = QShortcut(QKeySequence("Shift+O"), self.table)
         self.insert_field_before_shortcut.setContext(Qt.WidgetShortcut)
-        self.insert_field_before_shortcut.activated.connect(lambda: self._insert_field('before'))
+        self.insert_field_before_shortcut.activated.connect(self._vim_O)
 
         self.delete_field_shortcut = QShortcut(QKeySequence("d,d"), self.table)
         self.delete_field_shortcut.setContext(Qt.WidgetShortcut)
-        self.delete_field_shortcut.activated.connect(self._remove_field)
+        self.delete_field_shortcut.activated.connect(self._vim_dd)
 
-        # Vim movement keys
+        # Vim movement keys (normal mode)
         self.vim_down_shortcut = QShortcut(QKeySequence("j"), self.table)
         self.vim_down_shortcut.setContext(Qt.WidgetShortcut)
-        self.vim_down_shortcut.activated.connect(self._vim_move_down)
+        self.vim_down_shortcut.activated.connect(self._vim_j)
 
         self.vim_up_shortcut = QShortcut(QKeySequence("k"), self.table)
         self.vim_up_shortcut.setContext(Qt.WidgetShortcut)
-        self.vim_up_shortcut.activated.connect(self._vim_move_up)
+        self.vim_up_shortcut.activated.connect(self._vim_k)
+
+        self.vim_left_shortcut = QShortcut(QKeySequence("h"), self.table)
+        self.vim_left_shortcut.setContext(Qt.WidgetShortcut)
+        self.vim_left_shortcut.activated.connect(self._vim_h)
+
+        self.vim_right_shortcut = QShortcut(QKeySequence("l"), self.table)
+        self.vim_right_shortcut.setContext(Qt.WidgetShortcut)
+        self.vim_right_shortcut.activated.connect(self._vim_l)
+
+        # Mode switching
+        self.vim_insert_mode_shortcut = QShortcut(QKeySequence("i"), self.table)
+        self.vim_insert_mode_shortcut.setContext(Qt.WidgetShortcut)
+        self.vim_insert_mode_shortcut.activated.connect(self._enter_insert_mode)
+
+        self.vim_normal_mode_esc_shortcut = QShortcut(QKeySequence("Esc"), self.table)
+        self.vim_normal_mode_esc_shortcut.setContext(Qt.WidgetShortcut)
+        self.vim_normal_mode_esc_shortcut.activated.connect(self._enter_normal_mode)
+
+        self.vim_normal_mode_ctrl_shortcut = QShortcut(QKeySequence("Ctrl+["), self.table)
+        self.vim_normal_mode_ctrl_shortcut.setContext(Qt.WidgetShortcut)
+        self.vim_normal_mode_ctrl_shortcut.activated.connect(self._enter_normal_mode)
 
         self.table.cellChanged.connect(self._on_cell_changed)
         self.table.itemSelectionChanged.connect(self._on_selection_changed)
+
+        # Install event filter to detect when editing finishes
+        self.table.itemDelegate().closeEditor.connect(self._on_editor_closed)
+
+        # Monitor table focus to restore position
+        self.table.installEventFilter(self)
 
     def set_current_item(self, item, parent_array=None):
         """Set the current register or array item.
@@ -886,7 +926,13 @@ class BitFieldTableWidget(QWidget):
     def _on_selection_changed(self):
         """Handle table selection changes."""
         current_row = self.table.currentRow()
+        current_col = self.table.currentColumn()
         has_selection = current_row >= 0
+
+        # Save last position
+        if has_selection:
+            self._last_row = current_row
+            self._last_col = current_col
 
         self.insert_before_btn.setEnabled(has_selection)
         self.insert_after_btn.setEnabled(has_selection)
@@ -915,18 +961,141 @@ class BitFieldTableWidget(QWidget):
             self.move_field_up_btn.setEnabled(False)
             self.move_field_down_btn.setEnabled(False)
 
-    def _vim_move_down(self):
-        """Move selection down one row (vim j key)."""
+    def _enter_insert_mode(self):
+        """Enter insert mode for editing cells."""
+        if self._vim_mode == 'insert':
+            return
+
+        self._vim_mode = 'insert'
+        from PySide6.QtWidgets import QAbstractItemView
+        self.table.setEditTriggers(
+            QAbstractItemView.CurrentChanged |
+            QAbstractItemView.DoubleClicked |
+            QAbstractItemView.SelectedClicked |
+            QAbstractItemView.EditKeyPressed |
+            QAbstractItemView.AnyKeyPressed
+        )
+        self._update_mode_indicator()
+
+        # Start editing current cell if one is selected
+        current_item = self.table.currentItem()
+        if current_item:
+            self.table.editItem(current_item)
+
+    def _enter_normal_mode(self):
+        """Enter normal mode for navigation."""
+        if self._vim_mode == 'normal':
+            return
+
+        self._vim_mode = 'normal'
+        from PySide6.QtWidgets import QAbstractItemView
+        self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self._update_mode_indicator()
+
+        # Close any open editor
+        self.table.closePersistentEditor(self.table.currentItem())
+
+    def _update_mode_indicator(self):
+        """Update the mode indicator label."""
+        if self._vim_mode == 'normal':
+            self.mode_label.setText("-- NORMAL --")
+            self.mode_label.setStyleSheet("""
+                QLabel {
+                    color: #2E7D32;
+                    font-weight: bold;
+                    padding: 5px 10px;
+                    background-color: #E8F5E9;
+                    border-radius: 3px;
+                }
+            """)
+        else:  # insert
+            self.mode_label.setText("-- INSERT --")
+            self.mode_label.setStyleSheet("""
+                QLabel {
+                    color: #1565C0;
+                    font-weight: bold;
+                    padding: 5px 10px;
+                    background-color: #E3F2FD;
+                    border-radius: 3px;
+                }
+            """)
+
+    def _vim_j(self):
+        """Vim j - move down (only in normal mode)."""
+        if self._vim_mode != 'normal':
+            return
         current_row = self.table.currentRow()
         if current_row < self.table.rowCount() - 1:
             self.table.setCurrentCell(current_row + 1, self.table.currentColumn())
         elif self.table.rowCount() > 0 and current_row == -1:
             self.table.setCurrentCell(0, 0)
 
-    def _vim_move_up(self):
-        """Move selection up one row (vim k key)."""
+    def _vim_k(self):
+        """Vim k - move up (only in normal mode)."""
+        if self._vim_mode != 'normal':
+            return
         current_row = self.table.currentRow()
         if current_row > 0:
             self.table.setCurrentCell(current_row - 1, self.table.currentColumn())
         elif self.table.rowCount() > 0 and current_row == -1:
             self.table.setCurrentCell(self.table.rowCount() - 1, 0)
+
+    def _vim_h(self):
+        """Vim h - move left (only in normal mode)."""
+        if self._vim_mode != 'normal':
+            return
+        current_col = self.table.currentColumn()
+        if current_col > 0:
+            self.table.setCurrentCell(self.table.currentRow(), current_col - 1)
+
+    def _vim_l(self):
+        """Vim l - move right (only in normal mode)."""
+        if self._vim_mode != 'normal':
+            return
+        current_col = self.table.currentColumn()
+        if current_col < self.table.columnCount() - 1:
+            self.table.setCurrentCell(self.table.currentRow(), current_col + 1)
+
+    def _vim_o(self):
+        """Vim o - insert field after (only in normal mode)."""
+        if self._vim_mode != 'normal':
+            return
+        self._insert_field('after')
+
+    def _vim_O(self):
+        """Vim O - insert field before (only in normal mode)."""
+        if self._vim_mode != 'normal':
+            return
+        self._insert_field('before')
+
+    def _vim_dd(self):
+        """Vim dd - delete field (only in normal mode)."""
+        if self._vim_mode != 'normal':
+            return
+        self._remove_field()
+
+    def _on_editor_closed(self):
+        """Handle editor being closed - auto-exit insert mode."""
+        if self._vim_mode == 'insert':
+            # Delay slightly to allow cell change to process
+            from PySide6.QtCore import QTimer
+            QTimer.singleShot(50, self._enter_normal_mode)
+
+    def focusInEvent(self, event):
+        """Handle focus in event - restore last position."""
+        super().focusInEvent(event)
+        # Restore last selected position when panel gets focus
+        if self.table.rowCount() > 0:
+            row = min(self._last_row, self.table.rowCount() - 1)
+            col = min(self._last_col, self.table.columnCount() - 1)
+            self.table.setCurrentCell(row, col)
+
+    def eventFilter(self, obj, event):
+        """Event filter to handle table focus events."""
+        if obj == self.table and event.type() == event.Type.FocusIn:
+            # Restore last position when table gets focus
+            if self.table.rowCount() > 0:
+                row = min(self._last_row, self.table.rowCount() - 1)
+                col = min(self._last_col, self.table.columnCount() - 1)
+                self.table.setCurrentCell(row, col)
+        return super().eventFilter(obj, event)

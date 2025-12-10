@@ -1041,15 +1041,18 @@ class MainWindow(QMainWindow):
         <tr><td><b>Alt+k/j</b></td><td>Move Item Up/Down (vim-style)</td></tr>
         </table>
 
-        <h4>Bit Field Table (Vim-style)</h4>
+        <h4>Bit Field Table (Vim-style Modal)</h4>
         <table>
-        <tr><td><b>j</b></td><td>Move Down</td></tr>
-        <tr><td><b>k</b></td><td>Move Up</td></tr>
+        <tr><td colspan=\"2\"><b>Normal Mode:</b></td></tr>
+        <tr><td><b>h/j/k/l</b></td><td>Move Left/Down/Up/Right</td></tr>
+        <tr><td><b>i</b></td><td>Enter Insert Mode (Edit Cell)</td></tr>
         <tr><td><b>o</b></td><td>Insert Field After</td></tr>
         <tr><td><b>Shift+O</b></td><td>Insert Field Before</td></tr>
         <tr><td><b>dd</b></td><td>Delete Selected Field</td></tr>
         <tr><td><b>Alt+Up/Down</b></td><td>Move Field Up/Down</td></tr>
         <tr><td><b>Alt+k/j</b></td><td>Move Field Up/Down (vim-style)</td></tr>
+        <tr><td colspan=\"2\"><b>Insert Mode:</b></td></tr>
+        <tr><td><b>ESC or Ctrl+[</b></td><td>Return to Normal Mode</td></tr>
         </table>
 
         <h4>Help</h4>
