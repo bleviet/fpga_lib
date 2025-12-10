@@ -139,6 +139,9 @@ class BitFieldTableWidget(QWidget):
         from PySide6.QtWidgets import QAbstractItemView
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
 
+        # Install event filter on the table for key press handling
+        self.table.installEventFilter(self)
+
         layout.addWidget(self.table)
 
         # Initially disable buttons
@@ -225,8 +228,8 @@ class BitFieldTableWidget(QWidget):
         # Install event filter to detect when editing finishes
         self.table.itemDelegate().closeEditor.connect(self._on_editor_closed)
 
-        # Monitor table focus to restore position
-        self.table.installEventFilter(self)
+        # Also monitor current cell changes to detect when editing completes
+        self.table.currentCellChanged.connect(self._on_current_cell_changed)
 
     def set_current_item(self, item, parent_array=None):
         """Set the current register or array item.
@@ -992,8 +995,10 @@ class BitFieldTableWidget(QWidget):
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self._update_mode_indicator()
 
-        # Close any open editor
-        self.table.closePersistentEditor(self.table.currentItem())
+        # Close any open editor safely
+        current_item = self.table.currentItem()
+        if current_item:
+            self.table.closePersistentEditor(current_item)
 
     def _update_mode_indicator(self):
         """Update the mode indicator label."""
@@ -1077,9 +1082,27 @@ class BitFieldTableWidget(QWidget):
     def _on_editor_closed(self):
         """Handle editor being closed - auto-exit insert mode."""
         if self._vim_mode == 'insert':
-            # Delay slightly to allow cell change to process
-            from PySide6.QtCore import QTimer
-            QTimer.singleShot(50, self._enter_normal_mode)
+            # Exit to normal mode when editor closes
+            self._vim_mode = 'normal'
+            from PySide6.QtWidgets import QAbstractItemView
+            self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+            self._update_mode_indicator()
+
+            # Ensure table has focus for keyboard navigation
+            self.table.setFocus()
+
+    def _on_current_cell_changed(self, currentRow, currentColumn, previousRow, previousColumn):
+        """Handle current cell changes - exit insert mode if cell changed while editing."""
+        if self._vim_mode == 'insert' and (currentRow != previousRow or currentColumn != previousColumn):
+            # Cell changed while in insert mode (e.g., Enter was pressed)
+            # Exit to normal mode
+            self._vim_mode = 'normal'
+            from PySide6.QtWidgets import QAbstractItemView
+            self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+            self._update_mode_indicator()
+
+            # Ensure table has focus for keyboard navigation
+            self.table.setFocus()
 
     def focusInEvent(self, event):
         """Handle focus in event - restore last position."""
@@ -1092,10 +1115,13 @@ class BitFieldTableWidget(QWidget):
 
     def eventFilter(self, obj, event):
         """Event filter to handle table focus events."""
-        if obj == self.table and event.type() == event.Type.FocusIn:
-            # Restore last position when table gets focus
-            if self.table.rowCount() > 0:
-                row = min(self._last_row, self.table.rowCount() - 1)
-                col = min(self._last_col, self.table.columnCount() - 1)
-                self.table.setCurrentCell(row, col)
+        from PySide6.QtCore import QEvent
+
+        if obj == self.table:
+            if event.type() == QEvent.FocusIn:
+                # Restore last position when table gets focus
+                if self.table.rowCount() > 0:
+                    row = min(self._last_row, self.table.rowCount() - 1)
+                    col = min(self._last_col, self.table.columnCount() - 1)
+                    self.table.setCurrentCell(row, col)
         return super().eventFilter(obj, event)
