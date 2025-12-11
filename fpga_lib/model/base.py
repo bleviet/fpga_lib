@@ -3,8 +3,8 @@ Base models for IP core metadata.
 """
 
 from typing import Any
-from pydantic import BaseModel, Field, field_validator
-from pydantic_core import ValidationInfo
+from enum import Enum
+from pydantic import BaseModel, Field, field_validator, ValidationInfo
 
 
 class VLNV(BaseModel):
@@ -72,6 +72,16 @@ class VLNV(BaseModel):
         return self.full_name
 
 
+class ParameterType(str, Enum):
+    """Enumeration for standard IP-XACT/HDL parameter types."""
+    INTEGER = "integer"
+    NATURAL = "natural"
+    POSITIVE = "positive"
+    REAL = "real"
+    BOOLEAN = "boolean"
+    STRING = "string"
+
+
 class Parameter(BaseModel):
     """
     Generic parameter/generic definition for IP cores.
@@ -79,32 +89,49 @@ class Parameter(BaseModel):
     Used for VHDL generics, Verilog parameters, or component configuration.
     """
 
+    # Configuration: Forbid extra fields to keep schema clean.
+    # validate_assignment ensures type safety even after creation.
+    model_config = {"extra": "forbid", "validate_assignment": True}
+
     name: str = Field(..., description="Parameter name")
     value: Any = Field(..., description="Default value")
-    data_type: str = Field(default="integer", description="Data type (integer, string, boolean, etc.)")
+    data_type: ParameterType = Field(default=ParameterType.INTEGER, description="Data type")
     description: str = Field(default="", description="Parameter description")
+
+    # This allows the Parameter class to accept raw strings (including mixed case Integer, INTEGER etc.) and
+    # normalize them into the correct Enum type before Pydantic performs its strict validation.
+    @field_validator("data_type", mode="before")
+    @classmethod
+    def normalize_data_type(cls, v: Any) -> Any:
+        if isinstance(v, str):
+            return v.lower()
+        return v
 
     @field_validator("name")
     @classmethod
     def validate_name(cls, v: str) -> str:
         """Ensure parameter name is valid."""
-        if not v or not v.strip():
+        v = v.strip()
+        if not v:
             raise ValueError("Parameter name cannot be empty")
-        return v.strip()
+        return v
 
     @property
     def is_numeric(self) -> bool:
         """Check if parameter is numeric type."""
-        return self.data_type.lower() in ["integer", "natural", "positive", "real"]
+        return self.data_type in (
+            ParameterType.INTEGER,
+            ParameterType.NATURAL,
+            ParameterType.POSITIVE,
+            ParameterType.REAL
+        )
 
     @property
     def is_boolean(self) -> bool:
         """Check if parameter is boolean type."""
-        return self.data_type.lower() in ["boolean", "bool"]
+        return self.data_type == ParameterType.BOOLEAN
 
     @property
     def is_string(self) -> bool:
         """Check if parameter is string type."""
-        return self.data_type.lower() in ["string", "str"]
-
-    model_config = {"extra": "forbid", "validate_assignment": True}
+        return self.data_type == ParameterType.STRING
