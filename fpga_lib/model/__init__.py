@@ -6,7 +6,7 @@ with validation-first design and computed properties.
 """
 
 from .base import VLNV, Parameter
-from .bus import BusInterface, BusType, PortMapping, PortWidthOverride, ArrayConfig
+from .bus import BusInterface, BusType, ArrayConfig
 from .memory import (
     AccessType,
     MemoryMap,
@@ -28,8 +28,6 @@ __all__ = [
     # Bus
     "BusInterface",
     "BusType",
-    "PortMapping",
-    "PortWidthOverride",
     "ArrayConfig",
     # Memory
     "AccessType",

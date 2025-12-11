@@ -135,3 +135,9 @@ class Parameter(BaseModel):
     def is_string(self) -> bool:
         """Check if parameter is string type."""
         return self.data_type == ParameterType.STRING
+
+
+class Polarity(str, Enum):
+    """Reset polarity enumeration."""
+    ACTIVE_HIGH = "activeHigh"
+    ACTIVE_LOW = "activeLow"

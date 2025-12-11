@@ -2,6 +2,7 @@
 Port definitions for IP cores.
 """
 
+from typing import Any
 from enum import Enum
 from pydantic import BaseModel, Field, field_validator
 
@@ -26,6 +27,19 @@ class Port(BaseModel):
     direction: PortDirection = Field(..., description="Port direction")
     width: int = Field(default=1, description="Port width in bits")
     description: str = Field(default="", description="Port description")
+
+    @field_validator("direction", mode="before")
+    @classmethod
+    def normalize_direction(cls, v: Any) -> Any:
+        """Validate and normalize port direction."""
+        if isinstance(v, str):
+            v_lower = v.lower()
+            if v_lower == "input":
+                return "in"
+            if v_lower == "output":
+                return "out"
+            return v_lower
+        return v
 
     @field_validator("width")
     @classmethod

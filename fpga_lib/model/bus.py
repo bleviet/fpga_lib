@@ -2,7 +2,8 @@
 Bus interface definitions for IP cores.
 """
 
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Any
+from enum import Enum
 from pydantic import BaseModel, Field, field_validator
 
 from .base import VLNV
@@ -22,40 +23,12 @@ class BusType(VLNV):
     version: str = Field(..., description="Bus version")
 
 
-class PortWidthOverride(BaseModel):
-    """
-    Override default port width from bus definition.
-
-    Allows customization of bus interface port widths per component.
-    """
-
-    port_name: str = Field(..., description="Logical port name to override")
-    width: int = Field(..., description="Override width in bits")
-
-    @field_validator("width")
-    @classmethod
-    def validate_width(cls, v: int) -> int:
-        """Ensure width is positive."""
-        if v <= 0:
-            raise ValueError("Port width must be positive")
-        return v
-
-    model_config = {"extra": "forbid"}
-
-
-class PortMapping(BaseModel):
-    """
-    Mapping from logical bus port to physical HDL port.
-
-    Defines how abstract bus signals map to actual HDL port names.
-    """
-
-    logical_name: str = Field(..., description="Logical port name from bus definition")
-    physical_name: str = Field(..., description="Physical port name in HDL")
-    direction: str = Field(..., description="Port direction (in/out)")
-    width: Optional[int] = Field(default=None, description="Port width (if overridden)")
-
-    model_config = {"extra": "forbid"}
+class BusInterfaceMode(str, Enum):
+    """Enumeration for bus interface modes."""
+    MASTER = "master"
+    SLAVE = "slave"
+    SOURCE = "source"
+    SINK = "sink"
 
 
 class ArrayConfig(BaseModel):
@@ -108,7 +81,7 @@ class BusInterface(BaseModel):
 
     name: str = Field(..., description="Logical interface name")
     type: str = Field(..., description="Bus type from library (e.g., 'AXI4L', 'AXIS')")
-    mode: str = Field(..., description="Interface mode: 'master' or 'slave'")
+    mode: BusInterfaceMode = Field(..., description="Interface mode: 'master' or 'slave'")
 
     # Port mapping
     physical_prefix: str = Field(
@@ -138,6 +111,15 @@ class BusInterface(BaseModel):
         default_factory=dict, description="Port width overrides {port_name: width}"
     )
 
+    @field_validator("port_width_overrides")
+    @classmethod
+    def validate_port_width_overrides(cls, v: Dict[str, int]) -> Dict[str, int]:
+        """Ensure overridden widths are positive."""
+        for name, width in v.items():
+            if width <= 0:
+                raise ValueError(f"Port width override for '{name}' must be positive")
+        return v
+
     # Array configuration
     array: Optional[ArrayConfig] = Field(
         default=None, description="Array configuration for multiple instances"
@@ -146,23 +128,22 @@ class BusInterface(BaseModel):
     # Description
     description: str = Field(default="", description="Interface description")
 
-    @field_validator("mode")
+    @field_validator("mode", mode="before")
     @classmethod
-    def validate_mode(cls, v: str) -> str:
-        """Validate interface mode."""
-        if v.lower() not in ["master", "slave", "source", "sink"]:
-            raise ValueError("Interface mode must be 'master', 'slave', 'source', or 'sink'")
-        return v.lower()
+    def normalize_mode(cls, v: Any) -> Any:
+        if isinstance(v, str):
+            return v.lower()
+        return v
 
     @property
     def is_master(self) -> bool:
         """Check if interface is master/source."""
-        return self.mode in ["master", "source"]
+        return self.mode in (BusInterfaceMode.MASTER, BusInterfaceMode.SOURCE)
 
     @property
     def is_slave(self) -> bool:
         """Check if interface is slave/sink."""
-        return self.mode in ["slave", "sink"]
+        return self.mode in (BusInterfaceMode.SLAVE, BusInterfaceMode.SINK)
 
     @property
     def is_array(self) -> bool:

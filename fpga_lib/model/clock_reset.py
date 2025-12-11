@@ -2,38 +2,23 @@
 Clock and reset definitions for IP cores.
 """
 
-from enum import Enum
-from typing import Optional
-from pydantic import BaseModel, Field, field_validator
+from typing import Optional, Any
+from pydantic import Field, field_validator
+
+from .base import Polarity
+from .port import PortDirection, Port
 
 
-class Polarity(str, Enum):
-    """Reset polarity enumeration."""
-
-    ACTIVE_HIGH = "activeHigh"
-    ACTIVE_LOW = "activeLow"
-
-
-class Clock(BaseModel):
+class Clock(Port):
     """
     Clock definition for an IP core.
 
     Defines both logical (internal) and physical (port) names for clock signals.
+    Inherits from Port, typically with width=1.
     """
-
-    name: str = Field(..., description="Logical clock name (e.g., 'SYS_CLK')")
-    physical_port: str = Field(..., description="Physical port name (e.g., 'i_clk_sys')")
-    direction: str = Field(default="in", description="Port direction (typically 'in')")
+    # Override direction to default to IN, but allow others
+    direction: PortDirection = Field(default=PortDirection.IN, description="Port direction (typically 'in')")
     frequency: Optional[str] = Field(default=None, description="Clock frequency (e.g., '100MHz')")
-    description: str = Field(default="", description="Clock description")
-
-    @field_validator("direction")
-    @classmethod
-    def validate_direction(cls, v: str) -> str:
-        """Validate clock direction."""
-        if v.lower() not in ["in", "input"]:
-            raise ValueError("Clock direction must be 'in' or 'input'")
-        return v.lower()
 
     @property
     def frequency_hz(self) -> Optional[float]:
@@ -58,32 +43,32 @@ class Clock(BaseModel):
                     return None
         return None
 
-    model_config = {"extra": "forbid", "validate_assignment": True}
 
-
-class Reset(BaseModel):
+class Reset(Port):
     """
     Reset definition for an IP core.
 
     Defines both logical (internal) and physical (port) names for reset signals,
     including polarity information.
+    Inherits from Port, typically with width=1.
     """
-
-    name: str = Field(..., description="Logical reset name (e.g., 'SYS_RST')")
-    physical_port: str = Field(..., description="Physical port name (e.g., 'i_rst_n_sys')")
-    direction: str = Field(default="in", description="Port direction (typically 'in')")
+    # Override direction to default to IN
+    direction: PortDirection = Field(default=PortDirection.IN, description="Port direction (typically 'in')")
     polarity: Polarity = Field(
         default=Polarity.ACTIVE_HIGH, description="Reset polarity (activeHigh or activeLow)"
     )
-    description: str = Field(default="", description="Reset description")
 
-    @field_validator("direction")
+    @field_validator("polarity", mode="before")
     @classmethod
-    def validate_direction(cls, v: str) -> str:
-        """Validate reset direction."""
-        if v.lower() not in ["in", "input"]:
-            raise ValueError("Reset direction must be 'in' or 'input'")
-        return v.lower()
+    def normalize_polarity(cls, v: Any) -> Any:
+        """Support case-insensitive polarity strings."""
+        if isinstance(v, str):
+            v_lower = v.lower().replace("_", "")
+            if v_lower == "activehigh":
+                return Polarity.ACTIVE_HIGH
+            if v_lower == "activelow":
+                return Polarity.ACTIVE_LOW
+        return v
 
     @property
     def is_active_low(self) -> bool:
@@ -94,5 +79,3 @@ class Reset(BaseModel):
     def is_active_high(self) -> bool:
         """Check if reset is active high."""
         return self.polarity == Polarity.ACTIVE_HIGH
-
-    model_config = {"extra": "forbid", "validate_assignment": True}
