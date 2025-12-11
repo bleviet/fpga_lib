@@ -5,28 +5,21 @@ Bus interface definitions for IP cores.
 from typing import Optional, List, Dict
 from pydantic import BaseModel, Field, field_validator
 
+from .base import VLNV
 
-class BusType(BaseModel):
+
+class BusType(VLNV):
     """
     Bus type identifier from bus library.
 
     References a standardized bus definition (AXI4L, AXIS, AVALON_MM, etc.).
+    Inherits validation, immutability, and factory methods from VLNV.
     """
-
+    # Override fields to provide context-specific descriptions
     vendor: str = Field(..., description="Bus standard vendor")
     library: str = Field(..., description="Bus library")
     name: str = Field(..., description="Bus type name")
     version: str = Field(..., description="Bus version")
-
-    @property
-    def full_name(self) -> str:
-        """Return fully qualified bus type string."""
-        return f"{self.vendor}:{self.library}:{self.name}:{self.version}"
-
-    def __str__(self) -> str:
-        return self.full_name
-
-    model_config = {"extra": "forbid"}
 
 
 class PortWidthOverride(BaseModel):
