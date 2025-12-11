@@ -61,6 +61,14 @@ class BitField(BaseModel):
         default=None, description="Enumeration mapping {value: name}"
     )
 
+    @field_validator("access", mode="before")
+    @classmethod
+    def normalize_access(cls, v: Any) -> Any:
+        """Normalize access type using AccessType.normalize."""
+        if isinstance(v, str):
+            return AccessType.normalize(v)
+        return v
+
     @field_validator("bit_offset")
     @classmethod
     def validate_offset(cls, v: int) -> int:
@@ -166,6 +174,14 @@ class Register(BaseModel):
     reset_value: Optional[int] = Field(default=0, description="Reset value for entire register")
     description: str = Field(default="", description="Register description")
     fields: List[BitField] = Field(default_factory=list, description="Bit fields")
+
+    @field_validator("access", mode="before")
+    @classmethod
+    def normalize_access(cls, v: Any) -> Any:
+        """Normalize access type using AccessType.normalize."""
+        if isinstance(v, str):
+            return AccessType.normalize(v)
+        return v
 
     @field_validator("size")
     @classmethod

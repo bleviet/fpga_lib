@@ -5,7 +5,7 @@ This module provides the single source of truth for IP core representation,
 with validation-first design and computed properties.
 """
 
-from .base import VLNV, Parameter
+from .base import VLNV, Parameter, Polarity
 from .bus import BusInterface, BusType, ArrayConfig
 from .memory import (
     AccessType,
@@ -16,7 +16,7 @@ from .memory import (
     RegisterArray,
     MemoryMapReference,
 )
-from .clock_reset import Clock, Reset, Polarity
+from .clock_reset import Clock, Reset
 from .port import Port, PortDirection
 from .fileset import FileSet, File, FileType
 from .core import IpCore
