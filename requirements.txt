@@ -3,3 +3,5 @@ rich
 openai
 python-dotenv
 pydantic
+PySide6
+pyyaml
