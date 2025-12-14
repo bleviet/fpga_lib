@@ -19,6 +19,8 @@ from textual.widgets import Header, Footer, Tree, Label, Input, DataTable, Stati
 from textual.screen import ModalScreen
 from textual.binding import Binding
 from textual.widgets.tree import TreeNode
+from textual.coordinate import Coordinate
+from textual.geometry import Offset
 
 from fpga_lib.parser.yaml import YamlIpCoreParser
 from fpga_lib.model import MemoryMap, AddressBlock, Register, AccessType, BitField
@@ -146,9 +148,12 @@ class MemoryMapEditorApp(App):
         self.file_path = file_path
         self.memory_maps: list[MemoryMap] = []
         self.current_register: Optional[Register] = None
-        self.table_mode = "NORMAL"  # NORMAL or INSERT
-        self.table_cursor_row = 0
-        self.table_cursor_col = 0
+
+        # Inline editor state (DataTable doesn't provide built-in cell editors).
+        self._inline_edit_active: bool = False
+        self._inline_edit_row: Optional[int] = None
+        self._inline_edit_col: Optional[int] = None
+        self._inline_edit_field: Optional[BitField] = None
 
         # Undo/Redo stacks
         self.undo_stack: List[List[MemoryMap]] = []
@@ -157,6 +162,7 @@ class MemoryMapEditorApp(App):
     CSS = """
     Screen {
         layout: vertical;
+        layers: default overlay;
     }
 
     #main_container {
@@ -200,23 +206,32 @@ class MemoryMapEditorApp(App):
         border: solid $secondary;
     }
 
-    #mode_indicator {
-        height: 1;
-        background: $success;
-        color: $text;
-        text-align: center;
-        text-style: bold;
-    }
-
-    #mode_indicator.insert {
-        background: $primary;
-    }
-
     #visualizer {
         height: 3;
         border: solid $success;
         margin-top: 1;
         text-align: center;
+    }
+
+    #inline_cell_editor,
+    #inline_access_editor {
+        display: none;
+        position: absolute;
+        layer: overlay;
+        width: 1;
+        height: 1;
+        background: $surface;
+        color: $text;
+    }
+
+    #inline_cell_editor {
+        border: solid $primary;
+        padding: 0 1;
+    }
+
+    #inline_access_editor {
+        border: solid $primary;
+        padding: 0 1;
     }
     """
 
@@ -226,13 +241,14 @@ class MemoryMapEditorApp(App):
         Binding("ctrl+h", "focus_left", "Focus Outline"),
         Binding("ctrl+b", "focus_left", "Focus Outline", show=False),  # Alternative for ctrl+h
         Binding("ctrl+l", "focus_right", "Focus Detail"),
-        Binding("i", "enter_insert_mode", "Insert Mode", show=False),
-        Binding("escape", "enter_normal_mode", "Normal Mode", show=False),
         Binding("j", "nav_down", "Down", show=False),
         Binding("k", "nav_up", "Up", show=False),
         Binding("h", "nav_left", "Left", show=False),
         Binding("l", "nav_right", "Right", show=False),
-        Binding("enter", "edit_field", "Edit Field", show=False),
+        Binding("enter", "enter_key", show=False),
+        Binding("f2", "start_inline_edit", show=False),
+        Binding("i", "start_inline_edit", show=False),
+        Binding("escape", "cancel_inline_edit", show=False),
         Binding("e", "edit_field", "Edit Field", show=False),
         Binding("o", "add_field_after", "Add After", show=False),
         Binding("shift+o", "add_field_before", "Add Before", show=False),
@@ -271,13 +287,19 @@ class MemoryMapEditorApp(App):
                     yield Input(placeholder="Description...", id="prop_desc")
 
                 yield Label("Bit Fields", classes="section_title")
-                yield Label("-- NORMAL --", id="mode_indicator")
-                yield DataTable(id="bit_table", cursor_type="row")
+                yield DataTable(id="bit_table", cursor_type="cell")
 
                 yield Label("Visualization", classes="section_title")
                 yield Static("[Bit Visualizer Placeholder]", id="visualizer")
 
         yield Footer()
+
+        # Overlay editors for inline table editing.
+        yield Input(id="inline_cell_editor")
+        yield Select.from_values(
+            [a.value for a in AccessType],
+            id="inline_access_editor",
+        )
 
     def on_mount(self) -> None:
         """Called when app starts."""
@@ -293,8 +315,7 @@ class MemoryMapEditorApp(App):
         # Setup table columns
         table = self.query_one("#bit_table", DataTable)
         table.add_columns("Name", "Bits", "Access", "Reset", "Description")
-        table.cursor_type = "row"
-        self._update_mode_indicator()
+        table.cursor_type = "cell"
 
     def load_memory_map(self, file_path: Path) -> None:
         """Load memory map from YAML file."""
@@ -357,21 +378,148 @@ class MemoryMapEditorApp(App):
         self.query_one("#bit_table").focus()
         # self.notify("Focused Detail", timeout=1)
 
-    def action_enter_insert_mode(self) -> None:
-        """Enter INSERT mode for table editing."""
-        table = self.query_one("#bit_table", DataTable)
-        if table.has_focus and self.table_mode == "NORMAL":
-            self.table_mode = "INSERT"
-            self._update_mode_indicator()
-            # In INSERT mode, allow cell editing
-            self.notify("-- INSERT --", severity="information", timeout=1)
+    def action_enter_key(self) -> None:
+        """Enter key: commit inline edit if active, otherwise start editing the current cell."""
+        if self._inline_edit_active:
+            self.action_commit_inline_edit()
+        else:
+            self.action_start_inline_edit()
 
-    def action_enter_normal_mode(self) -> None:
-        """Enter NORMAL mode for table navigation."""
-        if self.table_mode == "INSERT":
-            self.table_mode = "NORMAL"
-            self._update_mode_indicator()
-            self.notify("-- NORMAL --", severity="information", timeout=1)
+    def action_start_inline_edit(self) -> None:
+        """Begin inline editing of the currently focused DataTable cell."""
+        table = self.query_one("#bit_table", DataTable)
+        if not table.has_focus or not self.current_register:
+            return
+
+        row = table.cursor_row
+        col = table.cursor_column
+        if row < 0 or row >= len(self.current_register.fields):
+            return
+
+        field = self.current_register.fields[row]
+
+        # We keep the full edit dialog on 'e'. Inline editing is for simple cells.
+        if col == 1:
+            self.notify("Use 'e' to edit bit range", severity="information", timeout=2)
+            return
+
+        # Ensure the cell is visible.
+        table.scroll_to_region(table._get_cell_region(Coordinate(row, col)), animate=False)
+
+        cell_region = table._get_cell_region(Coordinate(row, col))
+        # Convert from table-content coordinates to screen coordinates.
+        x = table.content_region.x + cell_region.x - table.scroll_x
+        y = table.content_region.y + cell_region.y - table.scroll_y
+
+        # DataTable rows are typically height=1, but Input/Select widgets
+        # need more vertical space to render their content (and borders).
+        editor_height = max(3, cell_region.height)
+        editor_width = max(4, cell_region.width)
+        # Nudge upward so the editor feels centered on the cell.
+        y = max(0, y - (editor_height - cell_region.height) // 2)
+
+        self._inline_edit_active = True
+        self._inline_edit_row = row
+        self._inline_edit_col = col
+        self._inline_edit_field = field
+
+        if col == 2:
+            editor = self.query_one("#inline_access_editor", Select)
+            editor.value = field.access.value
+            editor.styles.offset = Offset(x, y)
+            editor.styles.width = editor_width
+            editor.styles.height = editor_height
+            editor.styles.display = "block"
+            self.query_one("#inline_cell_editor", Input).styles.display = "none"
+            editor.refresh(layout=True)
+            editor.focus()
+        else:
+            editor = self.query_one("#inline_cell_editor", Input)
+            editor_value = table.get_cell_at(Coordinate(row, col))
+            editor.value = "" if editor_value is None else str(editor_value)
+            editor.styles.offset = Offset(x, y)
+            editor.styles.width = editor_width
+            editor.styles.height = editor_height
+            editor.styles.display = "block"
+            self.query_one("#inline_access_editor", Select).styles.display = "none"
+            editor.refresh(layout=True)
+            editor.focus()
+            editor.action_end()
+
+    def action_cancel_inline_edit(self) -> None:
+        """Cancel an active inline edit (Esc)."""
+        if not self._inline_edit_active:
+            return
+        self._hide_inline_editors()
+        self.query_one("#bit_table", DataTable).focus()
+
+    def action_commit_inline_edit(self) -> None:
+        """Commit the active inline edit to the BitField model and refresh the table."""
+        if not self._inline_edit_active or not self.current_register:
+            return
+
+        row = self._inline_edit_row
+        col = self._inline_edit_col
+        field = self._inline_edit_field
+        if row is None or col is None or field is None:
+            self._hide_inline_editors()
+            return
+
+        # Snapshot before mutation
+        self.create_snapshot()
+
+        try:
+            if col == 0:
+                new_name = self.query_one("#inline_cell_editor", Input).value.strip()
+                if not new_name:
+                    raise ValueError("Name cannot be empty")
+                field.name = new_name
+            elif col == 2:
+                access_value = self.query_one("#inline_access_editor", Select).value
+                if not access_value:
+                    raise ValueError("Access cannot be empty")
+                field.access = AccessType(access_value)
+            elif col == 3:
+                reset_str = self.query_one("#inline_cell_editor", Input).value.strip()
+                if reset_str.lower().startswith("0x"):
+                    field.reset_value = int(reset_str, 16)
+                else:
+                    field.reset_value = int(reset_str)
+            elif col == 4:
+                field.description = self.query_one("#inline_cell_editor", Input).value
+            else:
+                # Bits column (1) is handled via the full edit dialog.
+                pass
+
+            self._hide_inline_editors()
+            self._load_register_details(self.current_register)
+
+            # Restore cursor to the edited field (it may move due to sorting).
+            table = self.query_one("#bit_table", DataTable)
+            try:
+                new_row = self.current_register.fields.index(field)
+            except ValueError:
+                new_row = min(max(0, row), max(0, len(self.current_register.fields) - 1))
+            table.move_cursor(row=new_row, column=col)
+            table.focus()
+        except Exception as e:
+            self.notify(f"Invalid value: {e}", severity="error", timeout=3)
+
+    def _hide_inline_editors(self) -> None:
+        self.query_one("#inline_cell_editor", Input).styles.display = "none"
+        self.query_one("#inline_access_editor", Select).styles.display = "none"
+        self._inline_edit_active = False
+        self._inline_edit_row = None
+        self._inline_edit_col = None
+        self._inline_edit_field = None
+
+    def on_input_submitted(self, event: Input.Submitted) -> None:
+        if event.input.id == "inline_cell_editor" and self._inline_edit_active:
+            self.action_commit_inline_edit()
+
+    def on_select_changed(self, event: Select.Changed) -> None:
+        if event.select.id == "inline_access_editor" and self._inline_edit_active:
+            self.action_commit_inline_edit()
 
     def action_nav_down(self) -> None:
         """Move cursor down (vim j)."""
@@ -380,7 +528,7 @@ class MemoryMapEditorApp(App):
 
         if tree.has_focus:
             tree.action_cursor_down()
-        elif table.has_focus and self.table_mode == "NORMAL" and table.row_count > 0:
+        elif table.has_focus and table.row_count > 0:
             table.action_cursor_down()
 
     def action_nav_up(self) -> None:
@@ -390,7 +538,7 @@ class MemoryMapEditorApp(App):
 
         if tree.has_focus:
             tree.action_cursor_up()
-        elif table.has_focus and self.table_mode == "NORMAL" and table.row_count > 0:
+        elif table.has_focus and table.row_count > 0:
             table.action_cursor_up()
 
     def action_nav_left(self) -> None:
@@ -402,7 +550,7 @@ class MemoryMapEditorApp(App):
             # Collapse current node
             if tree.cursor_node and tree.cursor_node.is_expanded:
                 tree.cursor_node.collapse()
-        elif table.has_focus and self.table_mode == "NORMAL":
+        elif table.has_focus:
             table.action_cursor_left()
 
     def action_nav_right(self) -> None:
@@ -414,7 +562,7 @@ class MemoryMapEditorApp(App):
             # Expand current node
             if tree.cursor_node and not tree.cursor_node.is_expanded:
                 tree.cursor_node.expand()
-        elif table.has_focus and self.table_mode == "NORMAL":
+        elif table.has_focus:
             table.action_cursor_right()
 
     def _shift_fields(self, start_index: int, delta: int) -> None:
@@ -857,16 +1005,6 @@ class MemoryMapEditorApp(App):
 
             self._load_register_details(self.current_register)
             table.move_cursor(row=new_index)
-
-    def _update_mode_indicator(self) -> None:
-        """Update the mode indicator label."""
-        indicator = self.query_one("#mode_indicator", Label)
-        if self.table_mode == "NORMAL":
-            indicator.update("-- NORMAL --")
-            indicator.remove_class("insert")
-        else:
-            indicator.update("-- INSERT --")
-            indicator.add_class("insert")
 
     def on_tree_node_selected(self, event: Tree.NodeSelected) -> None:
         """Handle tree node selection."""
