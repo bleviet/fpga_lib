@@ -223,10 +223,10 @@ class MemoryMapEditorApp(App):
         Binding("o", "add_field_after", "Add After", show=False),
         Binding("shift+o", "add_field_before", "Add Before", show=False),
         Binding("d", "delete_field", "Delete", show=False),
-        Binding("shift+j", "move_field_down", "Move Down", show=False),
-        Binding("ctrl+j", "move_field_down", "Move Down", show=False),
-        Binding("shift+k", "move_field_up", "Move Up", show=False),
-        Binding("ctrl+k", "move_field_up", "Move Up", show=False),
+        Binding("shift+j", "move_item_down", "Move Down", show=False),
+        Binding("ctrl+j", "move_item_down", "Move Down", show=False),
+        Binding("shift+k", "move_item_up", "Move Up", show=False),
+        Binding("ctrl+k", "move_item_up", "Move Up", show=False),
         Binding("ctrl+z", "undo", "Undo"),
         Binding("u", "undo", "Undo", show=False),
         Binding("ctrl+y", "redo", "Redo"),
@@ -595,13 +595,208 @@ class MemoryMapEditorApp(App):
         self._load_register_details(self.current_register)
         self.notify("Field deleted")
 
-    def action_move_field_up(self) -> None:
-        """Move selected field up."""
-        self._move_field(-1)
+    def action_move_item_up(self) -> None:
+        """Move selected item up."""
+        if self.query_one("#bit_table").has_focus:
+            self._move_field(-1)
+        elif self.query_one("#outline_tree").has_focus:
+            tree = self.query_one("#outline_tree", Tree)
+            node = tree.cursor_node
+            if node and node.data:
+                node_type = node.data.get("type")
+                if node_type == "register":
+                    self._move_register(-1)
+                elif node_type == "block":
+                    self._move_block(-1)
 
-    def action_move_field_down(self) -> None:
-        """Move selected field down."""
-        self._move_field(1)
+    def action_move_item_down(self) -> None:
+        """Move selected item down."""
+        if self.query_one("#bit_table").has_focus:
+            self._move_field(1)
+        elif self.query_one("#outline_tree").has_focus:
+            tree = self.query_one("#outline_tree", Tree)
+            node = tree.cursor_node
+            if node and node.data:
+                node_type = node.data.get("type")
+                if node_type == "register":
+                    self._move_register(1)
+                elif node_type == "block":
+                    self._move_block(1)
+
+
+    def _move_block(self, delta: int) -> None:
+        tree = self.query_one("#outline_tree", Tree)
+        node = tree.cursor_node
+        if not node or not node.data or node.data.get("type") != "block":
+            return
+
+        block = node.data.get("object")
+
+        # Parent node should be the memory map
+        map_node = node.parent
+        if not map_node or not map_node.data or map_node.data.get("type") != "memmap":
+            return
+
+        mem_map = map_node.data.get("object")
+
+        try:
+            idx = mem_map.address_blocks.index(block)
+        except ValueError:
+            return
+
+        new_idx = idx + delta
+        if not (0 <= new_idx < len(mem_map.address_blocks)):
+            return
+
+        self.create_snapshot()
+
+        other_block = mem_map.address_blocks[new_idx]
+
+        # Identify which is "upper" (lower base address) and "lower" (higher base address)
+        if idx < new_idx:
+            upper = block
+            lower = other_block
+        else:
+            upper = other_block
+            lower = block
+
+        # Preserve the gap between the swapped blocks
+        gap = lower.base_address - (upper.base_address + upper.range)
+
+        new_upper_base = upper.base_address
+        new_lower_base = new_upper_base + lower.range + gap
+
+        # Swap in list
+        mem_map.address_blocks[idx], mem_map.address_blocks[new_idx] = (
+            mem_map.address_blocks[new_idx],
+            mem_map.address_blocks[idx],
+        )
+
+        block_at_top = mem_map.address_blocks[min(idx, new_idx)]
+        block_at_bottom = mem_map.address_blocks[max(idx, new_idx)]
+
+        block_at_top.base_address = new_upper_base
+        block_at_bottom.base_address = new_lower_base
+
+        # Refresh ONLY the map node children to avoid full tree rebuild
+        map_node.remove_children()
+        for blk in mem_map.address_blocks:
+            blk_label = f"📦 {blk.name} @ 0x{blk.base_address:04X}"
+            blk_node = map_node.add(blk_label, expand=True)
+            blk_node.data = {"type": "block", "object": blk}
+
+            for reg in blk.registers:
+                reg_label = f"📄 {reg.name} @ +0x{reg.address_offset:04X}"
+                reg_node = blk_node.add_leaf(reg_label)
+                reg_node.data = {"type": "register", "object": reg}
+
+        if not map_node.is_expanded:
+            map_node.expand()
+
+        def restore_cursor() -> None:
+            for child in map_node.children:
+                if child.data and child.data.get("object") is block:
+                    tree.select_node(child)
+                    tree.scroll_to_node(child, animate=False)
+                    break
+
+        self.call_after_refresh(restore_cursor)
+
+    def _move_register(self, delta: int) -> None:
+        tree = self.query_one("#outline_tree", Tree)
+        node = tree.cursor_node
+        if not node or not node.data or node.data.get("type") != "register":
+            return
+
+        register = node.data.get("object")
+        # Parent node should be the block
+        block_node = node.parent
+        if not block_node or not block_node.data or block_node.data.get("type") != "block":
+            return
+
+        block = block_node.data.get("object")
+
+        # Find index
+        try:
+            idx = block.registers.index(register)
+        except ValueError:
+            return
+
+        new_idx = idx + delta
+        if 0 <= new_idx < len(block.registers):
+            self.create_snapshot()
+
+            other_reg = block.registers[new_idx]
+
+            # Identify which is "upper" (lower address) and "lower" (higher address)
+            if idx < new_idx:
+                # Moving down: current is upper, next is lower
+                upper = register
+                lower = other_reg
+            else:
+                # Moving up: prev is upper, current is lower
+                upper = other_reg
+                lower = register
+
+            # Calculate gap
+            upper_size_bytes = upper.size // 8
+            gap = lower.address_offset - (upper.address_offset + upper_size_bytes)
+
+            # Swap offsets
+            # New upper (was lower) takes old upper's offset
+            new_upper_offset = upper.address_offset
+
+            # New lower (was upper) takes new_upper_offset + new_upper.size_bytes + gap
+            lower_size_bytes = lower.size // 8
+            new_lower_offset = new_upper_offset + lower_size_bytes + gap
+
+            # Apply new offsets
+            # Note: 'lower' variable now holds the object that will be at the lower address (top of list)
+            # Wait, my variable naming is confusing.
+            # Let's stick to 'reg_at_top' and 'reg_at_bottom' based on list position.
+            # List position 0 is lowest address.
+
+            # If we swap list positions:
+            # block.registers[min_idx] -> should have lower address
+            # block.registers[max_idx] -> should have higher address
+
+            # Swap in list
+            block.registers[idx], block.registers[new_idx] = block.registers[new_idx], block.registers[idx]
+
+            # Now re-assign offsets based on new list order
+            # The one at min(idx, new_idx) gets the smaller offset (new_upper_offset)
+            # The one at max(idx, new_idx) gets the larger offset (new_lower_offset)
+
+            reg_at_top = block.registers[min(idx, new_idx)]
+            reg_at_bottom = block.registers[max(idx, new_idx)]
+
+            reg_at_top.address_offset = new_upper_offset
+            reg_at_bottom.address_offset = new_lower_offset
+
+            # Refresh ONLY the block node to avoid full tree rebuild (and scroll reset)
+            # Note: removing children can temporarily invalidate the Tree cursor/selection;
+            # we restore selection after the UI refresh cycle.
+            block_node.remove_children()
+            for reg in block.registers:
+                reg_label = f"📄 {reg.name} @ +0x{reg.address_offset:04X}"
+                reg_node = block_node.add_leaf(reg_label)
+                reg_node.data = {"type": "register", "object": reg}
+
+            if not block_node.is_expanded:
+                block_node.expand()
+
+            def restore_cursor() -> None:
+                # Find the (new) node for the moved register object and re-select it.
+                # This must happen after refresh; otherwise Textual may later reset
+                # the cursor to root when it notices the old node was removed.
+                for child in block_node.children:
+                    if child.data and child.data.get("object") is register:
+                        tree.select_node(child)
+                        tree.scroll_to_node(child, animate=False)
+                        break
+
+            self.call_after_refresh(restore_cursor)
+
 
     def _move_field(self, delta: int) -> None:
         if not self.current_register:
@@ -614,17 +809,21 @@ class MemoryMapEditorApp(App):
         if 0 <= new_index < len(self.current_register.fields):
             self.create_snapshot()
 
-            # Get the two fields
+            # Get fields before swap
             f1 = self.current_register.fields[row_index]
             f2 = self.current_register.fields[new_index]
 
+            # Swap in list
+            self.current_register.fields[row_index], self.current_register.fields[new_index] = \
+                self.current_register.fields[new_index], self.current_register.fields[row_index]
+
             # Identify which is "lower" (earlier in list/offset) and "higher"
             if row_index < new_index:
-                # Moving down: f1 is current, f2 is next.
+                # Moving down: f1 was at row_index (lower), f2 at new_index (higher)
                 lower = f1
                 upper = f2
             else:
-                # Moving up: f2 is prev, f1 is current.
+                # Moving up: f2 was at new_index (lower), f1 at row_index (higher)
                 lower = f2
                 upper = f1
 
