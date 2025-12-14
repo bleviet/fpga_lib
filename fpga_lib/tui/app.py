@@ -224,7 +224,9 @@ class MemoryMapEditorApp(App):
         Binding("shift+o", "add_field_before", "Add Before", show=False),
         Binding("d", "delete_field", "Delete", show=False),
         Binding("shift+j", "move_field_down", "Move Down", show=False),
+        Binding("ctrl+j", "move_field_down", "Move Down", show=False),
         Binding("shift+k", "move_field_up", "Move Up", show=False),
+        Binding("ctrl+k", "move_field_up", "Move Up", show=False),
         Binding("ctrl+z", "undo", "Undo"),
         Binding("u", "undo", "Undo", show=False),
         Binding("ctrl+y", "redo", "Redo"),
@@ -605,15 +607,41 @@ class MemoryMapEditorApp(App):
         if not self.current_register:
             return
 
-        self.create_snapshot()
-
         table = self.query_one("#bit_table", DataTable)
         row_index = table.cursor_row
         new_index = row_index + delta
 
         if 0 <= new_index < len(self.current_register.fields):
-            fields = self.current_register.fields
-            fields[row_index], fields[new_index] = fields[new_index], fields[row_index]
+            self.create_snapshot()
+
+            # Get the two fields
+            f1 = self.current_register.fields[row_index]
+            f2 = self.current_register.fields[new_index]
+
+            # Identify which is "lower" (earlier in list/offset) and "higher"
+            if row_index < new_index:
+                # Moving down: f1 is current, f2 is next.
+                lower = f1
+                upper = f2
+            else:
+                # Moving up: f2 is prev, f1 is current.
+                lower = f2
+                upper = f1
+
+            # Calculate gap between them
+            # gap = upper_start - lower_end
+            gap = upper.bit_offset - (lower.bit_offset + lower.bit_width)
+
+            # Swap offsets
+            # upper moves to lower's spot
+            new_upper_offset = lower.bit_offset
+
+            # lower moves to after upper (plus gap)
+            new_lower_offset = new_upper_offset + upper.bit_width + gap
+
+            upper.bit_offset = new_upper_offset
+            lower.bit_offset = new_lower_offset
+
             self._load_register_details(self.current_register)
             table.move_cursor(row=new_index)
 
