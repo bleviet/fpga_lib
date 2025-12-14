@@ -29,6 +29,7 @@ class EditFieldScreen(ModalScreen):
     BINDINGS = [
         Binding("escape", "cancel", "Cancel"),
         Binding("ctrl+[", "cancel", "Cancel"),
+        Binding("enter", "save", "Save", show=False),
     ]
 
     CSS = """
@@ -102,6 +103,19 @@ class EditFieldScreen(ModalScreen):
 
     def action_cancel(self) -> None:
         self.dismiss()
+
+    def action_save(self) -> None:
+        # Don't steal Enter from the Select dropdown when it is open.
+        focused = self.app.focused
+        if isinstance(focused, Select) and getattr(focused, "expanded", False):
+            return
+        self._save_changes()
+
+    def on_input_submitted(self, event: Input.Submitted) -> None:
+        # Pressing Enter while focused in an Input should save + close.
+        # Without this, Enter is consumed by the Input widget and the Screen binding
+        # won't fire, forcing the user to Tab to the Save button.
+        self.action_save()
 
     def _save_changes(self) -> None:
         try:
