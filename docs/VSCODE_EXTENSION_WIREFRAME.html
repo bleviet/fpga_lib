@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VS Code Extension Wireframe - Memory Map Editor</title>
+    <style>
+        :root {
+            /* VS Code Dark Theme Colors */
+            --vscode-editor-background: #1e1e1e;
+            --vscode-editor-foreground: #cccccc;
+            --vscode-sideBar-background: #252526;
+            --vscode-sideBarTitle-foreground: #bbbbbb;
+            --vscode-list-hoverBackground: #2a2d2e;
+            --vscode-list-activeSelectionBackground: #37373d;
+            --vscode-list-activeSelectionForeground: #ffffff;
+            --vscode-input-background: #3c3c3c;
+            --vscode-input-foreground: #cccccc;
+            --vscode-input-border: #3c3c3c;
+            --vscode-button-background: #0e639c;
+            --vscode-button-foreground: #ffffff;
+            --vscode-button-hoverBackground: #1177bb;
+            --vscode-panel-border: #80808059;
+            --vscode-tab-activeBorder: #007acc;
+            --vscode-tab-inactiveForeground: #969696;
+            --vscode-tab-activeForeground: #ffffff;
+            --vscode-widget-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+
+            /* Custom Visualizer Colors */
+            --vis-field-blue: #007acc;
+            --vis-field-green: #4ec9b0;
+            --vis-field-empty: #2d2d2d;
+            --vis-border: #454545;
+        }
+
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            /* Simulate app-like feel */
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--vscode-editor-background);
+            color: var(--vscode-editor-foreground);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            font-size: 13px;
+        }
+
+        /* --- Header Toolbar --- */
+        .header-toolbar {
+            height: 35px;
+            background-color: var(--vscode-sideBar-background);
+            display: flex;
+            align-items: center;
+            padding: 0 10px;
+            border-bottom: 1px solid var(--vscode-panel-border);
+            justify-content: space-between;
+        }
+
+        .file-info {
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .toolbar-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn {
+            background-color: var(--vscode-button-background);
+            color: var(--vscode-button-foreground);
+            border: none;
+            padding: 4px 12px;
+            cursor: pointer;
+            font-size: 12px;
+            border-radius: 2px;
+        }
+
+        .btn:hover {
+            background-color: var(--vscode-button-hoverBackground);
+        }
+
+        .btn-secondary {
+            background-color: transparent;
+            border: 1px solid var(--vscode-panel-border);
+        }
+
+        /* --- Main Layout --- */
+        .workspace {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        /* --- Left Sidebar (Outline) --- */
+        .sidebar {
+            width: 300px;
+            background-color: var(--vscode-sideBar-background);
+            border-right: 1px solid var(--vscode-panel-border);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-header {
+            padding: 10px;
+            text-transform: uppercase;
+            font-size: 11px;
+            font-weight: bold;
+            color: var(--vscode-sideBarTitle-foreground);
+        }
+
+        .search-box {
+            margin: 0 10px 10px 10px;
+            background: var(--vscode-input-background);
+            border: 1px solid var(--vscode-input-border);
+            color: var(--vscode-input-foreground);
+            padding: 4px;
+            display: flex;
+        }
+
+        .search-box input {
+            background: transparent;
+            border: none;
+            color: inherit;
+            width: 100%;
+            outline: none;
+        }
+
+        .tree-view {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .tree-item {
+            padding: 4px 10px;
+            padding-left: 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .tree-item:hover {
+            background-color: var(--vscode-list-hoverBackground);
+        }
+
+        .tree-item.active {
+            background-color: var(--vscode-list-activeSelectionBackground);
+            color: var(--vscode-list-activeSelectionForeground);
+        }
+
+        .tree-item .codicon {
+            width: 16px;
+            text-align: center;
+        }
+
+        .indent-1 {
+            padding-left: 35px;
+        }
+
+        .indent-2 {
+            padding-left: 50px;
+        }
+
+        .sidebar-actions {
+            padding: 8px;
+            border-top: 1px solid var(--vscode-panel-border);
+            display: flex;
+            gap: 5px;
+        }
+
+        .icon-btn {
+            background: transparent;
+            color: inherit;
+            border: none;
+            cursor: pointer;
+            padding: 4px;
+            opacity: 0.7;
+        }
+
+        .icon-btn:hover {
+            opacity: 1;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+        }
+
+        /* --- Right Content (Details) --- */
+        .editor-stage {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background-color: var(--vscode-editor-background);
+            overflow: hidden;
+        }
+
+        .breadcrumbs {
+            padding: 8px 16px;
+            font-size: 12px;
+            color: #888;
+            border-bottom: 1px solid var(--vscode-panel-border);
+        }
+
+        .breadcrumb-item {
+            color: var(--vscode-editor-foreground);
+        }
+
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid var(--vscode-panel-border);
+            padding-left: 10px;
+        }
+
+        .tab {
+            padding: 8px 16px;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            color: var(--vscode-tab-inactiveForeground);
+            font-size: 12px;
+            text-transform: uppercase;
+        }
+
+        .tab.active {
+            color: var(--vscode-tab-activeForeground);
+            border-bottom-color: var(--vscode-tab-activeBorder);
+        }
+
+        .scroll-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            max-width: 900px;
+        }
+
+        /* --- Properties Form --- */
+        .section-title {
+            font-size: 11px;
+            text-transform: uppercase;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: var(--vscode-tab-inactiveForeground);
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .form-group.full {
+            grid-column: 1 / -1;
+        }
+
+        label {
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .vscode-input {
+            background-color: var(--vscode-input-background);
+            border: 1px solid var(--vscode-input-border);
+            color: var(--vscode-input-foreground);
+            padding: 6px;
+            font-family: inherit;
+            font-size: 13px;
+        }
+
+        .vscode-input:focus {
+            border-color: var(--vscode-tab-activeBorder);
+            outline: none;
+        }
+
+        /* --- Bit Visualizer --- */
+        .visualizer-container {
+            margin: 24px 0;
+            padding: 16px;
+            background-color: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--vscode-panel-border);
+            border-radius: 4px;
+        }
+
+        .bit-ruler {
+            display: flex;
+            width: 100%;
+            height: 40px;
+            border: 1px solid var(--vis-border);
+            margin-top: 10px;
+        }
+
+        .bit-cell {
+            flex: 1;
+            border-right: 1px solid var(--vis-border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            position: relative;
+            background-color: var(--vis-field-empty);
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        .bit-cell:last-child {
+            border-right: none;
+        }
+
+        .bit-cell:hover::after {
+            content: attr(data-bit);
+            position: absolute;
+            top: -20px;
+            background: #000;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-size: 10px;
+        }
+
+        .bit-cell.occupied-1 {
+            background-color: var(--vis-field-blue);
+            color: white;
+        }
+
+        .bit-cell.occupied-2 {
+            background-color: var(--vis-field-green);
+            color: #000;
+        }
+
+        .vis-labels {
+            display: flex;
+            justify-content: space-between;
+            font-family: monospace;
+            font-size: 10px;
+            color: #888;
+            margin-bottom: 4px;
+        }
+
+        /* --- Data Grid --- */
+        .data-grid {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        .data-grid th {
+            text-align: left;
+            padding: 8px;
+            border-bottom: 1px solid var(--vscode-panel-border);
+            color: var(--vscode-tab-inactiveForeground);
+            font-weight: normal;
+        }
+
+        .data-grid td {
+            padding: 8px;
+            border-bottom: 1px solid rgba(128, 128, 128, 0.1);
+        }
+
+        .data-grid tr:hover {
+            background-color: var(--vscode-list-hoverBackground);
+        }
+
+        .data-grid tr.selected {
+            background-color: rgba(0, 122, 204, 0.2);
+        }
+
+        .toolbar-inline {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Header -->
+    <div class="header-toolbar">
+        <div class="file-info">
+            <span>memory_map.memmap.yml</span>
+            <span style="font-weight: normal; opacity: 0.7; font-size: 11px;">(Custom Editor)</span>
+        </div>
+        <div class="toolbar-actions">
+            <button class="btn btn-secondary">Validate</button>
+            <button class="btn">Save</button>
+        </div>
+    </div>
+
+    <div class="workspace">
+        <!-- Sidebar (Outline) -->
+        <aside class="sidebar">
+            <div class="sidebar-header">Memory Map Outline</div>
+            <div class="search-box">
+                <input type="text" placeholder="Search registers...">
+            </div>
+            <div class="tree-view">
+                <div class="tree-item">
+                    <span>▾</span> <span class="codicon">🗺️</span> <span>map0</span>
+                </div>
+                <div class="tree-item indent-1">
+                    <span>▾</span> <span class="codicon">📦</span> <span>blockA @ 0x0000</span>
+                </div>
+                <div class="tree-item indent-2 active">
+                    <span>•</span> <span class="codicon">®️</span> <span>reg_ctrl @ +0x0010</span>
+                </div>
+                <div class="tree-item indent-2">
+                    <span>•</span> <span class="codicon">®️</span> <span>reg_stat @ +0x0014</span>
+                </div>
+                <div class="tree-item indent-2">
+                    <span>▸</span> <span class="codicon">🔢</span> <span>reg_data[0..7]</span>
+                </div>
+            </div>
+            <div class="sidebar-actions">
+                <button class="icon-btn" title="Add Register">+Reg</button>
+                <button class="icon-btn" title="Add Array">+Arr</button>
+                <button class="icon-btn" title="Delete">🗑️</button>
+            </div>
+        </aside>
+
+        <!-- Main Content (Details) -->
+        <main class="editor-stage">
+            <div class="breadcrumbs">
+                MemoryMaps > map0 > blockA > <span class="breadcrumb-item">reg_ctrl</span>
+            </div>
+
+            <div class="tabs">
+                <div class="tab active">Properties & Bits</div>
+                <div class="tab">Preview (YAML)</div>
+            </div>
+
+            <div class="scroll-container">
+
+                <!-- Properties Section -->
+                <div class="section-title">Register Properties</div>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Name</label>
+                        <input type="text" class="vscode-input" value="reg_ctrl">
+                    </div>
+                    <div class="form-group">
+                        <label>Offset (Hex)</label>
+                        <input type="text" class="vscode-input" value="0x0010">
+                    </div>
+                    <div class="form-group">
+                        <label>Access</label>
+                        <select class="vscode-input">
+                            <option>RW</option>
+                            <option>RO</option>
+                            <option>WO</option>
+                        </select>
+                    </div>
+                    <div class="form-group full">
+                        <label>Description</label>
+                        <input type="text" class="vscode-input" value="Control register for Block A initialization">
+                    </div>
+                </div>
+
+                <!-- Bit Visualizer -->
+                <div class="section-title">Bit Field Visualization</div>
+                <div class="visualizer-container">
+                    <div class="vis-labels">
+                        <span>31</span>
+                        <span>0</span>
+                    </div>
+                    <div class="bit-ruler">
+                        <!-- Generates 32 bits, highlighting specific ranges -->
+                        <!-- Bits 31-9 Empty -->
+                        <div class="bit-cell" data-bit="31"></div>
+                        <div class="bit-cell" data-bit="30"></div>
+                        <div class="bit-cell" data-bit="29"></div>
+                        <div class="bit-cell" data-bit="28"></div>
+                        <div class="bit-cell" data-bit="27"></div>
+                        <div class="bit-cell" data-bit="26"></div>
+                        <div class="bit-cell" data-bit="25"></div>
+                        <div class="bit-cell" data-bit="24"></div>
+                        <div class="bit-cell" data-bit="23"></div>
+                        <div class="bit-cell" data-bit="22"></div>
+                        <div class="bit-cell" data-bit="21"></div>
+                        <div class="bit-cell" data-bit="20"></div>
+                        <div class="bit-cell" data-bit="19"></div>
+                        <div class="bit-cell" data-bit="18"></div>
+                        <div class="bit-cell" data-bit="17"></div>
+                        <div class="bit-cell" data-bit="16"></div>
+                        <div class="bit-cell" data-bit="15"></div>
+                        <div class="bit-cell" data-bit="14"></div>
+                        <div class="bit-cell" data-bit="13"></div>
+                        <div class="bit-cell" data-bit="12"></div>
+                        <div class="bit-cell" data-bit="11"></div>
+                        <div class="bit-cell" data-bit="10"></div>
+                        <div class="bit-cell" data-bit="9"></div>
+                        <!-- Field: done (Bit 8) -->
+                        <div class="bit-cell occupied-2" data-bit="8" title="done (RO)">D</div>
+                        <!-- Bits 7-3 Empty -->
+                        <div class="bit-cell" data-bit="7"></div>
+                        <div class="bit-cell" data-bit="6"></div>
+                        <div class="bit-cell" data-bit="5"></div>
+                        <div class="bit-cell" data-bit="4"></div>
+                        <div class="bit-cell" data-bit="3"></div>
+                        <!-- Field: mode (Bits 2:1) -->
+                        <div class="bit-cell occupied-1" data-bit="2" title="mode (RW)">M</div>
+                        <div class="bit-cell occupied-1" data-bit="1" title="mode (RW)">M</div>
+                        <!-- Field: enable (Bit 0) -->
+                        <div class="bit-cell occupied-2" data-bit="0" title="enable (RW)">E</div>
+                    </div>
+                </div>
+
+                <!-- Bit Fields Table -->
+                <div class="section-title">Bit Fields Configuration</div>
+                <div class="toolbar-inline">
+                    <button class="btn btn-secondary" style="font-size:11px;">+ Add Field</button>
+                    <button class="btn btn-secondary" style="font-size:11px;">Insert Gap</button>
+                </div>
+
+                <table class="data-grid">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Bits</th>
+                            <th>Access</th>
+                            <th>Reset</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>enable</td>
+                            <td>[0]</td>
+                            <td>RW</td>
+                            <td>0x0</td>
+                            <td>Enable logic</td>
+                        </tr>
+                        <tr class="selected">
+                            <td>mode</td>
+                            <td>[2:1]</td>
+                            <td>RW</td>
+                            <td>0x1</td>
+                            <td>Operating mode selection</td>
+                        </tr>
+                        <tr>
+                            <td>done</td>
+                            <td>[8]</td>
+                            <td>RO</td>
+                            <td>0x0</td>
+                            <td>Operation complete flag</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+            </div>
+        </main>
+    </div>
+</body>
+
+</html>

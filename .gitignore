@@ -1,48 +1,68 @@
-# Python-specific files
-__pycache__/
-*.pyc
-*.pyd
-.python-version
-env/
-venv/
-ENV/
-.venv
-Lib/
-Scripts/
-*.egg-info
-
-# Development tools and IDE-specific files
-.idea/
+# VS Code
 .vscode/
-*.swp
-*.swo
-.DS_Store
+.history/
 
-# Build and distribution related files
+# Node/VS Code extension
+node_modules/
+dist/
+build/
+*.vsix
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+*.egg-info/
 build/
 dist/
-sdist/
+.eggs/
 *.egg
-
-# Log files
+*.manifest
+*.spec
 *.log
+.cache/
+.tox/
+.coverage*
+htmlcov/
+.mypy_cache/
+.pytest_cache/
 
-# Temporary files
-tmp/
-temp/
+# TUI/GUI
+*.sqlite3
+*.db
+*.log
+*.bak
 *.tmp
 
-# Test coverage reports
-.coverage
-htmlcov/
+# OS
+.DS_Store
+Thumbs.db
 
-# Dependencies (can vary based on setup)
-# requirements.txt # Usually you track this file
-# Dependency folders if you store them locally
-# vendor/
-# deps/
-
-# Operating system specific temporary files
-._*
-
+# Misc
 .env
+.env.*
+*.swp
+*.swo
+.idea/
+*.iml
+*.orig
+
+# Test outputs
+coverage.xml
+*.mocha.json
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Editor backups
+*~
+*.bak
+*.tmp
+
+# Ignore local dev scripts
+*.local.sh
