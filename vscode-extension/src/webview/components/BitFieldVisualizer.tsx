@@ -68,7 +68,7 @@ const BitFieldVisualizer: React.FC<BitFieldVisualizerProps> = ({ fields, hovered
         // Grouped, modern layout with floating labels and grid
         const groups = groupFields(fields);
         return (
-            <div className="relative w-full max-w-4xl mx-auto">
+            <div className="relative w-full max-w-4xl flex items-start">
                 {/* Bit grid background */}
                 <div className="absolute inset-0 pointer-events-none bg-[linear-gradient(to_right,#e5e7eb_1px,transparent_1px),linear-gradient(to_bottom,#e5e7eb_1px,transparent_1px)] bg-[size:32px_48px] rounded-lg" />
                 <div className="relative flex flex-row items-end gap-0.5 px-2 py-2 min-h-[64px]">
@@ -81,12 +81,12 @@ const BitFieldVisualizer: React.FC<BitFieldVisualizerProps> = ({ fields, hovered
                             <div
                                 key={group.idx}
                                 className="relative flex flex-col items-center justify-end select-none"
-                                style={{ width: `${width * 32}px` }}
+                                style={{ width: `calc(${width} * 2.5rem)` }}
                                 onMouseEnter={() => setHoveredFieldIndex(group.idx)}
                                 onMouseLeave={() => setHoveredFieldIndex(null)}
                             >
                                 <div
-                                    className={`h-10 w-full rounded-t-md ${isHovered ? 'ring-2 ring-indigo-400 z-10' : ''}`}
+                                    className={`h-20 w-full rounded-t-md ${isHovered ? 'ring-2 ring-indigo-400 z-10' : ''}`}
                                     style={{ background: colorMap[group.color], opacity: 0.92 }}
                                 ></div>
                                 <div className="absolute -top-7 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded bg-white/90 border border-gray-200 shadow text-xs font-bold text-gray-900 whitespace-nowrap pointer-events-none">
@@ -98,7 +98,7 @@ const BitFieldVisualizer: React.FC<BitFieldVisualizerProps> = ({ fields, hovered
                                     {Array.from({ length: width }).map((_, i) => {
                                         const bit = group.end - i;
                                         return (
-                                            <div key={bit} className="w-8 text-center text-[11px] text-gray-700 font-mono mt-1">{bit}</div>
+                                            <div key={bit} className="w-10 text-center text-[11px] text-gray-700 font-mono mt-1">{bit}</div>
                                         );
                                     })}
                                 </div>
@@ -119,7 +119,7 @@ const BitFieldVisualizer: React.FC<BitFieldVisualizerProps> = ({ fields, hovered
                     return (
                         <div
                             key={bit}
-                            className={`w-7 h-10 flex flex-col items-center justify-end cursor-pointer group ${fieldIdx !== null ? 'bg-blue-500' : 'bg-gray-200'} ${isHovered ? 'ring-2 ring-indigo-400 z-10' : ''}`}
+                            className={`w-10 h-20 flex flex-col items-center justify-end cursor-pointer group ${fieldIdx !== null ? 'bg-blue-500' : 'bg-gray-200'} ${isHovered ? 'ring-2 ring-indigo-400 z-10' : ''}`}
                             onMouseEnter={() => fieldIdx !== null && setHoveredFieldIndex(fieldIdx)}
                             onMouseLeave={() => setHoveredFieldIndex(null)}
                         >
