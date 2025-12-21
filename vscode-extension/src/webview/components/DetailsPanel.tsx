@@ -135,13 +135,13 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({ selectedType, selectedObjec
                         </div>
                     </div>
                     <div className="w-full relative z-10 mt-2 select-none">
-                            <BitFieldVisualizer
-                                fields={fields}
-                                hoveredFieldIndex={hoveredFieldIndex}
-                                setHoveredFieldIndex={setHoveredFieldIndex}
-                                registerSize={32}
-                                layout="pro"
-                            />
+                        <BitFieldVisualizer
+                            fields={fields}
+                            hoveredFieldIndex={hoveredFieldIndex}
+                            setHoveredFieldIndex={setHoveredFieldIndex}
+                            registerSize={32}
+                            layout="pro"
+                        />
                     </div>
                 </div>
                 {/* --- Main Content: Table and Properties --- */}
