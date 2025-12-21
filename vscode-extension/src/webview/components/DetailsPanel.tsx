@@ -159,8 +159,8 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({ selectedType, selectedObjec
                             </thead>
                             <tbody className="divide-y divide-gray-100 text-sm">
                                 {fields.map((field, idx) => {
-                                    const isSelected = idx === selectedFieldIndex;
-                                    const isHovered = idx === hoveredFieldIndex;
+                                    const isSelected = idx === hoveredFieldIndex;
+                                    const highlightClass = isSelected ? 'bg-indigo-50/60' : '';
                                     const bits = toBits(field);
                                     const color = getFieldColor(idx);
                                     const resetDisplay =
@@ -171,9 +171,11 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({ selectedType, selectedObjec
                                     return (
                                         <tr
                                             key={idx}
-                                            className={`group hover:bg-gray-50 transition-colors border-l-4 border-transparent${isSelected ? ' border-indigo-600 bg-indigo-50/30' : ''}${isHovered ? ' highlight-row' : ''}`}
-                                            onClick={() => setSelectedFieldIndex(idx)}
-                                            onMouseEnter={() => setHoveredFieldIndex(idx)}
+                                            className={`group transition-colors border-l-4 border-transparent ${idx === hoveredFieldIndex ? 'border-indigo-600 bg-indigo-50/60' : ''}`}
+                                            onMouseEnter={() => {
+                                                setHoveredFieldIndex(idx);
+                                                setSelectedFieldIndex(idx);
+                                            }}
                                             onMouseLeave={() => setHoveredFieldIndex(null)}
                                             id={`row-${field.name?.toLowerCase().replace(/[^a-z0-9_]/g, '-')}`}
                                         >
