@@ -280,7 +280,6 @@ const BitFieldVisualizer: React.FC<BitFieldVisualizerProps> = ({
             <div className="w-full max-w-4xl">
                 <div className="relative w-full flex items-start">
                     {/* Bit grid background */}
-                    <div className="absolute inset-0 pointer-events-none fpga-bit-grid-bg bg-[size:32px_48px] rounded-lg" />
                     <div className="relative flex flex-row items-end gap-0.5 px-2 pt-12 pb-2 min-h-[64px]">
                         {/* Render each field as a colored segment with label */}
                         {groups.map((group) => {
