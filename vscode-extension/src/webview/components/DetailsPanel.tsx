@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import { VSCodeDropdown, VSCodeOption, VSCodeTextField, VSCodeTextArea } from '@vscode/webview-ui-toolkit/react';
 import { Register } from '../types/memoryMap';
 import BitFieldVisualizer from './BitFieldVisualizer';
@@ -11,9 +11,14 @@ interface DetailsPanelProps {
     selectionMeta?: {
         absoluteAddress?: number;
         relativeOffset?: number;
+        focusDetails?: boolean;
     };
     onUpdate: (path: Array<string | number>, value: any) => void;
 }
+
+export type DetailsPanelHandle = {
+    focus: () => void;
+};
 
 const ACCESS_OPTIONS = ['read-only', 'write-only', 'read-write', 'write-1-to-clear', 'read-write-1-to-clear'];
 
@@ -31,7 +36,7 @@ type RegEditKey = 'name' | 'offset' | 'access' | 'description';
 type RegActiveCell = { rowIndex: number; key: RegEditKey };
 const REG_COLUMN_ORDER: RegEditKey[] = ['name', 'offset', 'access', 'description'];
 
-const DetailsPanel: React.FC<DetailsPanelProps> = ({ selectedType, selectedObject, selectionMeta, onUpdate }) => {
+const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(({ selectedType, selectedObject, selectionMeta, onUpdate }, ref) => {
     const [offsetText, setOffsetText] = useState<string>('');
     const [selectedFieldIndex, setSelectedFieldIndex] = useState<number>(-1);
     const [hoveredFieldIndex, setHoveredFieldIndex] = useState<number | null>(null);
@@ -53,6 +58,31 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({ selectedType, selectedObjec
     const fieldsFocusRef = useRef<HTMLDivElement | null>(null);
     const blocksFocusRef = useRef<HTMLDivElement | null>(null);
     const regsFocusRef = useRef<HTMLDivElement | null>(null);
+
+    useImperativeHandle(
+        ref,
+        () => ({
+            focus: () => {
+                if (selectedType === 'register') {
+                    fieldsFocusRef.current?.focus();
+                    return;
+                }
+                if (selectedType === 'memoryMap') {
+                    blocksFocusRef.current?.focus();
+                    return;
+                }
+                if (selectedType === 'block') {
+                    regsFocusRef.current?.focus();
+                    return;
+                }
+                // Fallback: focus whichever exists.
+                fieldsFocusRef.current?.focus();
+                blocksFocusRef.current?.focus();
+                regsFocusRef.current?.focus();
+            },
+        }),
+        [selectedType]
+    );
 
     const refocusFieldsTableSoon = () => {
         window.setTimeout(() => {
@@ -90,32 +120,16 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({ selectedType, selectedObjec
         });
     }, [reg?.fields]);
 
-    // When a register is selected, shift keyboard focus to the fields table.
+    // Only shift focus into this panel when explicitly requested (e.g. Outline Enter/Right/l).
     useEffect(() => {
-        if (!isRegister) return;
+        if (!selectionMeta?.focusDetails) return;
         const id = window.setTimeout(() => {
-            fieldsFocusRef.current?.focus();
+            if (selectedType === 'register') fieldsFocusRef.current?.focus();
+            if (selectedType === 'memoryMap') blocksFocusRef.current?.focus();
+            if (selectedType === 'block') regsFocusRef.current?.focus();
         }, 0);
         return () => window.clearTimeout(id);
-    }, [isRegister, reg?.name]);
-
-    // When a memory map is selected, shift keyboard focus to the blocks table.
-    useEffect(() => {
-        if (selectedType !== 'memoryMap') return;
-        const id = window.setTimeout(() => {
-            blocksFocusRef.current?.focus();
-        }, 0);
-        return () => window.clearTimeout(id);
-    }, [selectedType, (selectedObject as any)?.name]);
-
-    // When an address block is selected, shift keyboard focus to the registers table.
-    useEffect(() => {
-        if (selectedType !== 'block') return;
-        const id = window.setTimeout(() => {
-            regsFocusRef.current?.focus();
-        }, 0);
-        return () => window.clearTimeout(id);
-    }, [selectedType, (selectedObject as any)?.name]);
+    }, [selectionMeta?.focusDetails, selectedType, (selectedObject as any)?.name]);
 
     const focusFieldEditor = (rowIndex: number, key: EditKey) => {
         window.setTimeout(() => {
@@ -1350,6 +1364,6 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({ selectedType, selectedObjec
     }
 
     return <div className="p-6 vscode-muted">Select an item to view details</div>;
-};
+});
 
 export default DetailsPanel;

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useImperativeHandle, useMemo, useRef, useState } from 'react';
 import { MemoryMap, AddressBlock, Register, RegisterArray } from '../types/memoryMap';
 
 type YamlPath = Array<string | number>;
@@ -31,11 +31,16 @@ interface OutlineProps {
         meta?: {
             absoluteAddress?: number;
             relativeOffset?: number;
+            focusDetails?: boolean;
         };
     }) => void;
 }
 
-const Outline: React.FC<OutlineProps> = ({ memoryMap, selectedId, onSelect }) => {
+export type OutlineHandle = {
+    focus: () => void;
+};
+
+const Outline = React.forwardRef<OutlineHandle, OutlineProps>(({ memoryMap, selectedId, onSelect }, ref) => {
     // By default, expand all blocks and registers
     const allIds = useMemo(() => {
         const ids = new Set<string>(['root']);
@@ -56,6 +61,17 @@ const Outline: React.FC<OutlineProps> = ({ memoryMap, selectedId, onSelect }) =>
     }, [memoryMap]);
     const [expanded, setExpanded] = useState<Set<string>>(allIds);
     const [query, setQuery] = useState('');
+    const treeFocusRef = useRef<HTMLDivElement | null>(null);
+
+    useImperativeHandle(
+        ref,
+        () => ({
+            focus: () => {
+                treeFocusRef.current?.focus();
+            },
+        }),
+        []
+    );
 
     const toggleExpand = (id: string, e: React.MouseEvent) => {
         e.stopPropagation();
@@ -77,7 +93,8 @@ const Outline: React.FC<OutlineProps> = ({ memoryMap, selectedId, onSelect }) =>
             <div
                 key={id}
                 className={`tree-item ${isSelected ? 'selected' : ''} gap-2 text-sm`}
-                onClick={() =>
+                onClick={() => {
+                    treeFocusRef.current?.focus();
                     onSelect({
                         id,
                         type: 'register',
@@ -85,8 +102,8 @@ const Outline: React.FC<OutlineProps> = ({ memoryMap, selectedId, onSelect }) =>
                         breadcrumbs: [memoryMap.name || 'Memory Map', memoryMap.address_blocks?.[blockIndex]?.name ?? '', reg.name],
                         path: ['addressBlocks', blockIndex, 'registers', regIndex],
                         meta: { absoluteAddress: absolute, relativeOffset: reg.address_offset ?? 0 },
-                    })
-                }
+                    });
+                }}
                 style={{ paddingLeft: '40px' }}
             >
                 <span className={`codicon codicon-symbol-variable text-[16px] ${isSelected ? '' : 'opacity-70'}`}></span>
@@ -108,15 +125,16 @@ const Outline: React.FC<OutlineProps> = ({ memoryMap, selectedId, onSelect }) =>
             <div key={id}>
                 <div
                     className={`tree-item ${isSelected ? 'selected' : ''}`}
-                    onClick={() =>
+                    onClick={() => {
+                        treeFocusRef.current?.focus();
                         onSelect({
                             id,
                             type: 'array',
                             object: arr,
                             breadcrumbs: [memoryMap.name || 'Memory Map', block.name, arr.name],
                             path: ['addressBlocks', blockIndex, 'registers', regIndex],
-                        })
-                    }
+                        });
+                    }}
                     style={{ paddingLeft: '40px' }}
                 >
                     <span
@@ -138,15 +156,16 @@ const Outline: React.FC<OutlineProps> = ({ memoryMap, selectedId, onSelect }) =>
                                 <div key={elementId}>
                                     <div
                                         className={`tree-item ${isElementSelected ? 'selected' : ''}`}
-                                        onClick={() =>
+                                        onClick={() => {
+                                            treeFocusRef.current?.focus();
                                             onSelect({
                                                 id: elementId,
                                                 type: 'array',
                                                 object: { ...arr, __element_index: elementIndex, __element_base: elementBase },
                                                 breadcrumbs: [memoryMap.name || 'Memory Map', block.name, `${arr.name}[${elementIndex}]`],
                                                 path: ['addressBlocks', blockIndex, 'registers', regIndex],
-                                            })
-                                        }
+                                            });
+                                        }}
                                         style={{ paddingLeft: '60px' }}
                                     >
                                         <span className="codicon codicon-symbol-namespace" style={{ marginRight: '6px' }}></span>
@@ -161,7 +180,8 @@ const Outline: React.FC<OutlineProps> = ({ memoryMap, selectedId, onSelect }) =>
                                             <div
                                                 key={childId}
                                                 className={`tree-item ${isChildSelected ? 'selected' : ''}`}
-                                                onClick={() =>
+                                                onClick={() => {
+                                                    treeFocusRef.current?.focus();
                                                     onSelect({
                                                         id: childId,
                                                         type: 'register',
@@ -169,8 +189,8 @@ const Outline: React.FC<OutlineProps> = ({ memoryMap, selectedId, onSelect }) =>
                                                         breadcrumbs: [memoryMap.name || 'Memory Map', block.name, `${arr.name}[${elementIndex}]`, reg.name],
                                                         path: ['addressBlocks', blockIndex, 'registers', regIndex, 'registers', childIndex],
                                                         meta: { absoluteAddress: absolute, relativeOffset: reg.address_offset ?? 0 },
-                                                    })
-                                                }
+                                                    });
+                                                }}
                                                 style={{ paddingLeft: '80px' }}
                                             >
                                                 <span className="codicon codicon-symbol-variable" style={{ marginRight: '6px' }}></span>
@@ -195,15 +215,16 @@ const Outline: React.FC<OutlineProps> = ({ memoryMap, selectedId, onSelect }) =>
             <div key={id}>
                 <div
                     className={`tree-item ${isSelected ? 'selected' : ''}`}
-                    onClick={() =>
+                    onClick={() => {
+                        treeFocusRef.current?.focus();
                         onSelect({
                             id,
                             type: 'array',
                             object: arr,
                             breadcrumbs: [memoryMap.name || 'Memory Map', memoryMap.address_blocks?.[blockIndex]?.name ?? '', arr.name],
                             path: ['addressBlocks', blockIndex, 'register_arrays', arrayIndex],
-                        })
-                    }
+                        });
+                    }}
                     style={{ paddingLeft: '40px' }}
                 >
                     <span
@@ -234,15 +255,16 @@ const Outline: React.FC<OutlineProps> = ({ memoryMap, selectedId, onSelect }) =>
             <div key={id}>
                 <div
                     className={`tree-item ${isSelected ? 'selected' : ''}`}
-                    onClick={() =>
+                    onClick={() => {
+                        treeFocusRef.current?.focus();
                         onSelect({
                             id,
                             type: 'block',
                             object: block,
                             breadcrumbs: [memoryMap.name || 'Memory Map', block.name],
                             path: ['addressBlocks', blockIndex],
-                        })
-                    }
+                        });
+                    }}
                     style={{ paddingLeft: '20px' }}
                 >
                     <span
@@ -296,6 +318,153 @@ const Outline: React.FC<OutlineProps> = ({ memoryMap, selectedId, onSelect }) =>
         });
     }, [memoryMap, query]);
 
+    const visibleSelections = useMemo(() => {
+        const items: Array<OutlineProps['onSelect'] extends (arg: infer A) => any ? A : never> = [];
+
+        // Root
+        items.push({
+            id: rootId,
+            type: 'memoryMap',
+            object: memoryMap,
+            breadcrumbs: [memoryMap.name || 'Memory Map'],
+            path: [],
+        });
+
+        if (!expanded.has(rootId)) return items;
+
+        filteredBlocks.forEach(({ block, index: blockIndex }) => {
+            const blockId = `block-${blockIndex}`;
+            items.push({
+                id: blockId,
+                type: 'block',
+                object: block,
+                breadcrumbs: [memoryMap.name || 'Memory Map', block.name],
+                path: ['addressBlocks', blockIndex],
+            });
+
+            if (!expanded.has(blockId)) return;
+
+            const regsAny = ((block as any).registers ?? []) as any[];
+            regsAny.forEach((node: any, regIndex: number) => {
+                if (isArrayNode(node)) {
+                    const arr = node as RegisterArrayNode;
+                    const arrId = `block-${blockIndex}-arrreg-${regIndex}`;
+                    items.push({
+                        id: arrId,
+                        type: 'array',
+                        object: arr,
+                        breadcrumbs: [memoryMap.name || 'Memory Map', block.name, arr.name],
+                        path: ['addressBlocks', blockIndex, 'registers', regIndex],
+                    });
+
+                    if (!expanded.has(arrId)) return;
+
+                    const start = (block.base_address ?? 0) + (arr.address_offset ?? 0);
+                    Array.from({ length: arr.count }).forEach((_, elementIndex) => {
+                        const elementId = `${arrId}-el-${elementIndex}`;
+                        const elementBase = start + elementIndex * arr.stride;
+                        items.push({
+                            id: elementId,
+                            type: 'array',
+                            object: { ...arr, __element_index: elementIndex, __element_base: elementBase },
+                            breadcrumbs: [memoryMap.name || 'Memory Map', block.name, `${arr.name}[${elementIndex}]`],
+                            path: ['addressBlocks', blockIndex, 'registers', regIndex],
+                        });
+
+                        (arr.registers ?? []).forEach((reg: Register, childIndex: number) => {
+                            const childId = `${elementId}-reg-${childIndex}`;
+                            const absolute = elementBase + (reg.address_offset ?? 0);
+                            items.push({
+                                id: childId,
+                                type: 'register',
+                                object: reg,
+                                breadcrumbs: [memoryMap.name || 'Memory Map', block.name, `${arr.name}[${elementIndex}]`, reg.name],
+                                path: ['addressBlocks', blockIndex, 'registers', regIndex, 'registers', childIndex],
+                                meta: { absoluteAddress: absolute, relativeOffset: reg.address_offset ?? 0 },
+                            });
+                        });
+                    });
+                    return;
+                }
+
+                const reg = node as Register;
+                const regId = `block-${blockIndex}-reg-${regIndex}`;
+                const absolute = (block.base_address ?? 0) + (reg.address_offset ?? 0);
+                items.push({
+                    id: regId,
+                    type: 'register',
+                    object: reg,
+                    breadcrumbs: [memoryMap.name || 'Memory Map', memoryMap.address_blocks?.[blockIndex]?.name ?? '', reg.name],
+                    path: ['addressBlocks', blockIndex, 'registers', regIndex],
+                    meta: { absoluteAddress: absolute, relativeOffset: reg.address_offset ?? 0 },
+                });
+            });
+
+            ((block as any).register_arrays ?? []).forEach((arr: any, arrayIndex: number) => {
+                const arrId = `block-${blockIndex}-arr-${arrayIndex}`;
+                items.push({
+                    id: arrId,
+                    type: 'array',
+                    object: arr,
+                    breadcrumbs: [memoryMap.name || 'Memory Map', memoryMap.address_blocks?.[blockIndex]?.name ?? '', arr.name],
+                    path: ['addressBlocks', blockIndex, 'register_arrays', arrayIndex],
+                });
+
+                if (!expanded.has(arrId)) return;
+                if (!Array.isArray(arr.children_registers)) return;
+                arr.children_registers.forEach((reg: Register, regIndex: number) => {
+                    // Matches existing render behavior (renderLeafRegister)
+                    const regId = `block-${blockIndex}-reg-${regIndex}`;
+                    const absolute = (block.base_address ?? 0) + (reg.address_offset ?? 0);
+                    items.push({
+                        id: regId,
+                        type: 'register',
+                        object: reg,
+                        breadcrumbs: [memoryMap.name || 'Memory Map', memoryMap.address_blocks?.[blockIndex]?.name ?? '', reg.name],
+                        path: ['addressBlocks', blockIndex, 'registers', regIndex],
+                        meta: { absoluteAddress: absolute, relativeOffset: reg.address_offset ?? 0 },
+                    });
+                });
+            });
+        });
+
+        return items;
+    }, [memoryMap, expanded, filteredBlocks]);
+
+    const onTreeKeyDown = (e: React.KeyboardEvent) => {
+        const keyLower = (e.key || '').toLowerCase();
+        const isDown = e.key === 'ArrowDown' || keyLower === 'j';
+        const isUp = e.key === 'ArrowUp' || keyLower === 'k';
+        const isFocusDetails = e.key === 'Enter' || e.key === 'ArrowRight' || keyLower === 'l';
+
+        if (!isDown && !isUp && !isFocusDetails) return;
+        if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+        const currentId = selectedId ?? rootId;
+        const currentIndex = Math.max(0, visibleSelections.findIndex((s) => s.id === currentId));
+        const currentSel = visibleSelections[currentIndex] ?? visibleSelections[0];
+        if (!currentSel) return;
+
+        if (isFocusDetails) {
+            e.preventDefault();
+            e.stopPropagation();
+            onSelect({
+                ...currentSel,
+                meta: { ...(currentSel.meta ?? {}), focusDetails: true },
+            });
+            return;
+        }
+
+        const nextIndex = isDown
+            ? Math.min(visibleSelections.length - 1, currentIndex + 1)
+            : Math.max(0, currentIndex - 1);
+        const nextSel = visibleSelections[nextIndex];
+        if (!nextSel) return;
+        e.preventDefault();
+        e.stopPropagation();
+        onSelect({ ...nextSel, meta: { ...(nextSel.meta ?? {}), focusDetails: false } });
+    };
+
     return (
         <>
             <div className="p-3 border-b vscode-border vscode-surface flex items-center gap-2">
@@ -339,25 +508,33 @@ const Outline: React.FC<OutlineProps> = ({ memoryMap, selectedId, onSelect }) =>
             <div className="flex-1 overflow-y-auto py-2">
                 <div className="px-3 mb-2 text-xs font-bold vscode-muted uppercase tracking-wider">Memory Map</div>
                 <div
-                    className={`tree-item ${isRootSelected ? 'selected' : ''} gap-2 text-sm`}
-                    onClick={() =>
-                        onSelect({
-                            id: rootId,
-                            type: 'memoryMap',
-                            object: memoryMap,
-                            breadcrumbs: [memoryMap.name || 'Memory Map'],
-                            path: [],
-                        })
-                    }
+                    ref={treeFocusRef}
+                    tabIndex={0}
+                    onKeyDown={onTreeKeyDown}
+                    className="outline-none focus:outline-none"
                 >
-                    <span
-                        className={`codicon codicon-chevron-${isRootExpanded ? 'down' : 'right'} text-[16px] ${isRootSelected ? '' : 'opacity-70'}`}
-                        onClick={(e) => toggleExpand(rootId, e)}
-                    ></span>
-                    <span className={`codicon codicon-map text-[16px] ${isRootSelected ? '' : 'opacity-70'}`}></span>
-                    <span className="flex-1">{memoryMap.name || 'Memory Map'}</span>
+                    <div
+                        className={`tree-item ${isRootSelected ? 'selected' : ''} gap-2 text-sm`}
+                        onClick={() => {
+                            treeFocusRef.current?.focus();
+                            onSelect({
+                                id: rootId,
+                                type: 'memoryMap',
+                                object: memoryMap,
+                                breadcrumbs: [memoryMap.name || 'Memory Map'],
+                                path: [],
+                            });
+                        }}
+                    >
+                        <span
+                            className={`codicon codicon-chevron-${isRootExpanded ? 'down' : 'right'} text-[16px] ${isRootSelected ? '' : 'opacity-70'}`}
+                            onClick={(e) => toggleExpand(rootId, e)}
+                        ></span>
+                        <span className={`codicon codicon-map text-[16px] ${isRootSelected ? '' : 'opacity-70'}`}></span>
+                        <span className="flex-1">{memoryMap.name || 'Memory Map'}</span>
+                    </div>
+                    {isRootExpanded && filteredBlocks.map(({ block, index }) => renderBlock(block, index))}
                 </div>
-                {isRootExpanded && filteredBlocks.map(({ block, index }) => renderBlock(block, index))}
             </div>
             <div className="outline-footer p-3 text-xs vscode-muted flex justify-between">
                 <span>{filteredBlocks.length} Items</span>
@@ -365,6 +542,6 @@ const Outline: React.FC<OutlineProps> = ({ memoryMap, selectedId, onSelect }) =>
             </div>
         </>
     );
-};
+});
 
 export default Outline;

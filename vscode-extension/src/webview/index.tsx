@@ -3,8 +3,8 @@ import type { ReactNode, ErrorInfo } from 'react';
 import { createRoot } from 'react-dom/client';
 import jsyaml from 'js-yaml';
 import { MemoryMap } from './types/memoryMap';
-import Outline from './components/Outline';
-import DetailsPanel from './components/DetailsPanel';
+import Outline, { type OutlineHandle } from './components/Outline';
+import DetailsPanel, { type DetailsPanelHandle } from './components/DetailsPanel';
 import { vscode } from './vscode';
 import './index.css';
 
@@ -16,6 +16,11 @@ type Selection = {
     object: any;
     breadcrumbs: string[];
     path: YamlPath;
+    meta?: {
+        absoluteAddress?: number;
+        relativeOffset?: number;
+        focusDetails?: boolean;
+    };
 };
 
 type NormalizedRegister = {
@@ -47,11 +52,36 @@ const App = () => {
     const [selectedType, setSelectedType] = useState<'memoryMap' | 'block' | 'register' | 'array' | null>(null);
     const [selectedObject, setSelectedObject] = useState<any>(null);
     const [breadcrumbs, setBreadcrumbs] = useState<string[]>([]);
+    const [selectionMeta, setSelectionMeta] = useState<Selection['meta'] | undefined>(undefined);
     const [activeTab, setActiveTab] = useState<'properties' | 'yaml'>('properties');
 
     const didInitSelectionRef = useRef(false);
     const selectionRef = useRef<Selection | null>(null);
     const rawTextRef = useRef<string>('');
+    const outlineRef = useRef<OutlineHandle | null>(null);
+    const detailsRef = useRef<DetailsPanelHandle | null>(null);
+
+    useEffect(() => {
+        const onKeyDown = (e: KeyboardEvent) => {
+            const keyLower = (e.key || '').toLowerCase();
+            if (!e.ctrlKey || e.metaKey || e.altKey) return;
+            if (keyLower !== 'h' && keyLower !== 'l') return;
+
+            e.preventDefault();
+            e.stopPropagation();
+
+            if (keyLower === 'h') {
+                outlineRef.current?.focus();
+                return;
+            }
+            if (keyLower === 'l') {
+                detailsRef.current?.focus();
+                return;
+            }
+        };
+        window.addEventListener('keydown', onKeyDown);
+        return () => window.removeEventListener('keydown', onKeyDown);
+    }, []);
 
     useEffect(() => {
         const handleMessage = (event: MessageEvent) => {
@@ -315,6 +345,7 @@ const App = () => {
         setSelectedType(selection.type);
         setSelectedObject(selection.object);
         setBreadcrumbs(selection.breadcrumbs);
+        setSelectionMeta(selection.meta);
     };
 
     const setAtPath = (root: any, path: YamlPath, value: any) => {
@@ -703,6 +734,7 @@ const App = () => {
             <main className="flex-1 flex overflow-hidden">
                 <aside className="sidebar flex flex-col shrink-0">
                     <Outline
+                        ref={outlineRef}
                         memoryMap={memoryMap}
                         selectedId={selectedId}
                         onSelect={handleSelect}
@@ -716,8 +748,10 @@ const App = () => {
                     </section>
                 ) : (
                     <DetailsPanel
+                        ref={detailsRef}
                         selectedType={selectedType}
                         selectedObject={selectedObject}
+                        selectionMeta={selectionMeta}
                         onUpdate={handleUpdate}
                     />
                 )}
