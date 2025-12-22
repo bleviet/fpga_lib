@@ -208,6 +208,24 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({ selectedType, selectedObjec
             setEditingKey(key);
         };
 
+        const startEditOnDoubleClick = (idx: number, key: EditKey) => (e: React.MouseEvent) => {
+            // Use double-click to enter edit mode so single-click can be used for selection/move.
+            e.stopPropagation();
+            setEditingFieldIndex(idx);
+            setEditingKey(key);
+        };
+
+        const moveSelectedField = (delta: -1 | 1) => {
+            const idx = selectedFieldIndex;
+            if (idx < 0) return;
+            const next = idx + delta;
+            if (next < 0 || next >= fields.length) return;
+            setEditingFieldIndex(null);
+            onUpdate(['__op', 'field-move'], { index: idx, delta });
+            setSelectedFieldIndex(next);
+            setHoveredFieldIndex(next);
+        };
+
         return (
             <div className="flex flex-col w-full h-full min-h-0" onClickCapture={handleClickOutside}>
                 {/* --- Register Header and BitFieldVisualizer --- */}
@@ -237,170 +255,191 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({ selectedType, selectedObjec
                 </div>
                 {/* --- Main Content: Table and Properties --- */}
                 <div className="flex-1 flex overflow-hidden min-h-0">
-                    <div className="flex-1 overflow-auto bg-white border-r border-gray-200 min-h-0">
-                        <table className="w-full text-left border-collapse table-fixed">
-                            <colgroup>
-                                <col className="w-[32%] min-w-[240px]" />
-                                <col className="w-[14%] min-w-[100px]" />
-                                <col className="w-[14%] min-w-[120px]" />
-                                <col className="w-[14%] min-w-[110px]" />
-                                <col className="w-[26%]" />
-                            </colgroup>
-                            <thead className="bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wider sticky top-0 z-10 shadow-sm">
-                                <tr className="h-12">
-                                    <th className="px-6 py-3 border-b border-gray-200 align-middle">Name</th>
-                                    <th className="px-4 py-3 border-b border-gray-200 align-middle">Bit(s)</th>
-                                    <th className="px-4 py-3 border-b border-gray-200 align-middle">Access</th>
-                                    <th className="px-4 py-3 border-b border-gray-200 align-middle">Reset</th>
-                                    <th className="px-6 py-3 border-b border-gray-200 align-middle">Description</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100 text-sm">
-                                {fields.map((field, idx) => {
-                                    const isSelected = idx === hoveredFieldIndex;
-                                    const highlightClass = isSelected ? 'bg-indigo-50/60' : '';
-                                    const bits = toBits(field);
-                                    const color = getFieldColor(idx);
-                                    const resetDisplay =
-                                        field.reset_value !== null && field.reset_value !== undefined
-                                            ? `0x${Number(field.reset_value).toString(16).toUpperCase()}`
-                                            : '';
+                    <div className="flex-1 bg-white border-r border-gray-200 min-h-0 flex flex-col">
+                        <div className="shrink-0 px-4 py-2 border-b border-gray-200 bg-white flex items-center justify-end gap-1">
+                            <button
+                                className="p-2 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors disabled:opacity-40"
+                                onClick={() => moveSelectedField(-1)}
+                                disabled={selectedFieldIndex <= 0}
+                                title="Move field up"
+                                type="button"
+                            >
+                                <span className="codicon codicon-chevron-up"></span>
+                            </button>
+                            <button
+                                className="p-2 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors disabled:opacity-40"
+                                onClick={() => moveSelectedField(1)}
+                                disabled={selectedFieldIndex < 0 || selectedFieldIndex >= fields.length - 1}
+                                title="Move field down"
+                                type="button"
+                            >
+                                <span className="codicon codicon-chevron-down"></span>
+                            </button>
+                        </div>
+                        <div className="flex-1 overflow-auto min-h-0">
+                            <table className="w-full text-left border-collapse table-fixed">
+                                <colgroup>
+                                    <col className="w-[32%] min-w-[240px]" />
+                                    <col className="w-[14%] min-w-[100px]" />
+                                    <col className="w-[14%] min-w-[120px]" />
+                                    <col className="w-[14%] min-w-[110px]" />
+                                    <col className="w-[26%]" />
+                                </colgroup>
+                                <thead className="bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wider sticky top-0 z-10 shadow-sm">
+                                    <tr className="h-12">
+                                        <th className="px-6 py-3 border-b border-gray-200 align-middle">Name</th>
+                                        <th className="px-4 py-3 border-b border-gray-200 align-middle">Bit(s)</th>
+                                        <th className="px-4 py-3 border-b border-gray-200 align-middle">Access</th>
+                                        <th className="px-4 py-3 border-b border-gray-200 align-middle">Reset</th>
+                                        <th className="px-6 py-3 border-b border-gray-200 align-middle">Description</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100 text-sm">
+                                    {fields.map((field, idx) => {
+                                        const isSelected = idx === hoveredFieldIndex;
+                                        const highlightClass = isSelected ? 'bg-indigo-50/60' : '';
+                                        const bits = toBits(field);
+                                        const color = getFieldColor(idx);
+                                        const resetDisplay =
+                                            field.reset_value !== null && field.reset_value !== undefined
+                                                ? `0x${Number(field.reset_value).toString(16).toUpperCase()}`
+                                                : '';
 
-                                    return (
-                                        <tr
-                                            key={idx}
-                                            data-field-idx={idx}
-                                            className={`group transition-colors border-l-4 border-transparent h-12 ${idx === hoveredFieldIndex ? 'border-indigo-600 bg-indigo-50/60' : ''}`}
-                                            onMouseEnter={() => {
-                                                setHoveredFieldIndex(idx);
-                                                setSelectedFieldIndex(idx);
-                                            }}
-                                            onMouseLeave={() => setHoveredFieldIndex(null)}
-                                            onClick={() => {
-                                                setEditingFieldIndex(idx);
-                                                setEditingKey('name');
-                                            }}
-                                            id={`row-${field.name?.toLowerCase().replace(/[^a-z0-9_]/g, '-')}`}
-                                        >
-                                            <td className="px-6 py-2 font-medium text-gray-900 align-middle" onClick={startEdit(idx, 'name')}>
-                                                <div className="flex items-center gap-2 h-10">
-                                                    <div className={`w-2.5 h-2.5 rounded-sm`} style={{ backgroundColor: color === 'gray' ? '#e5e7eb' : (colorMap && colorMap[color]) || color }}></div>
-                                                    {editingFieldIndex === idx ? (
-                                                        <VSCodeTextField
-                                                            data-edit-key="name"
-                                                            className="flex-1"
-                                                            value={field.name || ''}
-                                                            onInput={(e: any) => onUpdate(['fields', idx, 'name'], e.target.value)}
-                                                            onBlur={handleBlur(idx)}
-                                                            onKeyDown={handleKeyDown(idx)}
-                                                        />
-                                                    ) : (
-                                                        field.name
-                                                    )}
-                                                </div>
-                                            </td>
-                                            <td className="px-4 py-2 font-mono text-gray-600 align-middle" onClick={startEdit(idx, 'bits')}>
-                                                <div className="flex items-center h-10">
-                                                    {editingFieldIndex === idx ? (
-                                                        <VSCodeTextField
-                                                            data-edit-key="bits"
-                                                            className="w-full font-mono"
-                                                            value={bitsDraft}
-                                                            onInput={(e: any) => {
-                                                                const next = String(e.target.value ?? '');
-                                                                setBitsDraft(next);
-                                                                const parsed = parseBitsInput(next);
-                                                                if (parsed) {
-                                                                    onUpdate(['fields', idx, 'bit_offset'], parsed.bit_offset);
-                                                                    onUpdate(['fields', idx, 'bit_width'], parsed.bit_width);
-                                                                    onUpdate(['fields', idx, 'bit_range'], parsed.bit_range);
-                                                                }
-                                                            }}
-                                                            onBlur={handleBlur(idx)}
-                                                            onKeyDown={(e: any) => {
-                                                                if (e.key !== 'Enter') return;
-                                                                const parsed = parseBitsInput(bitsDraft);
-                                                                if (parsed) {
-                                                                    onUpdate(['fields', idx, 'bit_offset'], parsed.bit_offset);
-                                                                    onUpdate(['fields', idx, 'bit_width'], parsed.bit_width);
-                                                                    onUpdate(['fields', idx, 'bit_range'], parsed.bit_range);
-                                                                }
-                                                                e.preventDefault();
-                                                                setEditingFieldIndex(null);
-                                                            }}
-                                                        />
-                                                    ) : (
-                                                        bits
-                                                    )}
-                                                </div>
-                                            </td>
-                                            <td className="px-4 py-2 align-middle" onClick={startEdit(idx, 'access')}>
-                                                <div className="flex items-center h-10">
-                                                    {editingFieldIndex === idx ? (
-                                                        <VSCodeDropdown
-                                                            data-edit-key="access"
-                                                            value={field.access || 'read-write'}
-                                                            className="w-full"
-                                                            onInput={(e: any) => onUpdate(['fields', idx, 'access'], e.target.value)}
-                                                            onBlur={handleBlur(idx)}
-                                                            onKeyDown={handleKeyDown(idx)}
-                                                        >
-                                                            {ACCESS_OPTIONS.map((opt) => (
-                                                                <VSCodeOption key={opt} value={opt}>{opt}</VSCodeOption>
-                                                            ))}
-                                                        </VSCodeDropdown>
-                                                    ) : (
-                                                        <div className="flex items-center justify-start">
-                                                            <span className="px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800 border border-green-200 whitespace-nowrap">{field.access || 'RW'}</span>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </td>
-                                            <td className="px-4 py-2 font-mono text-gray-500 align-middle" onClick={startEdit(idx, 'reset')}>
-                                                <div className="flex items-center h-10">
-                                                    {editingFieldIndex === idx ? (
-                                                        <VSCodeTextField
-                                                            data-edit-key="reset"
-                                                            className="w-full font-mono"
-                                                            value={resetDisplay || '0x0'}
-                                                            onInput={(e: any) => {
-                                                                const raw = String(e.target.value ?? '');
-                                                                const parsed = parseReset(raw);
-                                                                if (parsed === null) {
-                                                                    if (!raw.trim()) onUpdate(['fields', idx, 'reset_value'], null);
-                                                                    return;
-                                                                }
-                                                                onUpdate(['fields', idx, 'reset_value'], parsed);
-                                                            }}
-                                                            onBlur={handleBlur(idx)}
-                                                            onKeyDown={handleKeyDown(idx)}
-                                                        />
-                                                    ) : (
-                                                        resetDisplay || '0x0'
-                                                    )}
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-2 text-gray-500 align-middle" onClick={startEdit(idx, 'description')}>
-                                                <div className="flex items-center h-10">
-                                                    {editingFieldIndex === idx ? (
-                                                        <VSCodeTextArea
-                                                            data-edit-key="description"
-                                                            className="w-full"
-                                                            rows={2}
-                                                            value={field.description || ''}
-                                                            onInput={(e: any) => onUpdate(['fields', idx, 'description'], e.target.value)}
-                                                            onBlur={handleBlur(idx)}
-                                                        />
-                                                    ) : (
-                                                        field.description || '-'
-                                                    )}
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
+                                        return (
+                                            <tr
+                                                key={idx}
+                                                data-field-idx={idx}
+                                                className={`group transition-colors border-l-4 border-transparent h-12 ${idx === selectedFieldIndex ? 'border-indigo-600 bg-indigo-50/60' : idx === hoveredFieldIndex ? 'border-indigo-400 bg-indigo-50/40' : ''}`}
+                                                onMouseEnter={() => {
+                                                    setHoveredFieldIndex(idx);
+                                                }}
+                                                onMouseLeave={() => setHoveredFieldIndex(null)}
+                                                onClick={() => {
+                                                    setSelectedFieldIndex(idx);
+                                                    setHoveredFieldIndex(idx);
+                                                }}
+                                                id={`row-${field.name?.toLowerCase().replace(/[^a-z0-9_]/g, '-')}`}
+                                            >
+                                                <td className="px-6 py-2 font-medium text-gray-900 align-middle" onDoubleClick={startEditOnDoubleClick(idx, 'name')}>
+                                                    <div className="flex items-center gap-2 h-10">
+                                                        <div className={`w-2.5 h-2.5 rounded-sm`} style={{ backgroundColor: color === 'gray' ? '#e5e7eb' : (colorMap && colorMap[color]) || color }}></div>
+                                                        {editingFieldIndex === idx ? (
+                                                            <VSCodeTextField
+                                                                data-edit-key="name"
+                                                                className="flex-1"
+                                                                value={field.name || ''}
+                                                                onInput={(e: any) => onUpdate(['fields', idx, 'name'], e.target.value)}
+                                                                onBlur={handleBlur(idx)}
+                                                                onKeyDown={handleKeyDown(idx)}
+                                                            />
+                                                        ) : (
+                                                            field.name
+                                                        )}
+                                                    </div>
+                                                </td>
+                                                <td className="px-4 py-2 font-mono text-gray-600 align-middle" onDoubleClick={startEditOnDoubleClick(idx, 'bits')}>
+                                                    <div className="flex items-center h-10">
+                                                        {editingFieldIndex === idx ? (
+                                                            <VSCodeTextField
+                                                                data-edit-key="bits"
+                                                                className="w-full font-mono"
+                                                                value={bitsDraft}
+                                                                onInput={(e: any) => {
+                                                                    const next = String(e.target.value ?? '');
+                                                                    setBitsDraft(next);
+                                                                    const parsed = parseBitsInput(next);
+                                                                    if (parsed) {
+                                                                        onUpdate(['fields', idx, 'bit_offset'], parsed.bit_offset);
+                                                                        onUpdate(['fields', idx, 'bit_width'], parsed.bit_width);
+                                                                        onUpdate(['fields', idx, 'bit_range'], parsed.bit_range);
+                                                                    }
+                                                                }}
+                                                                onBlur={handleBlur(idx)}
+                                                                onKeyDown={(e: any) => {
+                                                                    if (e.key !== 'Enter') return;
+                                                                    const parsed = parseBitsInput(bitsDraft);
+                                                                    if (parsed) {
+                                                                        onUpdate(['fields', idx, 'bit_offset'], parsed.bit_offset);
+                                                                        onUpdate(['fields', idx, 'bit_width'], parsed.bit_width);
+                                                                        onUpdate(['fields', idx, 'bit_range'], parsed.bit_range);
+                                                                    }
+                                                                    e.preventDefault();
+                                                                    setEditingFieldIndex(null);
+                                                                }}
+                                                            />
+                                                        ) : (
+                                                            bits
+                                                        )}
+                                                    </div>
+                                                </td>
+                                                <td className="px-4 py-2 align-middle" onDoubleClick={startEditOnDoubleClick(idx, 'access')}>
+                                                    <div className="flex items-center h-10">
+                                                        {editingFieldIndex === idx ? (
+                                                            <VSCodeDropdown
+                                                                data-edit-key="access"
+                                                                value={field.access || 'read-write'}
+                                                                className="w-full"
+                                                                onInput={(e: any) => onUpdate(['fields', idx, 'access'], e.target.value)}
+                                                                onBlur={handleBlur(idx)}
+                                                                onKeyDown={handleKeyDown(idx)}
+                                                            >
+                                                                {ACCESS_OPTIONS.map((opt) => (
+                                                                    <VSCodeOption key={opt} value={opt}>{opt}</VSCodeOption>
+                                                                ))}
+                                                            </VSCodeDropdown>
+                                                        ) : (
+                                                            <div className="flex items-center justify-start">
+                                                                <span className="px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800 border border-green-200 whitespace-nowrap">{field.access || 'RW'}</span>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                                <td className="px-4 py-2 font-mono text-gray-500 align-middle" onDoubleClick={startEditOnDoubleClick(idx, 'reset')}>
+                                                    <div className="flex items-center h-10">
+                                                        {editingFieldIndex === idx ? (
+                                                            <VSCodeTextField
+                                                                data-edit-key="reset"
+                                                                className="w-full font-mono"
+                                                                value={resetDisplay || '0x0'}
+                                                                onInput={(e: any) => {
+                                                                    const raw = String(e.target.value ?? '');
+                                                                    const parsed = parseReset(raw);
+                                                                    if (parsed === null) {
+                                                                        if (!raw.trim()) onUpdate(['fields', idx, 'reset_value'], null);
+                                                                        return;
+                                                                    }
+                                                                    onUpdate(['fields', idx, 'reset_value'], parsed);
+                                                                }}
+                                                                onBlur={handleBlur(idx)}
+                                                                onKeyDown={handleKeyDown(idx)}
+                                                            />
+                                                        ) : (
+                                                            resetDisplay || '0x0'
+                                                        )}
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-2 text-gray-500 align-middle" onDoubleClick={startEditOnDoubleClick(idx, 'description')}>
+                                                    <div className="flex items-center h-10">
+                                                        {editingFieldIndex === idx ? (
+                                                            <VSCodeTextArea
+                                                                data-edit-key="description"
+                                                                className="w-full"
+                                                                rows={2}
+                                                                value={field.description || ''}
+                                                                onInput={(e: any) => onUpdate(['fields', idx, 'description'], e.target.value)}
+                                                                onBlur={handleBlur(idx)}
+                                                            />
+                                                        ) : (
+                                                            field.description || '-'
+                                                        )}
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>

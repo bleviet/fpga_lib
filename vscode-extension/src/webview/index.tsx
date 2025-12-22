@@ -388,6 +388,32 @@ const App = () => {
 
         const { root, mapPrefix } = getMapRootInfo(rootObj);
 
+        const parseBitsLike = (text: string): { bit_offset: number; bit_width: number } | null => {
+            const trimmed = String(text ?? '').trim().replace(/\[|\]/g, '');
+            if (!trimmed) return null;
+            const parts = trimmed.split(':').map((p) => Number(String(p).trim()));
+            if (parts.some((p) => Number.isNaN(p))) return null;
+            let msb: number;
+            let lsb: number;
+            if (parts.length === 1) {
+                msb = parts[0];
+                lsb = parts[0];
+            } else {
+                msb = parts[0];
+                lsb = parts[1];
+            }
+            if (!Number.isFinite(msb) || !Number.isFinite(lsb)) return null;
+            if (msb < lsb) [msb, lsb] = [lsb, msb];
+            return { bit_offset: lsb, bit_width: msb - lsb + 1 };
+        };
+
+        const formatBitsLike = (bit_offset: number, bit_width: number): string => {
+            const lsb = Number(bit_offset);
+            const width = Math.max(1, Number(bit_width));
+            const msb = lsb + width - 1;
+            return `[${msb}:${lsb}]`;
+        };
+
         // Field operations (add/delete/move)
         if (path[0] === '__op' && sel.type === 'register') {
             const op = String(path[1] ?? '');
@@ -440,6 +466,25 @@ const App = () => {
                     const tmp = fieldsArr[index];
                     fieldsArr[index] = fieldsArr[next];
                     fieldsArr[next] = tmp;
+
+                    // Re-pack bit offsets sequentially based on width (Python reference behavior).
+                    let offset = 0;
+                    for (const f of fieldsArr) {
+                        let width = Number(f?.bit_width);
+                        if (!Number.isFinite(width)) {
+                            const parsed = parseBitsLike(f?.bits);
+                            width = parsed?.bit_width ?? 1;
+                        }
+                        width = Math.max(1, Math.min(32, Math.trunc(width)));
+
+                        f.bit_offset = offset;
+                        f.bit_width = width;
+                        // Keep legacy "bits" in sync if it exists.
+                        if (typeof f?.bits === 'string') {
+                            f.bits = formatBitsLike(offset, width);
+                        }
+                        offset += width;
+                    }
                 }
             }
 
