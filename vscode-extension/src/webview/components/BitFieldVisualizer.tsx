@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { VSCodeTextField } from '@vscode/webview-ui-toolkit/react';
 
 interface BitFieldVisualizerProps {
     fields: any[];
@@ -66,6 +67,30 @@ function setBit(value: number, bitIndex: number, desired: 0 | 1): number {
     return desired === 1 ? base + delta : Math.max(0, base - delta);
 }
 
+function parseRegisterValue(text: string): number | null {
+    const s = text.trim();
+    if (!s) return null;
+    // Accept decimal or 0x-prefixed hex.
+    const v = Number.parseInt(s, 0);
+    if (!Number.isFinite(v)) return null;
+    return v;
+}
+
+function maxForBits(bitCount: number): number {
+    if (bitCount <= 0) return 0;
+    // JS Numbers are safe up to 53 bits of integer precision.
+    if (bitCount >= 53) return Number.MAX_SAFE_INTEGER;
+    return Math.pow(2, bitCount) - 1;
+}
+
+function extractBits(value: number, lo: number, width: number): number {
+    if (!Number.isFinite(value)) return 0;
+    if (width <= 0) return 0;
+    const shifted = Math.floor(value / Math.pow(2, lo));
+    const mask = width >= 53 ? Number.MAX_SAFE_INTEGER : Math.pow(2, width) - 1;
+    return shifted % (mask + 1);
+}
+
 // Group fields by contiguous bit ranges for pro layout
 function groupFields(fields: any[]) {
     const groups: { idx: number; start: number; end: number; name: string; color: string }[] = [];
@@ -92,6 +117,9 @@ const BitFieldVisualizer: React.FC<BitFieldVisualizerProps> = ({
     onUpdateFieldReset,
 }) => {
     const [valueView, setValueView] = useState<'hex' | 'dec'>('hex');
+    const [valueDraft, setValueDraft] = useState<string>('');
+    const [valueEditing, setValueEditing] = useState(false);
+    const [valueError, setValueError] = useState<string | null>(null);
     const [dragActive, setDragActive] = useState(false);
     const [dragSetTo, setDragSetTo] = useState<0 | 1>(0);
     const [dragLast, setDragLast] = useState<string | null>(null);
@@ -159,6 +187,81 @@ const BitFieldVisualizer: React.FC<BitFieldVisualizerProps> = ({
         return `0x${registerValue.toString(16).toUpperCase()}`;
     }, [registerValue, valueView]);
 
+    useEffect(() => {
+        if (valueEditing) return;
+        setValueDraft(registerValueText);
+        setValueError(null);
+    }, [registerValueText, valueEditing]);
+
+    const validateRegisterValue = (v: number | null): string | null => {
+        if (v === null) return 'Value is required';
+        if (!Number.isFinite(v)) return 'Invalid number';
+        if (v < 0) return 'Value must be >= 0';
+        const max = maxForBits(registerSize);
+        if (v > max) return `Value too large for ${registerSize} bit(s)`;
+        return null;
+    };
+
+    const applyRegisterValue = (v: number) => {
+        if (!onUpdateFieldReset) return;
+        fields.forEach((field, fieldIndex) => {
+            const r = getFieldRange(field);
+            if (!r) return;
+            const width = r.hi - r.lo + 1;
+            const sub = extractBits(v, r.lo, width);
+            onUpdateFieldReset(fieldIndex, sub);
+        });
+    };
+
+    const commitRegisterValueDraft = () => {
+        const parsed = parseRegisterValue(valueDraft);
+        const err = validateRegisterValue(parsed);
+        setValueError(err);
+        if (err || parsed === null) return;
+        applyRegisterValue(parsed);
+    };
+
+    const renderValueBar = () => (
+        <div className="mt-2 flex items-start justify-end gap-2">
+            <div className="text-xs text-gray-500 font-mono mt-[6px]">Value:</div>
+            <div className="min-w-[220px]">
+                <VSCodeTextField
+                    className="w-full"
+                    value={valueDraft}
+                    onFocus={() => setValueEditing(true)}
+                    onBlur={() => {
+                        setValueEditing(false);
+                        commitRegisterValueDraft();
+                    }}
+                    onInput={(e: any) => {
+                        const next = String(e.target.value ?? '');
+                        setValueDraft(next);
+                        const parsed = parseRegisterValue(next);
+                        setValueError(validateRegisterValue(parsed));
+                    }}
+                    onKeyDown={(e: any) => {
+                        if (e.key !== 'Enter') return;
+                        e.preventDefault();
+                        e.stopPropagation();
+                        commitRegisterValueDraft();
+                        setValueEditing(false);
+                        // Return focus to the visualizer root.
+                        (e.currentTarget as any)?.blur?.();
+                    }}
+                />
+                {valueError ? <div className="text-xs text-red-600 mt-1">{valueError}</div> : null}
+            </div>
+            <button
+                type="button"
+                className="px-3 py-1.5 text-xs font-semibold border border-indigo-200 rounded bg-indigo-50 text-indigo-700 hover:bg-indigo-100 self-start"
+                onClick={() => setValueView((v) => (v === 'hex' ? 'dec' : 'hex'))}
+                title="Toggle hex/dec"
+            >
+                {valueView.toUpperCase()}
+            </button>
+        </div>
+    );
+
     if (layout === 'pro') {
         // Grouped, modern layout with floating labels and grid
         const groups = groupFields(fields);
@@ -167,7 +270,7 @@ const BitFieldVisualizer: React.FC<BitFieldVisualizerProps> = ({
                 <div className="relative w-full flex items-start">
                     {/* Bit grid background */}
                     <div className="absolute inset-0 pointer-events-none bg-[linear-gradient(to_right,#e5e7eb_1px,transparent_1px),linear-gradient(to_bottom,#e5e7eb_1px,transparent_1px)] bg-[size:32px_48px] rounded-lg" />
-                    <div className="relative flex flex-row items-end gap-0.5 px-2 py-2 min-h-[64px]">
+                    <div className="relative flex flex-row items-end gap-0.5 px-2 pt-12 pb-2 min-h-[64px]">
                         {/* Render each field as a colored segment with label */}
                         {groups.map((group) => {
                             const width = group.end - group.start + 1;
@@ -195,7 +298,7 @@ const BitFieldVisualizer: React.FC<BitFieldVisualizerProps> = ({
                                             return (
                                                 <div
                                                     key={i}
-                                                    className="w-10 h-20 flex items-center justify-center cursor-pointer touch-none"
+                                                    className={`w-10 h-20 flex items-center justify-center cursor-pointer touch-none ${v === 1 ? 'ring-1 ring-white/70 ring-inset' : ''}`}
                                                     style={{ background: colorMap[group.color] }}
                                                     onPointerDown={(e) => {
                                                         if (!onUpdateFieldReset) return;
@@ -219,14 +322,19 @@ const BitFieldVisualizer: React.FC<BitFieldVisualizerProps> = ({
                                                         applyBit(group.idx, localBit, dragSetTo);
                                                     }}
                                                 >
-                                                    <span className="text-sm font-mono text-white/90 select-none">{v}</span>
+                                                    <span className={`text-sm font-mono text-white/90 select-none ${v === 1 ? 'font-bold' : 'font-normal'}`}>{v}</span>
                                                 </div>
                                             );
                                         })}
                                     </div>
-                                    <div className="absolute -top-7 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded bg-white/90 border border-gray-200 shadow text-xs font-bold text-gray-900 whitespace-nowrap pointer-events-none">
-                                        {group.name}
-                                        <span className="ml-2 text-gray-500 font-mono text-[11px]">[{Math.max(group.start, group.end)}:{Math.min(group.start, group.end)}]</span>
+                                    <div className="absolute -top-10 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded bg-white/90 border border-gray-200 shadow text-xs text-gray-900 whitespace-nowrap pointer-events-none">
+                                        <div className="font-bold">
+                                            {group.name}
+                                            <span className="ml-2 text-gray-500 font-mono text-[11px]">[{Math.max(group.start, group.end)}:{Math.min(group.start, group.end)}]</span>
+                                        </div>
+                                        <div className="text-[11px] text-gray-600 font-mono">
+                                            {valueView === 'dec' ? Math.trunc(fieldReset).toString(10) : `0x${Math.trunc(fieldReset).toString(16).toUpperCase()}`}
+                                        </div>
                                     </div>
                                     {/* Per-bit numbers below, LSB (right) to MSB (left) */}
                                     <div className="flex flex-row w-full">
@@ -243,18 +351,7 @@ const BitFieldVisualizer: React.FC<BitFieldVisualizerProps> = ({
                     </div>
                 </div>
 
-                <div className="mt-2 flex items-center justify-end gap-2">
-                    <div className="text-xs text-gray-500 font-mono">Value:</div>
-                    <div className="text-sm font-mono text-gray-900">{registerValueText}</div>
-                    <button
-                        type="button"
-                        className="px-2 py-1 text-xs border border-gray-200 rounded bg-white hover:bg-gray-50"
-                        onClick={() => setValueView((v) => (v === 'hex' ? 'dec' : 'hex'))}
-                        title="Toggle hex/dec"
-                    >
-                        {valueView.toUpperCase()}
-                    </button>
-                </div>
+                {renderValueBar()}
             </div>
         );
     }
@@ -319,18 +416,7 @@ const BitFieldVisualizer: React.FC<BitFieldVisualizerProps> = ({
                 ))}
             </div>
 
-            <div className="mt-2 flex items-center justify-end gap-2 w-full">
-                <div className="text-xs text-gray-500 font-mono">Value:</div>
-                <div className="text-sm font-mono text-gray-900">{registerValueText}</div>
-                <button
-                    type="button"
-                    className="px-2 py-1 text-xs border border-gray-200 rounded bg-white hover:bg-gray-50"
-                    onClick={() => setValueView((v) => (v === 'hex' ? 'dec' : 'hex'))}
-                    title="Toggle hex/dec"
-                >
-                    {valueView.toUpperCase()}
-                </button>
-            </div>
+            <div className="w-full">{renderValueBar()}</div>
         </div>
     );
 };
