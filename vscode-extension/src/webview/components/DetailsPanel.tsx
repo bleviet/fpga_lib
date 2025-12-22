@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { VSCodeDropdown, VSCodeOption, VSCodeTextField, VSCodeTextArea } from '@vscode/webview-ui-toolkit/react';
 import { Register } from '../types/memoryMap';
 import BitFieldVisualizer from './BitFieldVisualizer';
+import AddressMapVisualizer from './AddressMapVisualizer';
+import RegisterMapVisualizer from './RegisterMapVisualizer';
 
 interface DetailsPanelProps {
     selectedType: 'memoryMap' | 'block' | 'register' | 'array' | null;
@@ -21,6 +23,14 @@ type ActiveCell = { rowIndex: number; key: EditKey };
 
 const COLUMN_ORDER: EditKey[] = ['name', 'bits', 'access', 'reset', 'description'];
 
+type BlockEditKey = 'name' | 'base' | 'size' | 'usage' | 'description';
+type BlockActiveCell = { rowIndex: number; key: BlockEditKey };
+const BLOCK_COLUMN_ORDER: BlockEditKey[] = ['name', 'base', 'size', 'usage', 'description'];
+
+type RegEditKey = 'name' | 'offset' | 'access' | 'description';
+type RegActiveCell = { rowIndex: number; key: RegEditKey };
+const REG_COLUMN_ORDER: RegEditKey[] = ['name', 'offset', 'access', 'description'];
+
 const DetailsPanel: React.FC<DetailsPanelProps> = ({ selectedType, selectedObject, selectionMeta, onUpdate }) => {
     const [offsetText, setOffsetText] = useState<string>('');
     const [selectedFieldIndex, setSelectedFieldIndex] = useState<number>(-1);
@@ -29,16 +39,38 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({ selectedType, selectedObjec
     const [editingKey, setEditingKey] = useState<EditKey>('name');
     const [selectedEditKey, setSelectedEditKey] = useState<EditKey>('name');
     const [activeCell, setActiveCell] = useState<ActiveCell>({ rowIndex: -1, key: 'name' });
+    const [blockActiveCell, setBlockActiveCell] = useState<BlockActiveCell>({ rowIndex: -1, key: 'name' });
+    const [regActiveCell, setRegActiveCell] = useState<RegActiveCell>({ rowIndex: -1, key: 'name' });
     const [nameDraft, setNameDraft] = useState<string>('');
     const [nameError, setNameError] = useState<string | null>(null);
     const [bitsDraft, setBitsDraft] = useState<string>('');
     const [resetDraft, setResetDraft] = useState<string>('');
     const [resetError, setResetError] = useState<string | null>(null);
+    // Memory map states
+    const [selectedBlockIndex, setSelectedBlockIndex] = useState<number>(-1);
+    const [hoveredBlockIndex, setHoveredBlockIndex] = useState<number | null>(null);
+    // Address block states
+    const [selectedRegIndex, setSelectedRegIndex] = useState<number>(-1);
+    const [hoveredRegIndex, setHoveredRegIndex] = useState<number | null>(null);
     const fieldsFocusRef = useRef<HTMLDivElement | null>(null);
+    const blocksFocusRef = useRef<HTMLDivElement | null>(null);
+    const regsFocusRef = useRef<HTMLDivElement | null>(null);
 
     const refocusFieldsTableSoon = () => {
         window.setTimeout(() => {
             fieldsFocusRef.current?.focus();
+        }, 0);
+    };
+
+    const refocusBlocksTableSoon = () => {
+        window.setTimeout(() => {
+            blocksFocusRef.current?.focus();
+        }, 0);
+    };
+
+    const refocusRegsTableSoon = () => {
+        window.setTimeout(() => {
+            regsFocusRef.current?.focus();
         }, 0);
     };
 
@@ -68,6 +100,24 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({ selectedType, selectedObjec
         }, 0);
         return () => window.clearTimeout(id);
     }, [isRegister, reg?.name]);
+
+    // When a memory map is selected, shift keyboard focus to the blocks table.
+    useEffect(() => {
+        if (selectedType !== 'memoryMap') return;
+        const id = window.setTimeout(() => {
+            blocksFocusRef.current?.focus();
+        }, 0);
+        return () => window.clearTimeout(id);
+    }, [selectedType, (selectedObject as any)?.name]);
+
+    // When an address block is selected, shift keyboard focus to the registers table.
+    useEffect(() => {
+        if (selectedType !== 'block') return;
+        const id = window.setTimeout(() => {
+            regsFocusRef.current?.focus();
+        }, 0);
+        return () => window.clearTimeout(id);
+    }, [selectedType, (selectedObject as any)?.name]);
 
     const beginEdit = (rowIndex: number, key: EditKey) => {
         if (rowIndex < 0 || rowIndex >= fields.length) return;
@@ -99,6 +149,34 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({ selectedType, selectedObjec
             e.stopPropagation();
             setEditingFieldIndex(null);
             refocusFieldsTableSoon();
+        };
+        window.addEventListener('keydown', onKeyDown);
+        return () => window.removeEventListener('keydown', onKeyDown);
+    }, [editingFieldIndex]);
+
+    // Escape should exit focus from inline editors in blocks/register tables back to their table container.
+    useEffect(() => {
+        const onKeyDown = (e: KeyboardEvent) => {
+            if (e.key !== 'Escape') return;
+            // If we're editing fields, let the field handler above handle it.
+            if (editingFieldIndex !== null) return;
+
+            const activeEl = document.activeElement as HTMLElement | null;
+            if (!activeEl) return;
+
+            const inBlocks = !!blocksFocusRef.current && blocksFocusRef.current.contains(activeEl);
+            const inRegs = !!regsFocusRef.current && regsFocusRef.current.contains(activeEl);
+            if (!inBlocks && !inRegs) return;
+
+            e.preventDefault();
+            e.stopPropagation();
+            try {
+                (activeEl as any).blur?.();
+            } catch {
+                // ignore
+            }
+            if (inBlocks) refocusBlocksTableSoon();
+            if (inRegs) refocusRegsTableSoon();
         };
         window.addEventListener('keydown', onKeyDown);
         return () => window.removeEventListener('keydown', onKeyDown);
@@ -243,6 +321,198 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({ selectedType, selectedObjec
         return () => window.removeEventListener('keydown', onKeyDown);
     }, [isRegister, fields.length, selectedFieldIndex, selectedEditKey, activeCell, editingFieldIndex, onUpdate]);
 
+    // Keyboard shortcuts for Memory Map blocks table (when focused):
+    // - Arrow keys or Vim h/j/k/l to move active cell
+    // - F2 or e focuses the editor for the active cell
+    useEffect(() => {
+        if (selectedType !== 'memoryMap') return;
+
+        const blocks = (selectedObject as any)?.address_blocks || (selectedObject as any)?.addressBlocks || [];
+        if (!Array.isArray(blocks) || blocks.length === 0) return;
+
+        const onKeyDown = (e: KeyboardEvent) => {
+            const keyLower = (e.key || '').toLowerCase();
+            const vimToArrow: Record<string, 'ArrowLeft' | 'ArrowDown' | 'ArrowUp' | 'ArrowRight'> = {
+                h: 'ArrowLeft',
+                j: 'ArrowDown',
+                k: 'ArrowUp',
+                l: 'ArrowRight',
+            };
+
+            const mappedArrow = vimToArrow[keyLower];
+            const normalizedKey: string = mappedArrow ?? e.key;
+
+            const isArrow = normalizedKey === 'ArrowUp' || normalizedKey === 'ArrowDown' || normalizedKey === 'ArrowLeft' || normalizedKey === 'ArrowRight';
+            const isEdit = normalizedKey === 'F2' || keyLower === 'e';
+            if (!isArrow && !isEdit) return;
+
+            if (e.ctrlKey || e.metaKey) return;
+
+            const activeEl = document.activeElement as HTMLElement | null;
+            const isInBlocksArea = !!blocksFocusRef.current && !!activeEl && (activeEl === blocksFocusRef.current || blocksFocusRef.current.contains(activeEl));
+            if (!isInBlocksArea) return;
+
+            const target = e.target as HTMLElement | null;
+            const isTypingTarget = !!target?.closest(
+                'input, textarea, select, [contenteditable="true"], vscode-text-field, vscode-text-area, vscode-dropdown'
+            );
+            if (isTypingTarget) return;
+
+            const scrollToCell = (rowIndex: number, key: BlockEditKey) => {
+                window.setTimeout(() => {
+                    const row = document.querySelector(`tr[data-block-idx="${rowIndex}"]`) as HTMLElement | null;
+                    row?.scrollIntoView({ block: 'nearest' });
+                    const cell = row?.querySelector(`td[data-col-key="${key}"]`) as HTMLElement | null;
+                    cell?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+                }, 0);
+            };
+
+            const focusEditor = (rowIndex: number, key: BlockEditKey) => {
+                window.setTimeout(() => {
+                    const row = document.querySelector(`tr[data-block-idx="${rowIndex}"]`) as HTMLElement | null;
+                    const editor = row?.querySelector(`[data-edit-key="${key}"]`) as HTMLElement | null;
+                    editor?.focus?.();
+                }, 0);
+            };
+
+            const currentRow = blockActiveCell.rowIndex >= 0 ? blockActiveCell.rowIndex : (selectedBlockIndex >= 0 ? selectedBlockIndex : 0);
+            const currentKey: BlockEditKey = BLOCK_COLUMN_ORDER.includes(blockActiveCell.key) ? blockActiveCell.key : 'name';
+
+            if (isEdit) {
+                if (currentRow < 0 || currentRow >= blocks.length) return;
+                e.preventDefault();
+                e.stopPropagation();
+                setSelectedBlockIndex(currentRow);
+                setHoveredBlockIndex(currentRow);
+                setBlockActiveCell({ rowIndex: currentRow, key: currentKey });
+                focusEditor(currentRow, currentKey);
+                return;
+            }
+
+            e.preventDefault();
+            e.stopPropagation();
+
+            const isVertical = normalizedKey === 'ArrowUp' || normalizedKey === 'ArrowDown';
+            const delta = normalizedKey === 'ArrowUp' || normalizedKey === 'ArrowLeft' ? -1 : 1;
+
+            if (isVertical) {
+                const nextRow = Math.max(0, Math.min(blocks.length - 1, currentRow + delta));
+                setSelectedBlockIndex(nextRow);
+                setHoveredBlockIndex(nextRow);
+                setBlockActiveCell({ rowIndex: nextRow, key: currentKey });
+                scrollToCell(nextRow, currentKey);
+                return;
+            }
+
+            const currentCol = Math.max(0, BLOCK_COLUMN_ORDER.indexOf(currentKey));
+            const nextCol = Math.max(0, Math.min(BLOCK_COLUMN_ORDER.length - 1, currentCol + delta));
+            const nextKey = BLOCK_COLUMN_ORDER[nextCol] ?? 'name';
+            setSelectedBlockIndex(currentRow);
+            setHoveredBlockIndex(currentRow);
+            setBlockActiveCell({ rowIndex: currentRow, key: nextKey });
+            scrollToCell(currentRow, nextKey);
+        };
+
+        window.addEventListener('keydown', onKeyDown);
+        return () => window.removeEventListener('keydown', onKeyDown);
+    }, [selectedType, selectedObject, selectedBlockIndex, hoveredBlockIndex, blockActiveCell]);
+
+    // Keyboard shortcuts for Address Block registers table (when focused):
+    // - Arrow keys or Vim h/j/k/l to move active cell
+    // - F2 or e focuses the editor for the active cell
+    useEffect(() => {
+        if (selectedType !== 'block') return;
+
+        const registers = (selectedObject as any)?.registers || [];
+        if (!Array.isArray(registers) || registers.length === 0) return;
+
+        const onKeyDown = (e: KeyboardEvent) => {
+            const keyLower = (e.key || '').toLowerCase();
+            const vimToArrow: Record<string, 'ArrowLeft' | 'ArrowDown' | 'ArrowUp' | 'ArrowRight'> = {
+                h: 'ArrowLeft',
+                j: 'ArrowDown',
+                k: 'ArrowUp',
+                l: 'ArrowRight',
+            };
+
+            const mappedArrow = vimToArrow[keyLower];
+            const normalizedKey: string = mappedArrow ?? e.key;
+
+            const isArrow = normalizedKey === 'ArrowUp' || normalizedKey === 'ArrowDown' || normalizedKey === 'ArrowLeft' || normalizedKey === 'ArrowRight';
+            const isEdit = normalizedKey === 'F2' || keyLower === 'e';
+            if (!isArrow && !isEdit) return;
+
+            if (e.ctrlKey || e.metaKey) return;
+
+            const activeEl = document.activeElement as HTMLElement | null;
+            const isInRegsArea = !!regsFocusRef.current && !!activeEl && (activeEl === regsFocusRef.current || regsFocusRef.current.contains(activeEl));
+            if (!isInRegsArea) return;
+
+            const target = e.target as HTMLElement | null;
+            const isTypingTarget = !!target?.closest(
+                'input, textarea, select, [contenteditable="true"], vscode-text-field, vscode-text-area, vscode-dropdown'
+            );
+            if (isTypingTarget) return;
+
+            const scrollToCell = (rowIndex: number, key: RegEditKey) => {
+                window.setTimeout(() => {
+                    const row = document.querySelector(`tr[data-reg-idx="${rowIndex}"]`) as HTMLElement | null;
+                    row?.scrollIntoView({ block: 'nearest' });
+                    const cell = row?.querySelector(`td[data-col-key="${key}"]`) as HTMLElement | null;
+                    cell?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+                }, 0);
+            };
+
+            const focusEditor = (rowIndex: number, key: RegEditKey) => {
+                window.setTimeout(() => {
+                    const row = document.querySelector(`tr[data-reg-idx="${rowIndex}"]`) as HTMLElement | null;
+                    const editor = row?.querySelector(`[data-edit-key="${key}"]`) as HTMLElement | null;
+                    editor?.focus?.();
+                }, 0);
+            };
+
+            const currentRow = regActiveCell.rowIndex >= 0 ? regActiveCell.rowIndex : (selectedRegIndex >= 0 ? selectedRegIndex : 0);
+            const currentKey: RegEditKey = REG_COLUMN_ORDER.includes(regActiveCell.key) ? regActiveCell.key : 'name';
+
+            if (isEdit) {
+                if (currentRow < 0 || currentRow >= registers.length) return;
+                e.preventDefault();
+                e.stopPropagation();
+                setSelectedRegIndex(currentRow);
+                setHoveredRegIndex(currentRow);
+                setRegActiveCell({ rowIndex: currentRow, key: currentKey });
+                focusEditor(currentRow, currentKey);
+                return;
+            }
+
+            e.preventDefault();
+            e.stopPropagation();
+
+            const isVertical = normalizedKey === 'ArrowUp' || normalizedKey === 'ArrowDown';
+            const delta = normalizedKey === 'ArrowUp' || normalizedKey === 'ArrowLeft' ? -1 : 1;
+
+            if (isVertical) {
+                const nextRow = Math.max(0, Math.min(registers.length - 1, currentRow + delta));
+                setSelectedRegIndex(nextRow);
+                setHoveredRegIndex(nextRow);
+                setRegActiveCell({ rowIndex: nextRow, key: currentKey });
+                scrollToCell(nextRow, currentKey);
+                return;
+            }
+
+            const currentCol = Math.max(0, REG_COLUMN_ORDER.indexOf(currentKey));
+            const nextCol = Math.max(0, Math.min(REG_COLUMN_ORDER.length - 1, currentCol + delta));
+            const nextKey = REG_COLUMN_ORDER[nextCol] ?? 'name';
+            setSelectedRegIndex(currentRow);
+            setHoveredRegIndex(currentRow);
+            setRegActiveCell({ rowIndex: currentRow, key: nextKey });
+            scrollToCell(currentRow, nextKey);
+        };
+
+        window.addEventListener('keydown', onKeyDown);
+        return () => window.removeEventListener('keydown', onKeyDown);
+    }, [selectedType, selectedObject, selectedRegIndex, hoveredRegIndex, regActiveCell]);
+
     const registerOffsetText = useMemo(() => {
         if (!isRegister || !reg) return '';
         const off = Number(reg.address_offset ?? 0);
@@ -280,6 +550,58 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({ selectedType, selectedObjec
         });
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isRegister, (reg as any)?.name, fields.length]);
+
+    // Clamp selection/active cell for Memory Map blocks.
+    useEffect(() => {
+        if (selectedType !== 'memoryMap') {
+            setSelectedBlockIndex(-1);
+            setBlockActiveCell({ rowIndex: -1, key: 'name' });
+            return;
+        }
+        const blocks = (selectedObject as any)?.address_blocks || (selectedObject as any)?.addressBlocks || [];
+        if (!Array.isArray(blocks) || blocks.length === 0) {
+            setSelectedBlockIndex(-1);
+            setBlockActiveCell({ rowIndex: -1, key: 'name' });
+            return;
+        }
+        setSelectedBlockIndex((prev) => {
+            if (prev < 0) return 0;
+            if (prev >= blocks.length) return blocks.length - 1;
+            return prev;
+        });
+        setBlockActiveCell((prev) => {
+            const rowIndex = prev.rowIndex < 0 ? 0 : Math.min(blocks.length - 1, prev.rowIndex);
+            const key = BLOCK_COLUMN_ORDER.includes(prev.key) ? prev.key : 'name';
+            return { rowIndex, key };
+        });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [selectedType, (selectedObject as any)?.name, ((selectedObject as any)?.address_blocks || (selectedObject as any)?.addressBlocks || []).length]);
+
+    // Clamp selection/active cell for Address Block registers.
+    useEffect(() => {
+        if (selectedType !== 'block') {
+            setSelectedRegIndex(-1);
+            setRegActiveCell({ rowIndex: -1, key: 'name' });
+            return;
+        }
+        const registers = (selectedObject as any)?.registers || [];
+        if (!Array.isArray(registers) || registers.length === 0) {
+            setSelectedRegIndex(-1);
+            setRegActiveCell({ rowIndex: -1, key: 'name' });
+            return;
+        }
+        setSelectedRegIndex((prev) => {
+            if (prev < 0) return 0;
+            if (prev >= registers.length) return registers.length - 1;
+            return prev;
+        });
+        setRegActiveCell((prev) => {
+            const rowIndex = prev.rowIndex < 0 ? 0 : Math.min(registers.length - 1, prev.rowIndex);
+            const key = REG_COLUMN_ORDER.includes(prev.key) ? prev.key : 'name';
+            return { rowIndex, key };
+        });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [selectedType, (selectedObject as any)?.name, ((selectedObject as any)?.registers || []).length]);
 
     const commitRegisterOffset = () => {
         if (!isRegister) return;
@@ -757,22 +1079,182 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({ selectedType, selectedObjec
 
     if (selectedType === 'memoryMap') {
         const map = selectedObject as any;
+        const blocks = map.address_blocks || map.addressBlocks || [];
+
+        const toHex = (n: number) => `0x${Math.max(0, n).toString(16).toUpperCase()}`;
+
+        const getBlockColor = (idx: number) => {
+            const colorKeys = ['blue', 'orange', 'emerald', 'pink', 'purple', 'cyan', 'amber', 'rose'];
+            return colorKeys[idx % colorKeys.length];
+        };
+
         return (
-            <div className="p-6">
-                <h2 className="text-lg font-bold mb-4">Memory Map Overview</h2>
-                <div className="space-y-4">
-                    <div>
-                        <label className="block text-sm font-medium mb-1.5">Name</label>
-                        <VSCodeTextField value={map.name || ''} onInput={(e: any) => onUpdate(['name'], e.target.value)} />
+            <div className="flex flex-col w-full h-full min-h-0">
+                {/* Memory Map Header and Address Visualizer */}
+                <div className="vscode-surface border-b vscode-border p-8 flex flex-col gap-6 shrink-0 relative overflow-hidden">
+                    {/* <div className="absolute inset-0 fpga-grid-bg bg-[size:24px_24px] pointer-events-none"></div> */}
+                    <div className="flex justify-between items-start relative z-10">
+                        <div>
+                            <h2 className="text-2xl font-bold font-mono tracking-tight">{map.name || 'Memory Map'}</h2>
+                            <p className="vscode-muted text-sm mt-1 max-w-2xl">{map.description || 'Address space layout'}</p>
+                        </div>
                     </div>
-                    <div>
-                        <label className="block text-sm font-medium mb-1.5">Description</label>
-                        <VSCodeTextArea value={map.description || ''} rows={3} onInput={(e: any) => onUpdate(['description'], e.target.value)} />
+                    <div className="w-full relative z-10 mt-2 select-none">
+                        <AddressMapVisualizer
+                            blocks={blocks}
+                            hoveredBlockIndex={hoveredBlockIndex}
+                            setHoveredBlockIndex={setHoveredBlockIndex}
+                        />
                     </div>
-                    <div className="mt-6 p-4 vscode-surface-alt rounded-lg">
-                        <div className="flex justify-between items-center">
-                            <span className="text-sm font-medium vscode-muted">Address Blocks:</span>
-                            <span className="text-sm font-mono">{map.address_blocks?.length || 0}</span>
+                </div>
+                {/* Address Blocks Table */}
+                <div className="flex-1 flex overflow-hidden min-h-0">
+                    <div className="flex-1 vscode-surface min-h-0 flex flex-col">
+                        <div
+                            ref={blocksFocusRef}
+                            tabIndex={0}
+                            data-blocks-table="true"
+                            className="flex-1 overflow-auto min-h-0 outline-none focus:outline-none"
+                        >
+                            <table className="w-full text-left border-collapse table-fixed">
+                                <colgroup>
+                                    <col className="w-[25%] min-w-[200px]" />
+                                    <col className="w-[20%] min-w-[120px]" />
+                                    <col className="w-[15%] min-w-[100px]" />
+                                    <col className="w-[15%] min-w-[100px]" />
+                                    <col className="w-[25%]" />
+                                </colgroup>
+                                <thead className="vscode-surface-alt text-xs font-semibold vscode-muted uppercase tracking-wider sticky top-0 z-10 shadow-sm">
+                                    <tr className="h-12">
+                                        <th className="px-6 py-3 border-b vscode-border align-middle">Name</th>
+                                        <th className="px-4 py-3 border-b vscode-border align-middle">Base Address</th>
+                                        <th className="px-4 py-3 border-b vscode-border align-middle">Size</th>
+                                        <th className="px-4 py-3 border-b vscode-border align-middle">Usage</th>
+                                        <th className="px-6 py-3 border-b vscode-border align-middle">Description</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y vscode-border text-sm">
+                                    {blocks.map((block: any, idx: number) => {
+                                        const color = getBlockColor(idx);
+                                        const base = block.base_address ?? block.offset ?? 0;
+                                        const size = block.size ?? block.range ?? 4096;
+                                        const colorMap: Record<string, string> = {
+                                            blue: '#3b82f6',
+                                            orange: '#f97316',
+                                            emerald: '#10b981',
+                                            pink: '#ec4899',
+                                            purple: '#a855f7',
+                                            cyan: '#06b6d4',
+                                            amber: '#f59e0b',
+                                            rose: '#f43f5e',
+                                        };
+
+                                        return (
+                                            <tr
+                                                key={idx}
+                                                data-block-idx={idx}
+                                                className={`group transition-colors border-l-4 border-transparent h-12 ${idx === selectedBlockIndex ? 'vscode-focus-border vscode-row-selected' :
+                                                    idx === hoveredBlockIndex ? 'vscode-focus-border vscode-row-hover' : ''
+                                                    }`}
+                                                onMouseEnter={() => setHoveredBlockIndex(idx)}
+                                                onMouseLeave={() => setHoveredBlockIndex(null)}
+                                                onClick={() => {
+                                                    setSelectedBlockIndex(idx);
+                                                    setHoveredBlockIndex(idx);
+                                                    setBlockActiveCell((prev) => ({ rowIndex: idx, key: prev.key }));
+                                                }}
+                                            >
+                                                <td
+                                                    data-col-key="name"
+                                                    className={`px-6 py-2 font-medium align-middle ${blockActiveCell.rowIndex === idx && blockActiveCell.key === 'name' ? 'vscode-cell-active' : ''}`}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setSelectedBlockIndex(idx);
+                                                        setHoveredBlockIndex(idx);
+                                                        setBlockActiveCell({ rowIndex: idx, key: 'name' });
+                                                    }}
+                                                >
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: colorMap[color] || color }}></div>
+                                                        <VSCodeTextField
+                                                            data-edit-key="name"
+                                                            className="flex-1"
+                                                            value={block.name || ''}
+                                                            onInput={(e: any) => onUpdate(['addressBlocks', idx, 'name'], e.target.value)}
+                                                        />
+                                                    </div>
+                                                </td>
+                                                <td
+                                                    data-col-key="base"
+                                                    className={`px-4 py-2 font-mono vscode-muted align-middle ${blockActiveCell.rowIndex === idx && blockActiveCell.key === 'base' ? 'vscode-cell-active' : ''}`}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setSelectedBlockIndex(idx);
+                                                        setHoveredBlockIndex(idx);
+                                                        setBlockActiveCell({ rowIndex: idx, key: 'base' });
+                                                    }}
+                                                >
+                                                    <VSCodeTextField
+                                                        data-edit-key="base"
+                                                        className="w-full font-mono"
+                                                        value={toHex(base)}
+                                                        onInput={(e: any) => {
+                                                            const val = Number.parseInt(e.target.value, 0);
+                                                            if (!Number.isNaN(val)) {
+                                                                onUpdate(['addressBlocks', idx, 'offset'], val);
+                                                            }
+                                                        }}
+                                                    />
+                                                </td>
+                                                <td
+                                                    data-col-key="size"
+                                                    className={`px-4 py-2 font-mono vscode-muted align-middle ${blockActiveCell.rowIndex === idx && blockActiveCell.key === 'size' ? 'vscode-cell-active' : ''}`}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setSelectedBlockIndex(idx);
+                                                        setHoveredBlockIndex(idx);
+                                                        setBlockActiveCell({ rowIndex: idx, key: 'size' });
+                                                    }}
+                                                >
+                                                    {size < 1024 ? `${size}B` : `${(size / 1024).toFixed(1)}KB`}
+                                                </td>
+                                                <td
+                                                    data-col-key="usage"
+                                                    className={`px-4 py-2 align-middle ${blockActiveCell.rowIndex === idx && blockActiveCell.key === 'usage' ? 'vscode-cell-active' : ''}`}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setSelectedBlockIndex(idx);
+                                                        setHoveredBlockIndex(idx);
+                                                        setBlockActiveCell({ rowIndex: idx, key: 'usage' });
+                                                    }}
+                                                >
+                                                    <span className="px-2 py-0.5 rounded text-xs font-medium vscode-badge whitespace-nowrap">
+                                                        {block.usage || 'register'}
+                                                    </span>
+                                                </td>
+                                                <td
+                                                    data-col-key="description"
+                                                    className={`px-6 py-2 vscode-muted align-middle ${blockActiveCell.rowIndex === idx && blockActiveCell.key === 'description' ? 'vscode-cell-active' : ''}`}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setSelectedBlockIndex(idx);
+                                                        setHoveredBlockIndex(idx);
+                                                        setBlockActiveCell({ rowIndex: idx, key: 'description' });
+                                                    }}
+                                                >
+                                                    <VSCodeTextArea
+                                                        data-edit-key="description"
+                                                        className="w-full"
+                                                        rows={1}
+                                                        value={block.description || ''}
+                                                        onInput={(e: any) => onUpdate(['addressBlocks', idx, 'description'], e.target.value)}
+                                                    />
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
@@ -782,23 +1264,179 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({ selectedType, selectedObjec
 
     if (selectedType === 'block') {
         const block = selectedObject as any;
+        const registers = block.registers || [];
+        const baseAddress = block.base_address ?? block.offset ?? 0;
+
+        const toHex = (n: number) => `0x${Math.max(0, n).toString(16).toUpperCase()}`;
+
+        const getRegColor = (idx: number) => {
+            const colorKeys = ['blue', 'orange', 'emerald', 'pink', 'purple', 'cyan', 'amber', 'rose'];
+            return colorKeys[idx % colorKeys.length];
+        };
+
         return (
-            <div className="p-6">
-                <h2 className="text-lg font-bold mb-4">Address Block</h2>
-                <div className="space-y-4">
-                    <div>
-                        <label className="block text-sm font-medium mb-1.5">Name</label>
-                        <VSCodeTextField value={block.name} onInput={(e: any) => onUpdate(['name'], e.target.value)} />
+            <div className="flex flex-col w-full h-full min-h-0">
+                {/* Address Block Header and Register Visualizer */}
+                <div className="vscode-surface border-b vscode-border p-8 flex flex-col gap-6 shrink-0 relative overflow-hidden">
+                    <div className="absolute inset-0 fpga-grid-bg bg-[size:24px_24px] pointer-events-none"></div>
+                    <div className="flex justify-between items-start relative z-10">
+                        <div>
+                            <h2 className="text-2xl font-bold font-mono tracking-tight">{block.name || 'Address Block'}</h2>
+                            <p className="vscode-muted text-sm mt-1 max-w-2xl">
+                                {block.description || `Base: ${toHex(baseAddress)}`} • {block.usage || 'register'}
+                            </p>
+                        </div>
                     </div>
-                    <div>
-                        <label className="block text-sm font-medium mb-1.5">Base Address</label>
-                        <VSCodeTextField
-                            value={`0x${(block.base_address ?? 0).toString(16).toUpperCase()}`}
-                            onInput={(e: any) => {
-                                const val = Number.parseInt(e.target.value, 0);
-                                if (!Number.isNaN(val)) onUpdate(['base_address'], val);
-                            }}
+                    <div className="w-full relative z-10 mt-2 select-none">
+                        <RegisterMapVisualizer
+                            registers={registers}
+                            hoveredRegIndex={hoveredRegIndex}
+                            setHoveredRegIndex={setHoveredRegIndex}
+                            baseAddress={baseAddress}
                         />
+                    </div>
+                </div>
+                {/* Registers Table */}
+                <div className="flex-1 flex overflow-hidden min-h-0">
+                    <div className="flex-1 vscode-surface min-h-0 flex flex-col">
+                        <div
+                            ref={regsFocusRef}
+                            tabIndex={0}
+                            data-regs-table="true"
+                            className="flex-1 overflow-auto min-h-0 outline-none focus:outline-none"
+                        >
+                            <table className="w-full text-left border-collapse table-fixed">
+                                <colgroup>
+                                    <col className="w-[30%] min-w-[200px]" />
+                                    <col className="w-[20%] min-w-[120px]" />
+                                    <col className="w-[15%] min-w-[100px]" />
+                                    <col className="w-[35%]" />
+                                </colgroup>
+                                <thead className="vscode-surface-alt text-xs font-semibold vscode-muted uppercase tracking-wider sticky top-0 z-10 shadow-sm">
+                                    <tr className="h-12">
+                                        <th className="px-6 py-3 border-b vscode-border align-middle">Name</th>
+                                        <th className="px-4 py-3 border-b vscode-border align-middle">Offset</th>
+                                        <th className="px-4 py-3 border-b vscode-border align-middle">Access</th>
+                                        <th className="px-6 py-3 border-b vscode-border align-middle">Description</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y vscode-border text-sm">
+                                    {registers.map((reg: any, idx: number) => {
+                                        const color = getRegColor(idx);
+                                        const offset = reg.address_offset ?? reg.offset ?? (idx * 4);
+                                        const colorMap: Record<string, string> = {
+                                            blue: '#3b82f6',
+                                            orange: '#f97316',
+                                            emerald: '#10b981',
+                                            pink: '#ec4899',
+                                            purple: '#a855f7',
+                                            cyan: '#06b6d4',
+                                            amber: '#f59e0b',
+                                            rose: '#f43f5e',
+                                        };
+
+                                        return (
+                                            <tr
+                                                key={idx}
+                                                data-reg-idx={idx}
+                                                className={`group transition-colors border-l-4 border-transparent h-12 ${idx === selectedRegIndex ? 'vscode-focus-border vscode-row-selected' :
+                                                    idx === hoveredRegIndex ? 'vscode-focus-border vscode-row-hover' : ''
+                                                    }`}
+                                                onMouseEnter={() => setHoveredRegIndex(idx)}
+                                                onMouseLeave={() => setHoveredRegIndex(null)}
+                                                onClick={() => {
+                                                    setSelectedRegIndex(idx);
+                                                    setHoveredRegIndex(idx);
+                                                    setRegActiveCell((prev) => ({ rowIndex: idx, key: prev.key }));
+                                                }}
+                                            >
+                                                <td
+                                                    data-col-key="name"
+                                                    className={`px-6 py-2 font-medium align-middle ${regActiveCell.rowIndex === idx && regActiveCell.key === 'name' ? 'vscode-cell-active' : ''}`}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setSelectedRegIndex(idx);
+                                                        setHoveredRegIndex(idx);
+                                                        setRegActiveCell({ rowIndex: idx, key: 'name' });
+                                                    }}
+                                                >
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: colorMap[color] || color }}></div>
+                                                        <VSCodeTextField
+                                                            data-edit-key="name"
+                                                            className="flex-1"
+                                                            value={reg.name || ''}
+                                                            onInput={(e: any) => onUpdate(['registers', idx, 'name'], e.target.value)}
+                                                        />
+                                                    </div>
+                                                </td>
+                                                <td
+                                                    data-col-key="offset"
+                                                    className={`px-4 py-2 font-mono vscode-muted align-middle ${regActiveCell.rowIndex === idx && regActiveCell.key === 'offset' ? 'vscode-cell-active' : ''}`}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setSelectedRegIndex(idx);
+                                                        setHoveredRegIndex(idx);
+                                                        setRegActiveCell({ rowIndex: idx, key: 'offset' });
+                                                    }}
+                                                >
+                                                    <VSCodeTextField
+                                                        data-edit-key="offset"
+                                                        className="w-full font-mono"
+                                                        value={toHex(offset)}
+                                                        onInput={(e: any) => {
+                                                            const val = Number.parseInt(e.target.value, 0);
+                                                            if (!Number.isNaN(val)) {
+                                                                onUpdate(['registers', idx, 'offset'], val);
+                                                            }
+                                                        }}
+                                                    />
+                                                </td>
+                                                <td
+                                                    data-col-key="access"
+                                                    className={`px-4 py-2 align-middle ${regActiveCell.rowIndex === idx && regActiveCell.key === 'access' ? 'vscode-cell-active' : ''}`}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setSelectedRegIndex(idx);
+                                                        setHoveredRegIndex(idx);
+                                                        setRegActiveCell({ rowIndex: idx, key: 'access' });
+                                                    }}
+                                                >
+                                                    <VSCodeDropdown
+                                                        data-edit-key="access"
+                                                        className="w-full"
+                                                        value={reg.access || 'read-write'}
+                                                        onInput={(e: any) => onUpdate(['registers', idx, 'access'], e.target.value)}
+                                                    >
+                                                        {ACCESS_OPTIONS.map((opt) => (
+                                                            <VSCodeOption key={opt} value={opt}>{opt}</VSCodeOption>
+                                                        ))}
+                                                    </VSCodeDropdown>
+                                                </td>
+                                                <td
+                                                    data-col-key="description"
+                                                    className={`px-6 py-2 vscode-muted align-middle ${regActiveCell.rowIndex === idx && regActiveCell.key === 'description' ? 'vscode-cell-active' : ''}`}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setSelectedRegIndex(idx);
+                                                        setHoveredRegIndex(idx);
+                                                        setRegActiveCell({ rowIndex: idx, key: 'description' });
+                                                    }}
+                                                >
+                                                    <VSCodeTextArea
+                                                        data-edit-key="description"
+                                                        className="w-full"
+                                                        rows={1}
+                                                        value={reg.description || ''}
+                                                        onInput={(e: any) => onUpdate(['registers', idx, 'description'], e.target.value)}
+                                                    />
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>

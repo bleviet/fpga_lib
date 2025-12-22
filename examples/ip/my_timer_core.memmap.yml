@@ -1,101 +1,133 @@
 - name: CSR_MAP
   description: Control/Status Registers and Scratchpad RAM
   addressBlocks:
-      - name: GLOBAL_REGS
-        offset: 0
-        usage: register
-        defaultRegWidth: 32
-        registers:
-            - name: GLOBAL_CTRL
-              description: Global enable for all timers
+    - name: GLOBAL_REGS
+      offset: 2
+      usage: register
+      defaultRegWidth: 32
+      registers:
+        - name: GLOBAL_CTRL
+          description: Global enable for all timers
+          fields:
+            - name: ENABLE_ALL
+              bits: "[0:0]"
+              access: read-write
+              description: Enable all timer channels
+            - name: MODE_SELECT
+              bits: "[2:1]"
+              access: read-write
+              description: Select global timer mode (2 bits)
+            - name: IRQ_ENABLE
+              bits: "[4:3]"
+              access: read-write
+              description: Global interrupt enable (2 bits)
+            - name: RESET_ALL
+              bits: "[8:5]"
+              access: write-only
+              description: Reset all timer channels (4 bits)
+            - name: DEBUG_FREEZE
+              bits: "[12:9]"
+              access: read-write
+              description: Freeze timers during debug (4 bits)
+            - name: PRESCALE
+              bits: "[15:13]"
+              access: read-write
+              description: Prescaler select (3 bits)
+            - name: AUTO_RELOAD
+              bits: "[16:16]"
+              access: read-write
+              description: Enable auto-reload (1 bit)
+            - name: WAKEUP_ENABLE
+              bits: "[18:17]"
+              access: read-write
+              description: Wakeup event enable (2 bits)
+            - name: FORCE_IRQ
+              bits: "[19:19]"
+              access: write-only
+              description: Force interrupt (1 bit)
+            - name: RESERVED
+              bits: "[31:20]"
+              access: read-only
+        - name: GLOBAL_STATUS
+          description: OR-reduced interrupt status of all channels
+          access: read-only
+          fields:
+            - name: IRQ_PENDING
+              bits: "[0:0]"
+              access: read-only
+              description: Global interrupt pending flag
+            - name: RESERVED
+              bits: "[31:1]"
+              access: read-only
+        - name: SCRATCHPAD_USER
+          offset: 16
+          description: A general purpose user register
+          fields:
+            - name: DATA
+              bits: "[31:0]"
+              access: read-write
+              description: User scratchpad data
+    - name: TIMER_CHANNELS
+      offset: 1024
+      usage: register
+      defaultRegWidth: 32
+      registers:
+        - name: TIMER
+          count: 4
+          stride: 16
+          description: Timer channel configuration and status
+          registers:
+            - name: CTRL
+              offset: 0
+              description: Channel Control Register
               fields:
-                  - name: ENABLE_ALL
-                    bits: "[0:0]"
-                    access: read-write
-                    description: Enable all timer channels
-                  - name: RESERVED
-                    bits: "[31:1]"
-                    access: read-only
-            - name: GLOBAL_STATUS
-              description: OR-reduced interrupt status of all channels
+                - name: ENABLE
+                  bits: "[0:0]"
+                  access: read-write
+                  description: Enable timer channel
+                - name: MODE
+                  bits: "[1:1]"
+                  access: read-write
+                  description: Timer mode (0=periodic, 1=one-shot)
+                - name: IE
+                  bits: "[2:2]"
+                  access: read-write
+                  description: Interrupt enable
+                - name: RESERVED
+                  bits: "[31:3]"
+                  access: read-only
+            - name: STATUS
+              offset: 4
+              description: Channel Status Register (Write 1 to clear)
+              access: write-1-to-clear
+              fields:
+                - name: IRQ_PENDING
+                  bits: "[0:0]"
+                  access: write-1-to-clear
+                  description: Interrupt pending flag
+                - name: RESERVED
+                  bits: "[31:1]"
+                  access: read-only
+            - name: PERIOD
+              offset: 8
+              description: Timer reload period value
+              access: read-write
+              fields:
+                - name: PERIOD_VALUE
+                  bits: "[31:0]"
+                  access: read-write
+                  description: Timer period in clock cycles
+            - name: VALUE
+              offset: 12
+              description: Current timer value (read-only)
               access: read-only
               fields:
-                  - name: IRQ_PENDING
-                    bits: "[0:0]"
-                    access: read-only
-                    description: Global interrupt pending flag
-                  - name: RESERVED
-                    bits: "[31:1]"
-                    access: read-only
-            - name: SCRATCHPAD_USER
-              offset: 16
-              description: A general purpose user register
-              fields:
-                  - name: DATA
-                    bits: "[31:0]"
-                    access: read-write
-                    description: User scratchpad data
-      - name: TIMER_CHANNELS
-        offset: 1024
-        usage: register
-        defaultRegWidth: 32
-        registers:
-            - name: TIMER
-              count: 4
-              stride: 16
-              description: Timer channel configuration and status
-              registers:
-                  - name: CTRL
-                    offset: 0
-                    description: Channel Control Register
-                    fields:
-                        - name: ENABLE
-                          bits: "[0:0]"
-                          access: read-write
-                          description: Enable timer channel
-                        - name: MODE
-                          bits: "[1:1]"
-                          access: read-write
-                          description: Timer mode (0=periodic, 1=one-shot)
-                        - name: IE
-                          bits: "[2:2]"
-                          access: read-write
-                          description: Interrupt enable
-                        - name: RESERVED
-                          bits: "[31:3]"
-                          access: read-only
-                  - name: STATUS
-                    offset: 4
-                    description: Channel Status Register (Write 1 to clear)
-                    access: write-1-to-clear
-                    fields:
-                        - name: IRQ_PENDING
-                          bits: "[0:0]"
-                          access: write-1-to-clear
-                          description: Interrupt pending flag
-                        - name: RESERVED
-                          bits: "[31:1]"
-                          access: read-only
-                  - name: PERIOD
-                    offset: 8
-                    description: Timer reload period value
-                    access: read-write
-                    fields:
-                        - name: PERIOD_VALUE
-                          bits: "[31:0]"
-                          access: read-write
-                          description: Timer period in clock cycles
-                  - name: VALUE
-                    offset: 12
-                    description: Current timer value (read-only)
-                    access: read-only
-                    fields:
-                        - name: CURRENT_VALUE
-                          bits: "[31:0]"
-                          access: read-only
-                          description: Current timer count value
-      - name: LOCAL_RAM
-        offset: 4096
-        usage: memory
-        access: read-write
-        description: 4K local scratchpad RAM
+                - name: CURRENT_VALUE
+                  bits: "[31:0]"
+                  access: read-only
+                  description: Current timer count value
+    - name: LOCAL_RAM
+      offset: 4096
+      usage: memory
+      access: read-write
+      description: 4K local scratchpad RAM

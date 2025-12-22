@@ -498,6 +498,73 @@ const App = () => {
         const field = path[0];
         if (!field || typeof field !== 'string') return;
 
+        // Address block edits inside a memory map: ['addressBlocks', blockIndex, key]
+        if ((field === 'addressBlocks' || field === 'address_blocks') && typeof path[1] === 'number' && typeof path[2] === 'string') {
+            if (sel.type !== 'memoryMap') return;
+            const blockIndex = path[1] as number;
+            const blockKey = path[2] as string;
+
+            const keyMap: Record<string, string> = {
+                name: 'name',
+                description: 'description',
+                usage: 'usage',
+                // UI uses 'offset' for base address.
+                offset: 'offset',
+                base_address: 'offset',
+                base: 'offset',
+            };
+            const yamlKey = keyMap[blockKey] ?? blockKey;
+            const mapYamlPath: YamlPath = [...mapPrefix, ...sel.path];
+            const blocksKey = field === 'address_blocks' ? 'address_blocks' : 'addressBlocks';
+            const fullPath: YamlPath = [...mapYamlPath, blocksKey, blockIndex, yamlKey];
+
+            try {
+                setAtPath(root, fullPath, value);
+            } catch (err) {
+                console.warn('Failed to apply block update at path', fullPath, err);
+                return;
+            }
+
+            const newText = dumpYaml(root);
+            rawTextRef.current = newText;
+            setRawText(newText);
+            vscode?.postMessage({ type: 'update', text: newText });
+            return;
+        }
+
+        // Register edits inside a block: ['registers', regIndex, key]
+        if (field === 'registers' && typeof path[1] === 'number' && typeof path[2] === 'string') {
+            if (sel.type !== 'block') return;
+            const regIndex = path[1] as number;
+            const regKey = path[2] as string;
+
+            const keyMap: Record<string, string> = {
+                name: 'name',
+                description: 'description',
+                access: 'access',
+                offset: 'offset',
+                address_offset: 'offset',
+                // allow callers to pass base/addr synonyms
+                base: 'offset',
+            };
+            const yamlKey = keyMap[regKey] ?? regKey;
+            const blockYamlPath: YamlPath = [...mapPrefix, ...sel.path];
+            const fullPath: YamlPath = [...blockYamlPath, 'registers', regIndex, yamlKey];
+
+            try {
+                setAtPath(root, fullPath, value);
+            } catch (err) {
+                console.warn('Failed to apply register update at path', fullPath, err);
+                return;
+            }
+
+            const newText = dumpYaml(root);
+            rawTextRef.current = newText;
+            setRawText(newText);
+            vscode?.postMessage({ type: 'update', text: newText });
+            return;
+        }
+
         // Bit-field edits: ['fields', fieldIndex, key]
         if (field === 'fields' && typeof path[1] === 'number' && typeof path[2] === 'string') {
             const fieldIndex = path[1] as number;
