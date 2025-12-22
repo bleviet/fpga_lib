@@ -222,9 +222,9 @@ const BitFieldVisualizer: React.FC<BitFieldVisualizerProps> = ({
     };
 
     const renderValueBar = () => (
-        <div className="mt-2 flex items-start justify-end gap-2">
-            <div className="text-xs text-gray-500 font-mono mt-[6px]">Value:</div>
-            <div className="min-w-[220px]">
+        <div className="mt-3 flex items-start justify-end gap-3">
+            <div className="text-sm text-gray-600 font-mono font-semibold mt-[7px]">Value:</div>
+            <div className="min-w-[320px] text-base">
                 <VSCodeTextField
                     className="w-full"
                     value={valueDraft}
@@ -253,7 +253,7 @@ const BitFieldVisualizer: React.FC<BitFieldVisualizerProps> = ({
             </div>
             <button
                 type="button"
-                className="px-3 py-1.5 text-xs font-semibold border border-indigo-200 rounded bg-indigo-50 text-indigo-700 hover:bg-indigo-100 self-start"
+                className="px-3 py-2 text-sm font-semibold border border-indigo-200 rounded bg-indigo-50 text-indigo-700 hover:bg-indigo-100 self-start"
                 onClick={() => setValueView((v) => (v === 'hex' ? 'dec' : 'hex'))}
                 title="Toggle hex/dec"
             >

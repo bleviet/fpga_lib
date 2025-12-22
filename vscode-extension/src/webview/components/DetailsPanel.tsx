@@ -452,12 +452,6 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({ selectedType, selectedObjec
                             <h2 className="text-2xl font-bold text-gray-900 font-mono tracking-tight">{regObj.name}</h2>
                             <p className="text-gray-500 text-sm mt-1 max-w-2xl">{regObj.description}</p>
                         </div>
-                        <div className="text-right">
-                            <div className="text-sm font-mono text-gray-500 bg-white px-3 py-1 rounded-full border border-gray-200 shadow-sm inline-flex items-center gap-2">
-                                <span className="w-2 h-2 rounded-full bg-emerald-500"></span> Width: <span className="text-gray-900 font-bold">32-bit</span>
-                            </div>
-                            <div className="mt-2 text-xs text-gray-400 font-mono">Reset: 0x{(regObj.reset_value ?? 0).toString(16).toUpperCase()}</div>
-                        </div>
                     </div>
                     <div className="w-full relative z-10 mt-2 select-none">
                         <BitFieldVisualizer
