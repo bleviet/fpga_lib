@@ -184,7 +184,9 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({ selectedType, selectedObjec
                                             </td>
                                             <td className="px-4 py-3 font-mono text-gray-600">{bits}</td>
                                             <td className="px-4 py-3">
-                                                <span className="px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800 border border-green-200">{field.access || 'RW'}</span>
+                                                <div className="flex items-center justify-start">
+                                                    <span className="px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800 border border-green-200 whitespace-nowrap">{field.access || 'RW'}</span>
+                                                </div>
                                             </td>
                                             <td className="px-4 py-3 font-mono text-gray-500">{resetDisplay || '0x0'}</td>
                                             <td className="px-6 py-3 text-gray-500">{field.description || '-'}</td>
