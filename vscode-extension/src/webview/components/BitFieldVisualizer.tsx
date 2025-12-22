@@ -298,9 +298,9 @@ const BitFieldVisualizer: React.FC<BitFieldVisualizerProps> = ({
                                     onMouseLeave={() => setHoveredFieldIndex(null)}
                                 >
                                     <div
-                                        className="h-20 w-full rounded-t-md overflow-hidden flex divide-x divide-[var(--vscode-panel-border)]"
+                                        className="h-20 w-full rounded-t-md overflow-hidden flex"
                                         style={{
-                                            opacity: isHovered ? 1 : 0.92,
+                                            opacity: 1,
                                             transform: isHovered ? 'translateY(-2px)' : undefined,
                                             filter: isHovered ? 'saturate(1.15) brightness(1.05)' : undefined,
                                             boxShadow: isHovered
