@@ -223,7 +223,7 @@ const BitFieldVisualizer: React.FC<BitFieldVisualizerProps> = ({
 
     const renderValueBar = () => (
         <div className="mt-3 flex items-start justify-end gap-3">
-            <div className="text-sm text-gray-600 font-mono font-semibold mt-[7px]">Value:</div>
+            <div className="text-sm vscode-muted font-mono font-semibold mt-[7px]">Value:</div>
             <div className="min-w-[320px] text-base">
                 <VSCodeTextField
                     className="w-full"
@@ -249,11 +249,22 @@ const BitFieldVisualizer: React.FC<BitFieldVisualizerProps> = ({
                         (e.currentTarget as any)?.blur?.();
                     }}
                 />
-                {valueError ? <div className="text-xs text-red-600 mt-1">{valueError}</div> : null}
+                {valueError ? <div className="text-xs vscode-error mt-1">{valueError}</div> : null}
             </div>
             <button
                 type="button"
-                className="px-3 py-2 text-sm font-semibold border border-indigo-200 rounded bg-indigo-50 text-indigo-700 hover:bg-indigo-100 self-start"
+                className="px-3 py-2 text-sm font-semibold border rounded self-start"
+                style={{
+                    borderColor: 'var(--vscode-button-border, var(--vscode-panel-border))',
+                    background: 'var(--vscode-button-background)',
+                    color: 'var(--vscode-button-foreground)',
+                }}
+                onMouseEnter={(e) => {
+                    (e.currentTarget as HTMLButtonElement).style.background = 'var(--vscode-button-hoverBackground)';
+                }}
+                onMouseLeave={(e) => {
+                    (e.currentTarget as HTMLButtonElement).style.background = 'var(--vscode-button-background)';
+                }}
                 onClick={() => setValueView((v) => (v === 'hex' ? 'dec' : 'hex'))}
                 title="Toggle hex/dec"
             >
@@ -269,7 +280,7 @@ const BitFieldVisualizer: React.FC<BitFieldVisualizerProps> = ({
             <div className="w-full max-w-4xl">
                 <div className="relative w-full flex items-start">
                     {/* Bit grid background */}
-                    <div className="absolute inset-0 pointer-events-none bg-[linear-gradient(to_right,#e5e7eb_1px,transparent_1px),linear-gradient(to_bottom,#e5e7eb_1px,transparent_1px)] bg-[size:32px_48px] rounded-lg" />
+                    <div className="absolute inset-0 pointer-events-none fpga-bit-grid-bg bg-[size:32px_48px] rounded-lg" />
                     <div className="relative flex flex-row items-end gap-0.5 px-2 pt-12 pb-2 min-h-[64px]">
                         {/* Render each field as a colored segment with label */}
                         {groups.map((group) => {
@@ -281,14 +292,21 @@ const BitFieldVisualizer: React.FC<BitFieldVisualizerProps> = ({
                             return (
                                 <div
                                     key={group.idx}
-                                    className="relative flex flex-col items-center justify-end select-none"
+                                    className={`relative flex flex-col items-center justify-end select-none ${isHovered ? 'z-10' : ''}`}
                                     style={{ width: `calc(${width} * 2.5rem)` }}
                                     onMouseEnter={() => setHoveredFieldIndex(group.idx)}
                                     onMouseLeave={() => setHoveredFieldIndex(null)}
                                 >
                                     <div
-                                        className={`h-20 w-full rounded-t-md overflow-hidden flex divide-x divide-white/30 ${isHovered ? 'ring-2 ring-indigo-400 z-10' : ''}`}
-                                        style={{ opacity: 0.92 }}
+                                        className="h-20 w-full rounded-t-md overflow-hidden flex divide-x divide-[var(--vscode-panel-border)]"
+                                        style={{
+                                            opacity: isHovered ? 1 : 0.92,
+                                            transform: isHovered ? 'translateY(-2px)' : undefined,
+                                            filter: isHovered ? 'saturate(1.15) brightness(1.05)' : undefined,
+                                            boxShadow: isHovered
+                                                ? '0 0 0 2px var(--vscode-focusBorder), 0 10px 20px color-mix(in srgb, var(--vscode-foreground) 22%, transparent)'
+                                                : undefined,
+                                        }}
                                     >
                                         {Array.from({ length: width }).map((_, i) => {
                                             const bit = group.end - i;
@@ -327,12 +345,19 @@ const BitFieldVisualizer: React.FC<BitFieldVisualizerProps> = ({
                                             );
                                         })}
                                     </div>
-                                    <div className="absolute -top-10 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded bg-white/90 border border-gray-200 shadow text-xs text-gray-900 whitespace-nowrap pointer-events-none">
+                                    <div
+                                        className="absolute -top-10 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded border shadow text-xs whitespace-nowrap pointer-events-none"
+                                        style={{
+                                            background: 'var(--vscode-editorWidget-background)',
+                                            color: 'var(--vscode-foreground)',
+                                            borderColor: 'var(--vscode-panel-border)',
+                                        }}
+                                    >
                                         <div className="font-bold">
                                             {group.name}
-                                            <span className="ml-2 text-gray-500 font-mono text-[11px]">[{Math.max(group.start, group.end)}:{Math.min(group.start, group.end)}]</span>
+                                            <span className="ml-2 vscode-muted font-mono text-[11px]">[{Math.max(group.start, group.end)}:{Math.min(group.start, group.end)}]</span>
                                         </div>
-                                        <div className="text-[11px] text-gray-600 font-mono">
+                                        <div className="text-[11px] vscode-muted font-mono">
                                             {valueView === 'dec' ? Math.trunc(fieldReset).toString(10) : `0x${Math.trunc(fieldReset).toString(16).toUpperCase()}`}
                                         </div>
                                     </div>
@@ -341,7 +366,7 @@ const BitFieldVisualizer: React.FC<BitFieldVisualizerProps> = ({
                                         {Array.from({ length: width }).map((_, i) => {
                                             const bit = group.end - i;
                                             return (
-                                                <div key={bit} className="w-10 text-center text-[11px] text-gray-700 font-mono mt-1">{bit}</div>
+                                                <div key={bit} className="w-10 text-center text-[11px] vscode-muted font-mono mt-1">{bit}</div>
                                             );
                                         })}
                                     </div>
@@ -366,7 +391,8 @@ const BitFieldVisualizer: React.FC<BitFieldVisualizerProps> = ({
                     return (
                         <div
                             key={bit}
-                            className={`w-10 h-20 flex flex-col items-center justify-end cursor-pointer group ${fieldIdx !== null ? 'bg-blue-500' : 'bg-gray-200'} ${isHovered ? 'ring-2 ring-indigo-400 z-10' : ''}`}
+                            className={`w-10 h-20 flex flex-col items-center justify-end cursor-pointer group ${fieldIdx !== null ? 'bg-blue-500' : 'vscode-surface-alt'} ${isHovered ? 'z-10' : ''}`}
+                            style={{ boxShadow: isHovered ? 'inset 0 0 0 2px var(--vscode-focusBorder)' : undefined }}
                             onMouseEnter={() => fieldIdx !== null && setHoveredFieldIndex(fieldIdx)}
                             onMouseLeave={() => setHoveredFieldIndex(null)}
                             onPointerDown={(e) => {
@@ -404,15 +430,15 @@ const BitFieldVisualizer: React.FC<BitFieldVisualizerProps> = ({
                                 applyBit(fieldIdx, localBit, dragSetTo);
                             }}
                         >
-                            <span className="text-[10px] text-gray-700 font-mono">{bit}</span>
-                            <span className="text-[11px] text-gray-900 font-mono mb-1">{bitValues[bit]}</span>
+                            <span className="text-[10px] vscode-muted font-mono">{bit}</span>
+                            <span className="text-[11px] font-mono mb-1">{bitValues[bit]}</span>
                         </div>
                     );
                 })}
             </div>
             <div className="flex flex-row-reverse gap-0.5 mt-1">
                 {bits.map((fieldIdx, bit) => (
-                    <div key={bit} className="w-7 text-center text-[10px] text-gray-400 font-mono">{fieldIdx !== null ? fields[fieldIdx].name : ''}</div>
+                    <div key={bit} className="w-7 text-center text-[10px] vscode-muted font-mono">{fieldIdx !== null ? fields[fieldIdx].name : ''}</div>
                 ))}
             </div>
 

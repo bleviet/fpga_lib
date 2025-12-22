@@ -588,51 +588,53 @@ const App = () => {
 
     return (
         <>
-            <header className="h-14 bg-white border-b border-gray-200 flex items-center justify-between px-4 shrink-0 z-20 shadow-sm">
+            <header className="h-14 vscode-surface border-b vscode-border flex items-center justify-between px-4 shrink-0 z-20">
                 <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-2 text-gray-700 font-semibold tracking-tight">
-                        <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white shadow-sm">
+                    <div className="flex items-center gap-2 font-semibold tracking-tight">
+                        <div className="w-8 h-8 rounded-lg flex items-center justify-center vscode-badge">
                             <span className="codicon codicon-chip text-[20px]"></span>
                         </div>
-                        <span>RegEdit <span className="text-gray-400 font-normal">Pro</span></span>
+                        <span>RegEdit <span className="vscode-muted font-normal">Pro</span></span>
                     </div>
-                    <div className="h-6 w-px bg-gray-200 mx-2"></div>
-                    <div className="flex items-center gap-2 text-sm text-gray-500">
-                        <span className="hover:text-gray-800 cursor-pointer transition-colors">{headerTitle}</span>
+                    <div className="h-6 w-px mx-2" style={{ background: 'var(--vscode-panel-border)' }}></div>
+                    <div className="flex items-center gap-2 text-sm vscode-muted">
+                        <span className="cursor-pointer" style={{ color: 'var(--vscode-foreground)' }}>{headerTitle}</span>
                         {breadcrumbs.length > 1 && (
                             <>
                                 <span className="codicon codicon-chevron-right text-[16px]"></span>
-                                <span className="font-medium text-gray-900 bg-gray-100 px-2 py-0.5 rounded">{breadcrumbs[breadcrumbs.length - 1]}</span>
+                                <span className="font-medium px-2 py-0.5 rounded vscode-surface-alt" style={{ border: '1px solid var(--vscode-panel-border)' }}>
+                                    {breadcrumbs[breadcrumbs.length - 1]}
+                                </span>
                             </>
                         )}
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
                     <button
-                        className="p-2 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors"
+                        className="p-2 rounded-md transition-colors vscode-icon-button"
                         onClick={() => sendCommand('save')}
                         title="Save"
                     >
                         <span className="codicon codicon-save"></span>
                     </button>
                     <button
-                        className="p-2 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors"
+                        className="p-2 rounded-md transition-colors vscode-icon-button"
                         onClick={() => sendCommand('validate')}
                         title="Validate"
                     >
                         <span className="codicon codicon-check"></span>
                     </button>
-                    <div className="h-6 w-px bg-gray-200 mx-1"></div>
-                    <button className="p-2 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors" title="Export Header">
+                    <div className="h-6 w-px mx-1" style={{ background: 'var(--vscode-panel-border)' }}></div>
+                    <button className="p-2 rounded-md transition-colors vscode-icon-button" title="Export Header">
                         <span className="codicon codicon-code"></span>
                     </button>
-                    <button className="p-2 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors" title="Documentation">
+                    <button className="p-2 rounded-md transition-colors vscode-icon-button" title="Documentation">
                         <span className="codicon codicon-book"></span>
                     </button>
                 </div>
             </header>
             <main className="flex-1 flex overflow-hidden">
-                <aside className="w-64 bg-white border-r border-gray-200 flex flex-col shrink-0">
+                <aside className="sidebar flex flex-col shrink-0">
                     <Outline
                         memoryMap={memoryMap}
                         selectedId={selectedId}
@@ -640,7 +642,7 @@ const App = () => {
                     />
                 </aside>
                 {activeTab === 'yaml' ? (
-                    <section className="flex-1 bg-white overflow-auto">
+                    <section className="flex-1 vscode-surface overflow-auto">
                         <div className="p-6">
                             <pre className="font-mono text-sm">{rawText}</pre>
                         </div>

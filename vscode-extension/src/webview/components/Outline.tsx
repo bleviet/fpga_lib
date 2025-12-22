@@ -76,10 +76,7 @@ const Outline: React.FC<OutlineProps> = ({ memoryMap, selectedId, onSelect }) =>
         return (
             <div
                 key={id}
-                className={`group flex items-center gap-2 px-3 py-1.5 text-sm cursor-pointer border-l-[3px] ${isSelected
-                    ? 'bg-indigo-50 text-indigo-700 border-indigo-600 font-medium'
-                    : 'text-gray-600 hover:bg-gray-50 border-transparent hover:border-gray-300'
-                    }`}
+                className={`tree-item ${isSelected ? 'selected' : ''} gap-2 text-sm`}
                 onClick={() =>
                     onSelect({
                         id,
@@ -92,9 +89,9 @@ const Outline: React.FC<OutlineProps> = ({ memoryMap, selectedId, onSelect }) =>
                 }
                 style={{ paddingLeft: '40px' }}
             >
-                <span className={`codicon codicon-symbol-variable text-[16px] ${isSelected ? 'text-indigo-500' : 'text-gray-400'}`}></span>
+                <span className={`codicon codicon-symbol-variable text-[16px] ${isSelected ? '' : 'opacity-70'}`}></span>
                 <span className="flex-1">{reg.name}</span>
-                <span className="text-[10px] text-gray-400 font-mono">{toHex(reg.address_offset)}</span>
+                <span className="text-[10px] vscode-muted font-mono">{toHex(reg.address_offset)}</span>
             </div>
         );
     };
@@ -301,11 +298,11 @@ const Outline: React.FC<OutlineProps> = ({ memoryMap, selectedId, onSelect }) =>
 
     return (
         <>
-            <div className="p-3 border-b border-gray-100 flex items-center gap-2">
+            <div className="p-3 border-b vscode-border vscode-surface flex items-center gap-2">
                 <div className="relative flex-1">
-                    <span className="codicon codicon-search absolute left-2.5 top-2 text-gray-400 text-[18px]"></span>
+                    <span className="codicon codicon-search absolute left-2.5 top-2 vscode-muted text-[18px]"></span>
                     <input
-                        className="w-full pl-9 pr-3 py-1.5 text-sm border border-gray-200 rounded-md bg-gray-50 focus:bg-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-all"
+                        className="outline-filter-input w-full pl-9 pr-3 py-1.5 text-sm rounded-md outline-none"
                         placeholder="Filter registers..."
                         type="text"
                         value={query}
@@ -313,7 +310,7 @@ const Outline: React.FC<OutlineProps> = ({ memoryMap, selectedId, onSelect }) =>
                     />
                 </div>
                 <button
-                    className="ml-2 p-2 rounded bg-gray-100 hover:bg-gray-200 border border-gray-200 text-gray-600 flex items-center justify-center"
+                    className="outline-filter-button ml-2 p-2 rounded flex items-center justify-center"
                     title={expanded.size === allIds.size ? 'Collapse All' : 'Expand All'}
                     onClick={() => {
                         if (expanded.size === allIds.size) {
@@ -325,27 +322,24 @@ const Outline: React.FC<OutlineProps> = ({ memoryMap, selectedId, onSelect }) =>
                 >
                     {expanded.size === allIds.size ? (
                         // Collapse All SVG icon
-                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <rect x="3" y="3" width="14" height="14" rx="3" fill="#fff" stroke="#888" strokeWidth="1.5" />
-                            <rect x="6" y="9" width="8" height="2" rx="1" fill="#444" />
+                        <svg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                            <rect x="3" y="3" width="14" height="14" rx="3" fill="none" stroke="currentColor" strokeWidth="1.5" />
+                            <rect x="6" y="9" width="8" height="2" rx="1" fill="currentColor" />
                         </svg>
                     ) : (
                         // Expand All SVG icon
-                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <rect x="3" y="3" width="14" height="14" rx="3" fill="#fff" stroke="#888" strokeWidth="1.5" />
-                            <rect x="6" y="9" width="8" height="2" rx="1" fill="#444" />
-                            <rect x="9" y="6" width="2" height="8" rx="1" fill="#444" />
+                        <svg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                            <rect x="3" y="3" width="14" height="14" rx="3" fill="none" stroke="currentColor" strokeWidth="1.5" />
+                            <rect x="6" y="9" width="8" height="2" rx="1" fill="currentColor" />
+                            <rect x="9" y="6" width="2" height="8" rx="1" fill="currentColor" />
                         </svg>
                     )}
                 </button>
             </div>
             <div className="flex-1 overflow-y-auto py-2">
-                <div className="px-3 mb-2 text-xs font-bold text-gray-400 uppercase tracking-wider">Memory Map</div>
+                <div className="px-3 mb-2 text-xs font-bold vscode-muted uppercase tracking-wider">Memory Map</div>
                 <div
-                    className={`group flex items-center gap-2 px-3 py-1.5 text-sm cursor-pointer border-l-[3px] ${isRootSelected
-                        ? 'bg-indigo-50 text-indigo-700 border-indigo-600 font-medium'
-                        : 'text-gray-600 hover:bg-gray-50 border-transparent hover:border-gray-300'
-                        }`}
+                    className={`tree-item ${isRootSelected ? 'selected' : ''} gap-2 text-sm`}
                     onClick={() =>
                         onSelect({
                             id: rootId,
@@ -357,15 +351,15 @@ const Outline: React.FC<OutlineProps> = ({ memoryMap, selectedId, onSelect }) =>
                     }
                 >
                     <span
-                        className={`codicon codicon-chevron-${isRootExpanded ? 'down' : 'right'} text-[16px] ${isRootSelected ? 'text-indigo-500' : 'text-gray-400'}`}
+                        className={`codicon codicon-chevron-${isRootExpanded ? 'down' : 'right'} text-[16px] ${isRootSelected ? '' : 'opacity-70'}`}
                         onClick={(e) => toggleExpand(rootId, e)}
                     ></span>
-                    <span className={`codicon codicon-map text-[16px] ${isRootSelected ? 'text-indigo-500' : 'text-gray-400'}`}></span>
+                    <span className={`codicon codicon-map text-[16px] ${isRootSelected ? '' : 'opacity-70'}`}></span>
                     <span className="flex-1">{memoryMap.name || 'Memory Map'}</span>
                 </div>
                 {isRootExpanded && filteredBlocks.map(({ block, index }) => renderBlock(block, index))}
             </div>
-            <div className="p-3 bg-gray-50 border-t border-gray-200 text-xs text-gray-500 flex justify-between">
+            <div className="outline-footer p-3 text-xs vscode-muted flex justify-between">
                 <span>{filteredBlocks.length} Items</span>
                 <span>Base: {toHex(memoryMap.address_blocks?.[0]?.base_address ?? 0)}</span>
             </div>

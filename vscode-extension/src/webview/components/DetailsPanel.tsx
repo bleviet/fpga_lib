@@ -373,7 +373,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({ selectedType, selectedObjec
     };
 
     if (!selectedObject) {
-        return <div className="flex items-center justify-center h-full text-gray-500 text-sm">Select an item to view details</div>;
+        return <div className="flex items-center justify-center h-full vscode-muted text-sm">Select an item to view details</div>;
     }
 
     // Color map for field dots and BitFieldVisualizer
@@ -445,12 +445,12 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({ selectedType, selectedObjec
         return (
             <div className="flex flex-col w-full h-full min-h-0" onClickCapture={handleClickOutside}>
                 {/* --- Register Header and BitFieldVisualizer --- */}
-                <div className="bg-gray-50/50 border-b border-gray-200 p-8 flex flex-col gap-6 shrink-0 relative overflow-hidden">
-                    <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none"></div>
+                <div className="vscode-surface border-b vscode-border p-8 flex flex-col gap-6 shrink-0 relative overflow-hidden">
+                    <div className="absolute inset-0 fpga-grid-bg bg-[size:24px_24px] pointer-events-none"></div>
                     <div className="flex justify-between items-start relative z-10">
                         <div>
-                            <h2 className="text-2xl font-bold text-gray-900 font-mono tracking-tight">{regObj.name}</h2>
-                            <p className="text-gray-500 text-sm mt-1 max-w-2xl">{regObj.description}</p>
+                            <h2 className="text-2xl font-bold font-mono tracking-tight">{regObj.name}</h2>
+                            <p className="vscode-muted text-sm mt-1 max-w-2xl">{regObj.description}</p>
                         </div>
                     </div>
                     <div className="w-full relative z-10 mt-2 select-none">
@@ -468,10 +468,10 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({ selectedType, selectedObjec
                 </div>
                 {/* --- Main Content: Table and Properties --- */}
                 <div className="flex-1 flex overflow-hidden min-h-0">
-                    <div className="flex-1 bg-white border-r border-gray-200 min-h-0 flex flex-col">
-                        <div className="shrink-0 px-4 py-2 border-b border-gray-200 bg-white flex items-center justify-end gap-1">
+                    <div className="flex-1 vscode-surface border-r vscode-border min-h-0 flex flex-col">
+                        <div className="shrink-0 px-4 py-2 border-b vscode-border vscode-surface flex items-center justify-end gap-1">
                             <button
-                                className="p-2 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors disabled:opacity-40"
+                                className="p-2 rounded-md transition-colors disabled:opacity-40 vscode-icon-button"
                                 onClick={() => moveSelectedField(-1)}
                                 disabled={selectedFieldIndex <= 0}
                                 title="Move field up"
@@ -480,7 +480,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({ selectedType, selectedObjec
                                 <span className="codicon codicon-chevron-up"></span>
                             </button>
                             <button
-                                className="p-2 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors disabled:opacity-40"
+                                className="p-2 rounded-md transition-colors disabled:opacity-40 vscode-icon-button"
                                 onClick={() => moveSelectedField(1)}
                                 disabled={selectedFieldIndex < 0 || selectedFieldIndex >= fields.length - 1}
                                 title="Move field down"
@@ -503,19 +503,17 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({ selectedType, selectedObjec
                                     <col className="w-[14%] min-w-[110px]" />
                                     <col className="w-[26%]" />
                                 </colgroup>
-                                <thead className="bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wider sticky top-0 z-10 shadow-sm">
+                                <thead className="vscode-surface-alt text-xs font-semibold vscode-muted uppercase tracking-wider sticky top-0 z-10 shadow-sm">
                                     <tr className="h-12">
-                                        <th className="px-6 py-3 border-b border-gray-200 align-middle">Name</th>
-                                        <th className="px-4 py-3 border-b border-gray-200 align-middle">Bit(s)</th>
-                                        <th className="px-4 py-3 border-b border-gray-200 align-middle">Access</th>
-                                        <th className="px-4 py-3 border-b border-gray-200 align-middle">Reset</th>
-                                        <th className="px-6 py-3 border-b border-gray-200 align-middle">Description</th>
+                                        <th className="px-6 py-3 border-b vscode-border align-middle">Name</th>
+                                        <th className="px-4 py-3 border-b vscode-border align-middle">Bit(s)</th>
+                                        <th className="px-4 py-3 border-b vscode-border align-middle">Access</th>
+                                        <th className="px-4 py-3 border-b vscode-border align-middle">Reset</th>
+                                        <th className="px-6 py-3 border-b vscode-border align-middle">Description</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-gray-100 text-sm">
+                                <tbody className="divide-y vscode-border text-sm">
                                     {fields.map((field, idx) => {
-                                        const isSelected = idx === hoveredFieldIndex;
-                                        const highlightClass = isSelected ? 'bg-indigo-50/60' : '';
                                         const bits = toBits(field);
                                         const color = getFieldColor(idx);
                                         const resetDisplay =
@@ -527,7 +525,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({ selectedType, selectedObjec
                                             <tr
                                                 key={idx}
                                                 data-field-idx={idx}
-                                                className={`group transition-colors border-l-4 border-transparent h-12 ${idx === selectedFieldIndex ? 'border-indigo-600 bg-indigo-50/60' : idx === hoveredFieldIndex ? 'border-indigo-400 bg-indigo-50/40' : ''}`}
+                                                className={`group transition-colors border-l-4 border-transparent h-12 ${idx === selectedFieldIndex ? 'vscode-focus-border vscode-row-selected' : idx === hoveredFieldIndex ? 'vscode-focus-border vscode-row-hover' : ''}`}
                                                 onMouseEnter={() => {
                                                     setHoveredFieldIndex(idx);
                                                 }}
@@ -551,7 +549,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({ selectedType, selectedObjec
                                                         <>
                                                             <td
                                                                 data-col-key="name"
-                                                                className={`px-6 py-2 font-medium text-gray-900 align-middle ${activeCell.rowIndex === idx && activeCell.key === 'name' ? 'bg-indigo-100/70 ring-2 ring-indigo-600 ring-inset' : ''}`}
+                                                                className={`px-6 py-2 font-medium align-middle ${activeCell.rowIndex === idx && activeCell.key === 'name' ? 'vscode-cell-active' : ''}`}
                                                                 onClick={(e) => {
                                                                     e.stopPropagation();
                                                                     setSelectedFieldIndex(idx);
@@ -584,13 +582,13 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({ selectedType, selectedObjec
                                                                         )}
                                                                     </div>
                                                                     {isEditingName && nameError ? (
-                                                                        <div className="text-xs text-red-600 mt-1">{nameError}</div>
+                                                                        <div className="text-xs vscode-error mt-1">{nameError}</div>
                                                                     ) : null}
                                                                 </div>
                                                             </td>
                                                             <td
                                                                 data-col-key="bits"
-                                                                className={`px-4 py-2 font-mono text-gray-600 align-middle ${activeCell.rowIndex === idx && activeCell.key === 'bits' ? 'bg-indigo-100/70 ring-2 ring-indigo-600 ring-inset' : ''}`}
+                                                                className={`px-4 py-2 font-mono vscode-muted align-middle ${activeCell.rowIndex === idx && activeCell.key === 'bits' ? 'vscode-cell-active' : ''}`}
                                                                 onClick={(e) => {
                                                                     e.stopPropagation();
                                                                     setSelectedFieldIndex(idx);
@@ -638,7 +636,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({ selectedType, selectedObjec
                                                             </td>
                                                             <td
                                                                 data-col-key="access"
-                                                                className={`px-4 py-2 align-middle ${activeCell.rowIndex === idx && activeCell.key === 'access' ? 'bg-indigo-100/70 ring-2 ring-indigo-600 ring-inset' : ''}`}
+                                                                className={`px-4 py-2 align-middle ${activeCell.rowIndex === idx && activeCell.key === 'access' ? 'vscode-cell-active' : ''}`}
                                                                 onClick={(e) => {
                                                                     e.stopPropagation();
                                                                     setSelectedFieldIndex(idx);
@@ -664,14 +662,14 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({ selectedType, selectedObjec
                                                                         </VSCodeDropdown>
                                                                     ) : (
                                                                         <div className="flex items-center justify-start">
-                                                                            <span className="px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800 border border-green-200 whitespace-nowrap">{field.access || 'RW'}</span>
+                                                                            <span className="px-2 py-0.5 rounded text-xs font-medium vscode-badge whitespace-nowrap">{field.access || 'RW'}</span>
                                                                         </div>
                                                                     )}
                                                                 </div>
                                                             </td>
                                                             <td
                                                                 data-col-key="reset"
-                                                                className={`px-4 py-2 font-mono text-gray-500 align-middle ${activeCell.rowIndex === idx && activeCell.key === 'reset' ? 'bg-indigo-100/70 ring-2 ring-indigo-600 ring-inset' : ''}`}
+                                                                className={`px-4 py-2 font-mono vscode-muted align-middle ${activeCell.rowIndex === idx && activeCell.key === 'reset' ? 'vscode-cell-active' : ''}`}
                                                                 onClick={(e) => {
                                                                     e.stopPropagation();
                                                                     setSelectedFieldIndex(idx);
@@ -711,13 +709,13 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({ selectedType, selectedObjec
                                                                         resetDisplay || '0x0'
                                                                     )}
                                                                     {isEditingReset && resetError ? (
-                                                                        <div className="text-xs text-red-600 mt-1">{resetError}</div>
+                                                                        <div className="text-xs vscode-error mt-1">{resetError}</div>
                                                                     ) : null}
                                                                 </div>
                                                             </td>
                                                             <td
                                                                 data-col-key="description"
-                                                                className={`px-6 py-2 text-gray-500 align-middle ${activeCell.rowIndex === idx && activeCell.key === 'description' ? 'bg-indigo-100/70 ring-2 ring-indigo-600 ring-inset' : ''}`}
+                                                                className={`px-6 py-2 vscode-muted align-middle ${activeCell.rowIndex === idx && activeCell.key === 'description' ? 'vscode-cell-active' : ''}`}
                                                                 onClick={(e) => {
                                                                     e.stopPropagation();
                                                                     setSelectedFieldIndex(idx);
@@ -761,20 +759,20 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({ selectedType, selectedObjec
         const map = selectedObject as any;
         return (
             <div className="p-6">
-                <h2 className="text-lg font-bold text-gray-900 mb-4">Memory Map Overview</h2>
+                <h2 className="text-lg font-bold mb-4">Memory Map Overview</h2>
                 <div className="space-y-4">
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1.5">Name</label>
+                        <label className="block text-sm font-medium mb-1.5">Name</label>
                         <VSCodeTextField value={map.name || ''} onInput={(e: any) => onUpdate(['name'], e.target.value)} />
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1.5">Description</label>
+                        <label className="block text-sm font-medium mb-1.5">Description</label>
                         <VSCodeTextArea value={map.description || ''} rows={3} onInput={(e: any) => onUpdate(['description'], e.target.value)} />
                     </div>
-                    <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+                    <div className="mt-6 p-4 vscode-surface-alt rounded-lg">
                         <div className="flex justify-between items-center">
-                            <span className="text-sm font-medium text-gray-700">Address Blocks:</span>
-                            <span className="text-sm font-mono text-gray-900">{map.address_blocks?.length || 0}</span>
+                            <span className="text-sm font-medium vscode-muted">Address Blocks:</span>
+                            <span className="text-sm font-mono">{map.address_blocks?.length || 0}</span>
                         </div>
                     </div>
                 </div>
@@ -786,14 +784,14 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({ selectedType, selectedObjec
         const block = selectedObject as any;
         return (
             <div className="p-6">
-                <h2 className="text-lg font-bold text-gray-900 mb-4">Address Block</h2>
+                <h2 className="text-lg font-bold mb-4">Address Block</h2>
                 <div className="space-y-4">
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1.5">Name</label>
+                        <label className="block text-sm font-medium mb-1.5">Name</label>
                         <VSCodeTextField value={block.name} onInput={(e: any) => onUpdate(['name'], e.target.value)} />
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1.5">Base Address</label>
+                        <label className="block text-sm font-medium mb-1.5">Base Address</label>
                         <VSCodeTextField
                             value={`0x${(block.base_address ?? 0).toString(16).toUpperCase()}`}
                             onInput={(e: any) => {
@@ -807,7 +805,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({ selectedType, selectedObjec
         );
     }
 
-    return <div className="p-6 text-gray-500">Select an item to view details</div>;
+    return <div className="p-6 vscode-muted">Select an item to view details</div>;
 };
 
 export default DetailsPanel;
