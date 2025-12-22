@@ -466,6 +466,9 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({ selectedType, selectedObjec
                             setHoveredFieldIndex={setHoveredFieldIndex}
                             registerSize={32}
                             layout="pro"
+                            onUpdateFieldReset={(fieldIndex, resetValue) => {
+                                onUpdate(['fields', fieldIndex, 'reset_value'], resetValue);
+                            }}
                         />
                     </div>
                 </div>

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 
 interface BitFieldVisualizerProps {
     fields: any[];
@@ -6,6 +6,7 @@ interface BitFieldVisualizerProps {
     setHoveredFieldIndex?: (idx: number | null) => void;
     registerSize?: number;
     layout?: 'default' | 'pro';
+    onUpdateFieldReset?: (fieldIndex: number, resetValue: number | null) => void;
 }
 
 const colorMap: Record<string, string> = {
@@ -56,6 +57,15 @@ function bitAt(value: number, bitIndex: number): 0 | 1 {
     return (div % 2) === 1 ? 1 : 0;
 }
 
+function setBit(value: number, bitIndex: number, desired: 0 | 1): number {
+    const base = Number.isFinite(value) ? Math.max(0, Math.trunc(value)) : 0;
+    if (bitIndex < 0) return base;
+    const current = bitAt(base, bitIndex);
+    if (current === desired) return base;
+    const delta = Math.pow(2, bitIndex);
+    return desired === 1 ? base + delta : Math.max(0, base - delta);
+}
+
 // Group fields by contiguous bit ranges for pro layout
 function groupFields(fields: any[]) {
     const groups: { idx: number; start: number; end: number; name: string; color: string }[] = [];
@@ -73,8 +83,42 @@ function groupFields(fields: any[]) {
     return groups;
 }
 
-const BitFieldVisualizer: React.FC<BitFieldVisualizerProps> = ({ fields, hoveredFieldIndex = null, setHoveredFieldIndex = () => { }, registerSize = 32, layout = 'default' }) => {
+const BitFieldVisualizer: React.FC<BitFieldVisualizerProps> = ({
+    fields,
+    hoveredFieldIndex = null,
+    setHoveredFieldIndex = () => { },
+    registerSize = 32,
+    layout = 'default',
+    onUpdateFieldReset,
+}) => {
     const [valueView, setValueView] = useState<'hex' | 'dec'>('hex');
+    const [dragActive, setDragActive] = useState(false);
+    const [dragSetTo, setDragSetTo] = useState<0 | 1>(0);
+    const [dragLast, setDragLast] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (!dragActive) return;
+        const stop = () => {
+            setDragActive(false);
+            setDragLast(null);
+        };
+        window.addEventListener('pointerup', stop);
+        window.addEventListener('pointercancel', stop);
+        window.addEventListener('blur', stop);
+        return () => {
+            window.removeEventListener('pointerup', stop);
+            window.removeEventListener('pointercancel', stop);
+            window.removeEventListener('blur', stop);
+        };
+    }, [dragActive]);
+
+    const applyBit = (fieldIndex: number, localBit: number, desired: 0 | 1) => {
+        if (!onUpdateFieldReset) return;
+        const raw = fields?.[fieldIndex]?.reset_value;
+        const current = raw === null || raw === undefined ? 0 : Number(raw);
+        const next = setBit(current, localBit, desired);
+        onUpdateFieldReset(fieldIndex, next);
+    };
 
     // Build a per-bit array with field index or null
     const bits: (number | null)[] = Array(registerSize).fill(null);
@@ -147,11 +191,33 @@ const BitFieldVisualizer: React.FC<BitFieldVisualizerProps> = ({ fields, hovered
                                             const bit = group.end - i;
                                             const localBit = bit - group.start;
                                             const v = bitAt(fieldReset, localBit);
+                                            const dragKey = `${group.idx}:${localBit}`;
                                             return (
                                                 <div
                                                     key={i}
-                                                    className="w-10 h-20 flex items-center justify-center"
+                                                    className="w-10 h-20 flex items-center justify-center cursor-pointer touch-none"
                                                     style={{ background: colorMap[group.color] }}
+                                                    onPointerDown={(e) => {
+                                                        if (!onUpdateFieldReset) return;
+                                                        if (e.button !== 0) return;
+                                                        e.preventDefault();
+                                                        e.stopPropagation();
+
+                                                        const desired: 0 | 1 = v === 1 ? 0 : 1;
+                                                        setDragActive(true);
+                                                        setDragSetTo(desired);
+                                                        setDragLast(dragKey);
+                                                        applyBit(group.idx, localBit, desired);
+                                                    }}
+                                                    onPointerEnter={(e) => {
+                                                        if (!dragActive) return;
+                                                        if (!onUpdateFieldReset) return;
+                                                        if (dragLast === dragKey) return;
+                                                        e.preventDefault();
+                                                        e.stopPropagation();
+                                                        setDragLast(dragKey);
+                                                        applyBit(group.idx, localBit, dragSetTo);
+                                                    }}
                                                 >
                                                     <span className="text-sm font-mono text-white/90 select-none">{v}</span>
                                                 </div>
@@ -199,12 +265,47 @@ const BitFieldVisualizer: React.FC<BitFieldVisualizerProps> = ({ fields, hovered
             <div className="flex flex-row-reverse gap-0.5 select-none">
                 {bits.map((fieldIdx, bit) => {
                     const isHovered = fieldIdx !== null && fieldIdx === hoveredFieldIndex;
+                    const dragKey = fieldIdx !== null ? `${fieldIdx}:${bit}` : null;
                     return (
                         <div
                             key={bit}
                             className={`w-10 h-20 flex flex-col items-center justify-end cursor-pointer group ${fieldIdx !== null ? 'bg-blue-500' : 'bg-gray-200'} ${isHovered ? 'ring-2 ring-indigo-400 z-10' : ''}`}
                             onMouseEnter={() => fieldIdx !== null && setHoveredFieldIndex(fieldIdx)}
                             onMouseLeave={() => setHoveredFieldIndex(null)}
+                            onPointerDown={(e) => {
+                                if (!onUpdateFieldReset) return;
+                                if (fieldIdx === null) return;
+                                if (e.button !== 0) return;
+                                const r = getFieldRange(fields[fieldIdx]);
+                                if (!r) return;
+                                const localBit = bit - r.lo;
+                                if (localBit < 0 || localBit > (r.hi - r.lo)) return;
+                                const raw = fields[fieldIdx]?.reset_value;
+                                const current = raw === null || raw === undefined ? 0 : Number(raw);
+                                const curBit = bitAt(current, localBit);
+                                const desired: 0 | 1 = curBit === 1 ? 0 : 1;
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setDragActive(true);
+                                setDragSetTo(desired);
+                                setDragLast(`${fieldIdx}:${localBit}`);
+                                applyBit(fieldIdx, localBit, desired);
+                            }}
+                            onPointerEnter={(e) => {
+                                if (!dragActive) return;
+                                if (!onUpdateFieldReset) return;
+                                if (fieldIdx === null) return;
+                                const r = getFieldRange(fields[fieldIdx]);
+                                if (!r) return;
+                                const localBit = bit - r.lo;
+                                if (localBit < 0 || localBit > (r.hi - r.lo)) return;
+                                const key = `${fieldIdx}:${localBit}`;
+                                if (dragLast === key) return;
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setDragLast(key);
+                                applyBit(fieldIdx, localBit, dragSetTo);
+                            }}
                         >
                             <span className="text-[10px] text-gray-700 font-mono">{bit}</span>
                             <span className="text-[11px] text-gray-900 font-mono mb-1">{bitValues[bit]}</span>
