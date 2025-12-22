@@ -48,6 +48,30 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(({ 
     const [nameDrafts, setNameDrafts] = useState<Record<string, string>>({});
     const [nameErrors, setNameErrors] = useState<Record<string, string | null>>({});
     const [bitsDrafts, setBitsDrafts] = useState<Record<number, string>>({});
+    const [bitsErrors, setBitsErrors] = useState<Record<number, string | null>>({});
+
+    // Helper: get bit width from [N:M] or [N]
+    const parseBitsWidth = (bits: string): number | null => {
+        const match = bits.trim().match(/^\[(\d+)(?::(\d+))?\]$/);
+        if (!match) return null;
+        const n = parseInt(match[1], 10);
+        const m = match[2] ? parseInt(match[2], 10) : n;
+        return Math.abs(n - m) + 1;
+    };
+    // Validate bits string: must be [N:M] or [N], N, M >= 0, N >= M
+    const validateBitsString = (bits: string): string | null => {
+        const trimmed = bits.trim();
+        if (!/^\[\d+(?::\d+)?\]$/.test(trimmed)) {
+            return 'Format must be [N:M] or [N]';
+        }
+        const match = trimmed.match(/\[(\d+)(?::(\d+))?\]/);
+        if (!match) return 'Invalid format';
+        const n = parseInt(match[1], 10);
+        const m = match[2] ? parseInt(match[2], 10) : n;
+        if (n < 0 || m < 0) return 'Bit indices must be >= 0';
+        if (n < m) return 'MSB must be >= LSB';
+        return null;
+    };
     const [resetDrafts, setResetDrafts] = useState<Record<number, string>>({});
     const [resetErrors, setResetErrors] = useState<Record<number, string | null>>({});
     // Memory map states
@@ -195,7 +219,8 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(({ 
 
             const isArrow = normalizedKey === 'ArrowUp' || normalizedKey === 'ArrowDown' || normalizedKey === 'ArrowLeft' || normalizedKey === 'ArrowRight';
             const isEdit = normalizedKey === 'F2' || keyLower === 'e';
-            if (!isArrow && !isEdit) return;
+            const isDelete = keyLower === 'd' || e.key === 'Delete';
+            if (!isArrow && !isEdit && !isDelete) return;
 
             // Avoid hijacking common editor chords.
             if (e.ctrlKey || e.metaKey) return;
@@ -232,6 +257,21 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(({ 
                 setSelectedEditKey(currentKey);
                 setActiveCell({ rowIndex: currentRow, key: currentKey });
                 focusFieldEditor(currentRow, currentKey);
+                return;
+            }
+
+            if (isDelete) {
+                if (currentRow < 0 || currentRow >= fields.length) return;
+                e.preventDefault();
+                e.stopPropagation();
+                // Remove the field at currentRow and ensure fields is a valid array
+                const newFields = fields.filter((_, idx) => idx !== currentRow);
+                onUpdate(['fields'], newFields);
+                // Move selection to previous or next field
+                const nextRow = currentRow > 0 ? currentRow - 1 : (newFields.length > 0 ? 0 : -1);
+                setSelectedFieldIndex(nextRow);
+                setHoveredFieldIndex(nextRow);
+                setActiveCell({ rowIndex: nextRow, key: currentKey });
                 return;
             }
 
@@ -306,7 +346,8 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(({ 
 
             const isArrow = normalizedKey === 'ArrowUp' || normalizedKey === 'ArrowDown' || normalizedKey === 'ArrowLeft' || normalizedKey === 'ArrowRight';
             const isEdit = normalizedKey === 'F2' || keyLower === 'e';
-            if (!isArrow && !isEdit) return;
+            const isDelete = keyLower === 'd' || e.key === 'Delete';
+            if (!isArrow && !isEdit && !isDelete) return;
 
             if (e.ctrlKey || e.metaKey) return;
 
@@ -348,6 +389,21 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(({ 
                 setHoveredBlockIndex(currentRow);
                 setBlockActiveCell({ rowIndex: currentRow, key: currentKey });
                 focusEditor(currentRow, currentKey);
+                return;
+            }
+
+            if (isDelete) {
+                if (currentRow < 0 || currentRow >= blocks.length) return;
+                e.preventDefault();
+                e.stopPropagation();
+                // Remove the block at currentRow and ensure addressBlocks is a valid array
+                const newBlocks = blocks.filter((_, idx) => idx !== currentRow);
+                onUpdate(['addressBlocks'], newBlocks);
+                // Move selection to previous or next block
+                const nextRow = currentRow > 0 ? currentRow - 1 : (newBlocks.length > 0 ? 0 : -1);
+                setSelectedBlockIndex(nextRow);
+                setHoveredBlockIndex(nextRow);
+                setBlockActiveCell({ rowIndex: nextRow, key: currentKey });
                 return;
             }
 
@@ -402,7 +458,8 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(({ 
 
             const isArrow = normalizedKey === 'ArrowUp' || normalizedKey === 'ArrowDown' || normalizedKey === 'ArrowLeft' || normalizedKey === 'ArrowRight';
             const isEdit = normalizedKey === 'F2' || keyLower === 'e';
-            if (!isArrow && !isEdit) return;
+            const isDelete = keyLower === 'd' || e.key === 'Delete';
+            if (!isArrow && !isEdit && !isDelete) return;
 
             if (e.ctrlKey || e.metaKey) return;
 
@@ -444,6 +501,21 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(({ 
                 setHoveredRegIndex(currentRow);
                 setRegActiveCell({ rowIndex: currentRow, key: currentKey });
                 focusEditor(currentRow, currentKey);
+                return;
+            }
+
+            if (isDelete) {
+                if (currentRow < 0 || currentRow >= registers.length) return;
+                e.preventDefault();
+                e.stopPropagation();
+                // Remove the register at currentRow and ensure registers is a valid array
+                const newRegs = registers.filter((_, idx) => idx !== currentRow);
+                onUpdate(['registers'], newRegs);
+                // Move selection to previous or next register
+                const nextRow = currentRow > 0 ? currentRow - 1 : (newRegs.length > 0 ? 0 : -1);
+                setSelectedRegIndex(nextRow);
+                setHoveredRegIndex(nextRow);
+                setRegActiveCell({ rowIndex: nextRow, key: currentKey });
                 return;
             }
 
@@ -787,6 +859,7 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(({ 
                                         const nameValue = nameDrafts[fieldKey] ?? String(field.name ?? '');
                                         const nameErr = nameErrors[fieldKey] ?? null;
                                         const bitsValue = bitsDrafts[idx] ?? bits;
+                                        const bitsErr = bitsErrors[idx] ?? null;
                                         const resetValue = resetDrafts[idx] ?? (resetDisplay || '0x0');
                                         const resetErr = resetErrors[idx] ?? null;
 
@@ -862,28 +935,57 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(({ 
                                                         }}
                                                     >
                                                         <div className="flex items-center h-10">
-                                                            <VSCodeTextField
-                                                                data-edit-key="bits"
-                                                                className="w-full font-mono"
-                                                                value={bitsValue}
-                                                                onFocus={() => {
-                                                                    ensureDraftsInitialized(idx);
-                                                                    setSelectedFieldIndex(idx);
-                                                                    setHoveredFieldIndex(idx);
-                                                                    setSelectedEditKey('bits');
-                                                                    setActiveCell({ rowIndex: idx, key: 'bits' });
-                                                                }}
-                                                                onInput={(e: any) => {
-                                                                    const next = String(e.target.value ?? '');
-                                                                    setBitsDrafts((prev) => ({ ...prev, [idx]: next }));
-                                                                    const parsed = parseBitsInput(next);
-                                                                    if (parsed) {
-                                                                        onUpdate(['fields', idx, 'bit_offset'], parsed.bit_offset);
-                                                                        onUpdate(['fields', idx, 'bit_width'], parsed.bit_width);
-                                                                        onUpdate(['fields', idx, 'bit_range'], parsed.bit_range);
-                                                                    }
-                                                                }}
-                                                            />
+                                                            <div className="flex flex-col w-full">
+                                                                <VSCodeTextField
+                                                                    data-edit-key="bits"
+                                                                    className="w-full font-mono"
+                                                                    value={bitsValue}
+                                                                    onFocus={() => {
+                                                                        ensureDraftsInitialized(idx);
+                                                                        setSelectedFieldIndex(idx);
+                                                                        setHoveredFieldIndex(idx);
+                                                                        setSelectedEditKey('bits');
+                                                                        setActiveCell({ rowIndex: idx, key: 'bits' });
+                                                                    }}
+                                                                    onInput={(e: any) => {
+                                                                        const next = String(e.target.value ?? '');
+                                                                        setBitsDrafts((prev) => ({ ...prev, [idx]: next }));
+                                                                        let err = validateBitsString(next);
+                                                                        // Overfill validation
+                                                                        if (!err) {
+                                                                            const thisWidth = parseBitsWidth(next);
+                                                                            if (thisWidth !== null) {
+                                                                                // Calculate total bits used if this field is set to new value
+                                                                                let total = 0;
+                                                                                for (let i = 0; i < fields.length; ++i) {
+                                                                                    if (i === idx) {
+                                                                                        total += thisWidth;
+                                                                                    } else {
+                                                                                        // Use draft if present, else current
+                                                                                        const b = bitsDrafts[i] ?? toBits(fields[i]);
+                                                                                        const w = parseBitsWidth(b);
+                                                                                        if (w) total += w;
+                                                                                    }
+                                                                                }
+                                                                                const regSize = reg?.size || 32;
+                                                                                if (total > regSize) {
+                                                                                    err = `Bit fields overflow register (${total} > ${regSize})`;
+                                                                                }
+                                                                            }
+                                                                        }
+                                                                        setBitsErrors((prev) => ({ ...prev, [idx]: err }));
+                                                                        if (!err) {
+                                                                            const parsed = parseBitsInput(next);
+                                                                            if (parsed) {
+                                                                                onUpdate(['fields', idx, 'bit_offset'], parsed.bit_offset);
+                                                                                onUpdate(['fields', idx, 'bit_width'], parsed.bit_width);
+                                                                                onUpdate(['fields', idx, 'bit_range'], parsed.bit_range);
+                                                                            }
+                                                                        }
+                                                                    }}
+                                                                />
+                                                                {bitsErr ? <div className="text-xs vscode-error mt-1">{bitsErr}</div> : null}
+                                                            </div>
                                                         </div>
                                                     </td>
                                                     <td
