@@ -44,8 +44,9 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(({ 
     const [activeCell, setActiveCell] = useState<ActiveCell>({ rowIndex: -1, key: 'name' });
     const [blockActiveCell, setBlockActiveCell] = useState<BlockActiveCell>({ rowIndex: -1, key: 'name' });
     const [regActiveCell, setRegActiveCell] = useState<RegActiveCell>({ rowIndex: -1, key: 'name' });
-    const [nameDrafts, setNameDrafts] = useState<Record<number, string>>({});
-    const [nameErrors, setNameErrors] = useState<Record<number, string | null>>({});
+    // Use unique key per register (e.g. blockIdx-regIdx or field name)
+    const [nameDrafts, setNameDrafts] = useState<Record<string, string>>({});
+    const [nameErrors, setNameErrors] = useState<Record<string, string | null>>({});
     const [bitsDrafts, setBitsDrafts] = useState<Record<number, string>>({});
     const [resetDrafts, setResetDrafts] = useState<Record<number, string>>({});
     const [resetErrors, setResetErrors] = useState<Record<number, string | null>>({});
@@ -674,10 +675,15 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(({ 
     if (selectedType === 'register') {
         const regObj = selectedObject as Register;
 
+        const getFieldKey = (field: any, idx: number) => {
+            // Prefer a unique name if available, else fallback to index
+            return field && field.name ? `${field.name}` : `idx-${idx}`;
+        };
         const ensureDraftsInitialized = (idx: number) => {
             const f = fields[idx];
             if (!f) return;
-            setNameDrafts((prev) => (prev[idx] !== undefined ? prev : { ...prev, [idx]: String(f.name ?? '') }));
+            const key = getFieldKey(f, idx);
+            setNameDrafts((prev) => (prev[key] !== undefined ? prev : { ...prev, [key]: String(f.name ?? '') }));
             setBitsDrafts((prev) => (prev[idx] !== undefined ? prev : { ...prev, [idx]: toBits(f) }));
             setResetDrafts((prev) => {
                 if (prev[idx] !== undefined) return prev;
@@ -776,8 +782,10 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(({ 
                                                 ? `0x${Number(field.reset_value).toString(16).toUpperCase()}`
                                                 : '';
 
-                                        const nameValue = nameDrafts[idx] ?? String(field.name ?? '');
-                                        const nameErr = nameErrors[idx] ?? null;
+                                        // Helper to get a unique key for this field
+                                        const fieldKey = field && field.name ? `${field.name}` : `idx-${idx}`;
+                                        const nameValue = nameDrafts[fieldKey] ?? String(field.name ?? '');
+                                        const nameErr = nameErrors[fieldKey] ?? null;
                                         const bitsValue = bitsDrafts[idx] ?? bits;
                                         const resetValue = resetDrafts[idx] ?? (resetDisplay || '0x0');
                                         const resetErr = resetErrors[idx] ?? null;
@@ -831,9 +839,9 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(({ 
                                                                     }}
                                                                     onInput={(e: any) => {
                                                                         const next = String(e.target.value ?? '');
-                                                                        setNameDrafts((prev) => ({ ...prev, [idx]: next }));
+                                                                        setNameDrafts((prev) => ({ ...prev, [fieldKey]: next }));
                                                                         const err = validateVhdlIdentifier(next);
-                                                                        setNameErrors((prev) => ({ ...prev, [idx]: err }));
+                                                                        setNameErrors((prev) => ({ ...prev, [fieldKey]: err }));
                                                                         if (!err) onUpdate(['fields', idx, 'name'], next.trim());
                                                                     }}
                                                                 />
