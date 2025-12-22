@@ -117,17 +117,31 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({ selectedType, selectedObjec
 
 
     // Keyboard shortcuts (when the fields table is focused):
-    // - ArrowUp / ArrowDown: move between rows (same column)
-    // - ArrowLeft / ArrowRight: move between columns (same row)
+    // - Arrow keys: move between cells
+    // - Vim keys: h/j/k/l move between cells
     // - Alt+ArrowUp / Alt+ArrowDown: move selected field (repack offsets)
-    // - F2: edit active cell
+    // - F2 or e: edit active cell
     useEffect(() => {
         if (!isRegister) return;
 
         const onKeyDown = (e: KeyboardEvent) => {
-            const isArrow = e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === 'ArrowRight';
-            const isF2 = e.key === 'F2';
-            if (!isArrow && !isF2) return;
+            const keyLower = (e.key || '').toLowerCase();
+            const vimToArrow: Record<string, 'ArrowLeft' | 'ArrowDown' | 'ArrowUp' | 'ArrowRight'> = {
+                h: 'ArrowLeft',
+                j: 'ArrowDown',
+                k: 'ArrowUp',
+                l: 'ArrowRight',
+            };
+
+            const mappedArrow = vimToArrow[keyLower];
+            const normalizedKey: string = mappedArrow ?? e.key;
+
+            const isArrow = normalizedKey === 'ArrowUp' || normalizedKey === 'ArrowDown' || normalizedKey === 'ArrowLeft' || normalizedKey === 'ArrowRight';
+            const isEdit = normalizedKey === 'F2' || keyLower === 'e';
+            if (!isArrow && !isEdit) return;
+
+            // Avoid hijacking common editor chords.
+            if (e.ctrlKey || e.metaKey) return;
 
             const activeEl = document.activeElement as HTMLElement | null;
             const isInFieldsArea = !!fieldsFocusRef.current && !!activeEl && (activeEl === fieldsFocusRef.current || fieldsFocusRef.current.contains(activeEl));
@@ -152,7 +166,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({ selectedType, selectedObjec
             const currentRow = activeCell.rowIndex >= 0 ? activeCell.rowIndex : (selectedFieldIndex >= 0 ? selectedFieldIndex : 0);
             const currentKey: EditKey = COLUMN_ORDER.includes(activeCell.key) ? activeCell.key : selectedEditKey;
 
-            if (isF2) {
+            if (isEdit) {
                 if (currentRow < 0 || currentRow >= fields.length) return;
                 e.preventDefault();
                 e.stopPropagation();
@@ -164,8 +178,8 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({ selectedType, selectedObjec
                 return;
             }
 
-            const isVertical = e.key === 'ArrowUp' || e.key === 'ArrowDown';
-            const delta = e.key === 'ArrowUp' || e.key === 'ArrowLeft' ? -1 : 1;
+            const isVertical = normalizedKey === 'ArrowUp' || normalizedKey === 'ArrowDown';
+            const delta = normalizedKey === 'ArrowUp' || normalizedKey === 'ArrowLeft' ? -1 : 1;
 
             // Alt+Arrow moves fields.
             if (e.altKey && isVertical) {
