@@ -29,7 +29,11 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({ selectedType, selectedObjec
     const [editingKey, setEditingKey] = useState<EditKey>('name');
     const [selectedEditKey, setSelectedEditKey] = useState<EditKey>('name');
     const [activeCell, setActiveCell] = useState<ActiveCell>({ rowIndex: -1, key: 'name' });
+    const [nameDraft, setNameDraft] = useState<string>('');
+    const [nameError, setNameError] = useState<string | null>(null);
     const [bitsDraft, setBitsDraft] = useState<string>('');
+    const [resetDraft, setResetDraft] = useState<string>('');
+    const [resetError, setResetError] = useState<string | null>(null);
     const fieldsFocusRef = useRef<HTMLDivElement | null>(null);
 
     const refocusFieldsTableSoon = () => {
@@ -68,8 +72,20 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({ selectedType, selectedObjec
     const beginEdit = (rowIndex: number, key: EditKey) => {
         if (rowIndex < 0 || rowIndex >= fields.length) return;
         setEditingKey(key);
+        if (key === 'name') {
+            const current = String(fields[rowIndex]?.name ?? '');
+            setNameDraft(current);
+            setNameError(null);
+        }
         if (key === 'bits') {
             setBitsDraft(toBits(fields[rowIndex]));
+        }
+        if (key === 'reset') {
+            const f = fields[rowIndex];
+            const v = f?.reset_value;
+            const display = v !== null && v !== undefined ? `0x${Number(v).toString(16).toUpperCase()}` : '0x0';
+            setResetDraft(display);
+            setResetError(null);
         }
         setEditingFieldIndex(rowIndex);
     };
@@ -318,6 +334,44 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({ selectedType, selectedObjec
         return Number.isFinite(v) ? v : null;
     };
 
+    const validateVhdlIdentifier = (name: string): string | null => {
+        const trimmed = name.trim();
+        if (!trimmed) return 'Name is required';
+        // VHDL basic identifier (common convention):
+        // - starts with a letter
+        // - contains only letters, digits, and underscores
+        // - no consecutive underscores
+        // - no trailing underscore
+        const re = /^[A-Za-z](?:[A-Za-z0-9]*(_[A-Za-z0-9]+)*)?$/;
+        if (!re.test(trimmed)) {
+            return 'VHDL name must start with a letter and contain only letters, digits, and single underscores';
+        }
+        return null;
+    };
+
+    const getFieldBitWidth = (f: any): number => {
+        const w = Number(f?.bit_width);
+        if (Number.isFinite(w) && w > 0) return w;
+        const br = f?.bit_range;
+        if (Array.isArray(br) && br.length === 2) {
+            const msb = Number(br[0]);
+            const lsb = Number(br[1]);
+            if (Number.isFinite(msb) && Number.isFinite(lsb)) return Math.abs(msb - lsb) + 1;
+        }
+        return 1;
+    };
+
+    const validateResetForField = (f: any, value: number | null): string | null => {
+        if (value === null) return null;
+        if (!Number.isFinite(value)) return 'Invalid number';
+        if (value < 0) return 'Reset must be >= 0';
+        const width = getFieldBitWidth(f);
+        // Avoid overflow in shifts; for typical widths (<=32) this is safe.
+        const max = width >= 53 ? Number.MAX_SAFE_INTEGER : Math.pow(2, width) - 1;
+        if (value > max) return `Reset too large for ${width} bit(s)`;
+        return null;
+    };
+
     if (!selectedObject) {
         return <div className="flex items-center justify-center h-full text-gray-500 text-sm">Select an item to view details</div>;
     }
@@ -354,6 +408,12 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({ selectedType, selectedObjec
             if (e.key === 'Enter') {
                 e.preventDefault();
                 e.stopPropagation();
+                if (editingFieldIndex === idx && editingKey === 'name' && nameError) {
+                    return;
+                }
+                if (editingFieldIndex === idx && editingKey === 'reset' && resetError) {
+                    return;
+                }
                 setEditingFieldIndex(null);
                 refocusFieldsTableSoon();
             }
@@ -504,20 +564,31 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({ selectedType, selectedObjec
                                                                 }}
                                                                 onDoubleClick={startEditOnDoubleClick(idx, 'name')}
                                                             >
-                                                                <div className="flex items-center gap-2 h-10">
-                                                                    <div className={`w-2.5 h-2.5 rounded-sm`} style={{ backgroundColor: color === 'gray' ? '#e5e7eb' : (colorMap && colorMap[color]) || color }}></div>
-                                                                    {isEditingName ? (
-                                                                        <VSCodeTextField
-                                                                            data-edit-key="name"
-                                                                            className="flex-1"
-                                                                            value={field.name || ''}
-                                                                            onInput={(e: any) => onUpdate(['fields', idx, 'name'], e.target.value)}
-                                                                            onBlur={handleBlur(idx)}
-                                                                            onKeyDown={handleKeyDown(idx)}
-                                                                        />
-                                                                    ) : (
-                                                                        field.name
-                                                                    )}
+                                                                <div className="flex flex-col justify-center">
+                                                                    <div className="flex items-center gap-2 h-10">
+                                                                        <div className={`w-2.5 h-2.5 rounded-sm`} style={{ backgroundColor: color === 'gray' ? '#e5e7eb' : (colorMap && colorMap[color]) || color }}></div>
+                                                                        {isEditingName ? (
+                                                                            <VSCodeTextField
+                                                                                data-edit-key="name"
+                                                                                className="flex-1"
+                                                                                value={nameDraft}
+                                                                                onInput={(e: any) => {
+                                                                                    const next = String(e.target.value ?? '');
+                                                                                    setNameDraft(next);
+                                                                                    const err = validateVhdlIdentifier(next);
+                                                                                    setNameError(err);
+                                                                                    if (!err) onUpdate(['fields', idx, 'name'], next.trim());
+                                                                                }}
+                                                                                onBlur={handleBlur(idx)}
+                                                                                onKeyDown={handleKeyDown(idx)}
+                                                                            />
+                                                                        ) : (
+                                                                            field.name
+                                                                        )}
+                                                                    </div>
+                                                                    {isEditingName && nameError ? (
+                                                                        <div className="text-xs text-red-600 mt-1">{nameError}</div>
+                                                                    ) : null}
                                                                 </div>
                                                             </td>
                                                             <td
@@ -613,20 +684,28 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({ selectedType, selectedObjec
                                                                 }}
                                                                 onDoubleClick={startEditOnDoubleClick(idx, 'reset')}
                                                             >
-                                                                <div className="flex items-center h-10">
+                                                                <div className="flex flex-col justify-center h-10">
                                                                     {isEditingReset ? (
                                                                         <VSCodeTextField
                                                                             data-edit-key="reset"
                                                                             className="w-full font-mono"
-                                                                            value={resetDisplay || '0x0'}
+                                                                            value={resetDraft}
                                                                             onInput={(e: any) => {
                                                                                 const raw = String(e.target.value ?? '');
-                                                                                const parsed = parseReset(raw);
-                                                                                if (parsed === null) {
-                                                                                    if (!raw.trim()) onUpdate(['fields', idx, 'reset_value'], null);
+                                                                                setResetDraft(raw);
+
+                                                                                const trimmed = raw.trim();
+                                                                                if (!trimmed) {
+                                                                                    setResetError(null);
+                                                                                    onUpdate(['fields', idx, 'reset_value'], null);
                                                                                     return;
                                                                                 }
-                                                                                onUpdate(['fields', idx, 'reset_value'], parsed);
+
+                                                                                const parsed = parseReset(raw);
+                                                                                const err = validateResetForField(field, parsed);
+                                                                                setResetError(err);
+                                                                                if (err) return;
+                                                                                if (parsed !== null) onUpdate(['fields', idx, 'reset_value'], parsed);
                                                                             }}
                                                                             onBlur={handleBlur(idx)}
                                                                             onKeyDown={handleKeyDown(idx)}
@@ -634,6 +713,9 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({ selectedType, selectedObjec
                                                                     ) : (
                                                                         resetDisplay || '0x0'
                                                                     )}
+                                                                    {isEditingReset && resetError ? (
+                                                                        <div className="text-xs text-red-600 mt-1">{resetError}</div>
+                                                                    ) : null}
                                                                 </div>
                                                             </td>
                                                             <td
