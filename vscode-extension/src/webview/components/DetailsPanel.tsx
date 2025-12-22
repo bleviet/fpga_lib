@@ -23,6 +23,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({ selectedType, selectedObjec
     const [hoveredFieldIndex, setHoveredFieldIndex] = useState<number | null>(null);
     const [editingFieldIndex, setEditingFieldIndex] = useState<number | null>(null);
     const [editingKey, setEditingKey] = useState<EditKey>('name');
+    const [bitsDraft, setBitsDraft] = useState<string>('');
 
     // Exit edit mode on Escape
     useEffect(() => {
@@ -48,6 +49,16 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({ selectedType, selectedObjec
             }
         }, 0);
         return () => window.clearTimeout(id);
+    }, [editingFieldIndex, editingKey]);
+
+    // Initialize draft text when entering Bits edit mode.
+    useEffect(() => {
+        if (editingFieldIndex === null) return;
+        if (editingKey !== 'bits') return;
+        const f = fields[editingFieldIndex];
+        if (!f) return;
+        setBitsDraft(toBits(f));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [editingFieldIndex, editingKey]);
 
     const isRegister = selectedType === 'register' && !!selectedObject;
@@ -198,7 +209,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({ selectedType, selectedObjec
         };
 
         return (
-            <div className="flex flex-col w-full h-full" onClickCapture={handleClickOutside}>
+            <div className="flex flex-col w-full h-full min-h-0" onClickCapture={handleClickOutside}>
                 {/* --- Register Header and BitFieldVisualizer --- */}
                 <div className="bg-gray-50/50 border-b border-gray-200 p-8 flex flex-col gap-6 shrink-0 relative overflow-hidden">
                     <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none"></div>
@@ -225,8 +236,8 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({ selectedType, selectedObjec
                     </div>
                 </div>
                 {/* --- Main Content: Table and Properties --- */}
-                <div className="flex-1 flex overflow-hidden">
-                    <div className="flex-1 overflow-auto bg-white border-r border-gray-200">
+                <div className="flex-1 flex overflow-hidden min-h-0">
+                    <div className="flex-1 overflow-auto bg-white border-r border-gray-200 min-h-0">
                         <table className="w-full text-left border-collapse table-fixed">
                             <colgroup>
                                 <col className="w-[32%] min-w-[240px]" />
@@ -294,9 +305,11 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({ selectedType, selectedObjec
                                                         <VSCodeTextField
                                                             data-edit-key="bits"
                                                             className="w-full font-mono"
-                                                            value={bits}
+                                                            value={bitsDraft}
                                                             onInput={(e: any) => {
-                                                                const parsed = parseBitsInput(e.target.value);
+                                                                const next = String(e.target.value ?? '');
+                                                                setBitsDraft(next);
+                                                                const parsed = parseBitsInput(next);
                                                                 if (parsed) {
                                                                     onUpdate(['fields', idx, 'bit_offset'], parsed.bit_offset);
                                                                     onUpdate(['fields', idx, 'bit_width'], parsed.bit_width);
@@ -304,7 +317,17 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({ selectedType, selectedObjec
                                                                 }
                                                             }}
                                                             onBlur={handleBlur(idx)}
-                                                            onKeyDown={handleKeyDown(idx)}
+                                                            onKeyDown={(e: any) => {
+                                                                if (e.key !== 'Enter') return;
+                                                                const parsed = parseBitsInput(bitsDraft);
+                                                                if (parsed) {
+                                                                    onUpdate(['fields', idx, 'bit_offset'], parsed.bit_offset);
+                                                                    onUpdate(['fields', idx, 'bit_width'], parsed.bit_width);
+                                                                    onUpdate(['fields', idx, 'bit_range'], parsed.bit_range);
+                                                                }
+                                                                e.preventDefault();
+                                                                setEditingFieldIndex(null);
+                                                            }}
                                                         />
                                                     ) : (
                                                         bits
