@@ -887,11 +887,11 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(({ 
                         >
                             <table className="w-full text-left border-collapse table-fixed">
                                 <colgroup>
-                                    <col className="w-[32%] min-w-[240px]" />
+                                    <col className="w-[18%] min-w-[120px]" />
                                     <col className="w-[14%] min-w-[100px]" />
                                     <col className="w-[14%] min-w-[120px]" />
                                     <col className="w-[14%] min-w-[110px]" />
-                                    <col className="w-[26%]" />
+                                    <col className="w-[40%] min-w-[240px]" />
                                 </colgroup>
                                 <thead className="vscode-surface-alt text-xs font-semibold vscode-muted uppercase tracking-wider sticky top-0 z-10 shadow-sm">
                                     <tr className="h-12">
@@ -1159,6 +1159,7 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(({ 
                                                     <td
                                                         data-col-key="description"
                                                         className={`px-6 py-2 vscode-muted align-middle ${activeCell.rowIndex === idx && activeCell.key === 'description' ? 'vscode-cell-active' : ''}`}
+                                                        style={{ width: '40%', minWidth: '240px' }}
                                                         onClick={(e) => {
                                                             e.stopPropagation();
                                                             ensureDraftsInitialized(idx);
@@ -1172,7 +1173,8 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(({ 
                                                             <VSCodeTextArea
                                                                 data-edit-key="description"
                                                                 className="w-full"
-                                                                rows={2}
+                                                                style={{ height: '40px', minHeight: '40px', resize: 'none' }}
+                                                                rows={1}
                                                                 value={field.description || ''}
                                                                 onFocus={() => {
                                                                     setSelectedFieldIndex(idx);
