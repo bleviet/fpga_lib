@@ -435,15 +435,55 @@ const Outline = React.forwardRef<OutlineHandle, OutlineProps>(({ memoryMap, sele
         const keyLower = (e.key || '').toLowerCase();
         const isDown = e.key === 'ArrowDown' || keyLower === 'j';
         const isUp = e.key === 'ArrowUp' || keyLower === 'k';
-        const isFocusDetails = e.key === 'Enter' || e.key === 'ArrowRight' || keyLower === 'l';
+        const isToggleExpand = e.key === ' ' || (e.key === 'Enter' && !e.shiftKey);
+        const isFocusDetails = (e.key === 'Enter' && !isToggleExpand) || e.key === 'ArrowRight' || keyLower === 'l';
 
-        if (!isDown && !isUp && !isFocusDetails) return;
+        if (!isDown && !isUp && !isFocusDetails && !isToggleExpand) return;
         if (e.ctrlKey || e.metaKey || e.altKey) return;
 
         const currentId = selectedId ?? rootId;
         const currentIndex = Math.max(0, visibleSelections.findIndex((s) => s.id === currentId));
         const currentSel = visibleSelections[currentIndex] ?? visibleSelections[0];
         if (!currentSel) return;
+
+        // Handle Space or Enter to toggle expand/collapse
+        if (isToggleExpand) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            // Check if current node has children
+            const hasChildren = (() => {
+                if (currentId === rootId) {
+                    return true; // Root always has blocks
+                }
+                if (currentId.startsWith('block-') && !currentId.includes('-reg-')) {
+                    const blockIdx = parseInt(currentId.split('-')[1], 10);
+                    const block = memoryMap.address_blocks?.[blockIdx];
+                    return block && Array.isArray(block.registers) && block.registers.length > 0;
+                }
+                if (currentId.includes('-reg-') && currentId.split('-reg-')[1].includes('-')) {
+                    // This is a register array
+                    const parts = currentId.split('-');
+                    const blockIdx = parseInt(parts[1], 10);
+                    const regIdx = parseInt(parts[3], 10);
+                    const block = memoryMap.address_blocks?.[blockIdx];
+                    const reg = block?.registers?.[regIdx] as any;
+                    return reg && (reg.count ?? 0) > 1;
+                }
+                return false;
+            })();
+
+            if (hasChildren) {
+                const newExpanded = new Set(expanded);
+                if (newExpanded.has(currentId)) {
+                    newExpanded.delete(currentId);
+                } else {
+                    newExpanded.add(currentId);
+                }
+                setExpanded(newExpanded);
+            }
+            return;
+        }
 
         if (isFocusDetails) {
             e.preventDefault();

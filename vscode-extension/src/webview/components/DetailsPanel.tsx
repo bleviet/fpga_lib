@@ -351,6 +351,9 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(({ 
     const fieldsFocusRef = useRef<HTMLDivElement | null>(null);
     const blocksFocusRef = useRef<HTMLDivElement | null>(null);
     const regsFocusRef = useRef<HTMLDivElement | null>(null);
+    const fieldsErrorRef = useRef<HTMLDivElement | null>(null);
+    const blocksErrorRef = useRef<HTMLDivElement | null>(null);
+    const regsErrorRef = useRef<HTMLDivElement | null>(null);
 
     useImperativeHandle(
         ref,
@@ -543,6 +546,7 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(({ 
                 // Check if new field fits within register
                 if (newLsb < 0 || newMsb >= regSize) {
                     setFieldsInsertError(`Cannot insert after: would place field at [${newMsb}:${newLsb}], outside register bounds`);
+                    window.setTimeout(() => fieldsErrorRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }), 0);
                     return;
                 }
 
@@ -556,6 +560,7 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(({ 
                     // Overlap occurs if: (fLsb <= newMsb && fMsb >= newLsb)
                     if (fLsb <= newMsb && fMsb >= newLsb) {
                         setFieldsInsertError(`Cannot insert: bits [${newMsb}:${newLsb}] already occupied by ${f.name}`);
+                        window.setTimeout(() => fieldsErrorRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }), 0);
                         return;
                     }
                 }
@@ -598,6 +603,7 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(({ 
                 }
                 if (minLsb < 0) {
                     setFieldsInsertError('Cannot insert: not enough space for repacking');
+                    window.setTimeout(() => fieldsErrorRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }), 0);
                     return;
                 }
 
@@ -618,6 +624,7 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(({ 
                 // Check if new field fits within register
                 if (newLsb < 0 || newMsb >= regSize) {
                     setFieldsInsertError(`Cannot insert before: would place field at [${newMsb}:${newLsb}], outside register bounds`);
+                    window.setTimeout(() => fieldsErrorRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }), 0);
                     return;
                 }
 
@@ -631,6 +638,7 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(({ 
                     // Overlap occurs if: (fLsb <= newMsb && fMsb >= newLsb)
                     if (fLsb <= newMsb && fMsb >= newLsb) {
                         setFieldsInsertError(`Cannot insert: bits [${newMsb}:${newLsb}] already occupied by ${f.name}`);
+                        window.setTimeout(() => fieldsErrorRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }), 0);
                         return;
                     }
                 }
@@ -673,6 +681,7 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(({ 
                 }
                 if (maxMsb >= regSize) {
                     setFieldsInsertError('Cannot insert: not enough space for repacking');
+                    window.setTimeout(() => fieldsErrorRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }), 0);
                     return;
                 }
 
@@ -714,16 +723,20 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(({ 
             if (!isInFieldsArea) return;
 
             const target = e.target as HTMLElement | null;
+            const isInDropdown = !!target?.closest('vscode-dropdown');
             const isTypingTarget = !!target?.closest(
-                'input, textarea, select, [contenteditable="true"], vscode-text-field, vscode-text-area, vscode-dropdown'
+                'input, textarea, select, [contenteditable="true"], vscode-text-field, vscode-text-area'
             );
-            // Don't steal arrow keys while editing/typing.
+            // Don't steal arrow keys while editing/typing, but allow vim keys in dropdown
             if (isTypingTarget) return;
+            // In dropdown, allow vim keys but not raw arrow keys (dropdown needs those for navigation)
+            if (isInDropdown && !keyLower.match(/^[hjkl]$/)) return;
 
             const scrollToCell = (rowIndex: number, key: EditKey) => {
                 window.setTimeout(() => {
                     const row = document.querySelector(`tr[data-field-idx="${rowIndex}"]`) as HTMLElement | null;
-                    row?.scrollIntoView({ block: 'nearest' });
+                    // For first element, scroll to center to ensure it's fully visible below sticky headers
+                    row?.scrollIntoView({ block: rowIndex === 0 ? 'center' : 'nearest' });
                     const cell = row?.querySelector(`td[data-col-key="${key}"]`) as HTMLElement | null;
                     cell?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
                 }, 0);
@@ -1615,9 +1628,10 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(({ 
                             tabIndex={0}
                             data-fields-table="true"
                             className="flex-1 overflow-auto min-h-0 outline-none focus:outline-none"
+                            style={{ overflowY: 'auto', overflowX: 'auto' }}
                         >
                             {fieldsInsertError ? (
-                                <div className="vscode-error px-4 py-2 text-xs">{fieldsInsertError}</div>
+                                <div ref={fieldsErrorRef} className="vscode-error px-4 py-2 text-xs">{fieldsInsertError}</div>
                             ) : null}
                             <table className="w-full text-left border-collapse table-fixed">
                                 <colgroup>
@@ -1659,6 +1673,7 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(({ 
                                                 key={idx}
                                                 data-field-idx={idx}
                                                 className={`group transition-colors border-l-4 border-transparent h-12 ${idx === selectedFieldIndex ? 'vscode-focus-border vscode-row-selected' : idx === hoveredFieldIndex ? 'vscode-focus-border vscode-row-hover' : ''}`}
+                                                style={{ position: 'relative' }}
                                                 onMouseEnter={() => {
                                                     setHoveredFieldIndex(idx);
                                                 }}
@@ -1815,6 +1830,7 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(({ 
                                                     <td
                                                         data-col-key="access"
                                                         className={`px-4 py-2 align-middle ${activeCell.rowIndex === idx && activeCell.key === 'access' ? 'vscode-cell-active' : ''}`}
+                                                        style={{ overflow: 'visible', position: 'relative' }}
                                                         onClick={(e) => {
                                                             e.stopPropagation();
                                                             ensureDraftsInitialized(idx);
@@ -1829,6 +1845,7 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(({ 
                                                                 data-edit-key="access"
                                                                 value={field.access || 'read-write'}
                                                                 className="w-full"
+                                                                position="below"
                                                                 onFocus={() => {
                                                                     setSelectedFieldIndex(idx);
                                                                     setHoveredFieldIndex(idx);
