@@ -26,11 +26,11 @@ export class MemoryMapEditorProvider implements vscode.CustomTextEditorProvider 
     /**
      * Resolve the custom text editor for a document
      */
-    public async resolveCustomTextEditor(
+    public resolveCustomTextEditor(
         document: vscode.TextDocument,
         webviewPanel: vscode.WebviewPanel,
         _token: vscode.CancellationToken
-    ): Promise<void> {
+    ): void {
         this.logger.info('Resolving custom text editor for document', document.uri.toString());
 
         // Configure webview

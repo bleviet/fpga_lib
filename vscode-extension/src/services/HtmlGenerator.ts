@@ -5,28 +5,28 @@ import { Logger } from '../utils/Logger';
  * Service responsible for generating HTML content for the webview
  */
 export class HtmlGenerator {
-    private readonly logger = new Logger('HtmlGenerator');
+  private readonly logger = new Logger('HtmlGenerator');
 
-    constructor(private readonly context: vscode.ExtensionContext) { }
+  constructor(private readonly context: vscode.ExtensionContext) { }
 
-    /**
-     * Generate the complete HTML document for the webview
-     */
-    generateHtml(webview: vscode.Webview): string {
-        const scriptUri = this.getWebviewUri(webview, 'dist', 'webview.js');
-        const codiconsUri = this.getWebviewUri(
-            webview,
-            'node_modules',
-            '@vscode/codicons',
-            'dist',
-            'codicon.css'
-        );
+  /**
+   * Generate the complete HTML document for the webview
+   */
+  generateHtml(webview: vscode.Webview): string {
+    const scriptUri = this.getWebviewUri(webview, 'dist', 'webview.js');
+    const codiconsUri = this.getWebviewUri(
+      webview,
+      'node_modules',
+      '@vscode/codicons',
+      'dist',
+      'codicon.css'
+    );
 
-        const csp = this.getContentSecurityPolicy(webview);
+    const csp = this.getContentSecurityPolicy(webview);
 
-        this.logger.debug('Generating HTML for webview');
+    this.logger.debug('Generating HTML for webview');
 
-        return `
+    return `
       <!DOCTYPE html>
       <html lang="en">
       <head>
@@ -39,25 +39,25 @@ export class HtmlGenerator {
       </head>
       <body class="bg-gray-50 text-gray-900 font-sans h-screen flex flex-col overflow-hidden">
         <div id="root"></div>
-        <script src="${scriptUri}"></script>
+        <script src="${scriptUri.toString()}"></script>
       </body>
       </html>
     `;
-    }
+  }
 
-    /**
-     * Get a webview URI for a resource in the extension
-     */
-    private getWebviewUri(webview: vscode.Webview, ...pathSegments: string[]): vscode.Uri {
-        return webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, ...pathSegments));
-    }
+  /**
+   * Get a webview URI for a resource in the extension
+   */
+  private getWebviewUri(webview: vscode.Webview, ...pathSegments: string[]): vscode.Uri {
+    return webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, ...pathSegments));
+  }
 
-    /**
-     * Generate Content Security Policy meta tag
-     * TODO: Remove unsafe-inline and external CDN references for better security
-     */
-    private getContentSecurityPolicy(webview: vscode.Webview): string {
-        return `
+  /**
+   * Generate Content Security Policy meta tag
+   * TODO: Remove unsafe-inline and external CDN references for better security
+   */
+  private getContentSecurityPolicy(webview: vscode.Webview): string {
+    return `
       <meta 
         http-equiv="Content-Security-Policy" 
         content="default-src 'none'; 
@@ -66,14 +66,14 @@ export class HtmlGenerator {
                  script-src ${webview.cspSource} 'unsafe-inline' https://cdn.tailwindcss.com;"
       >
     `;
-    }
+  }
 
-    /**
-     * Get stylesheet links
-     */
-    private getStylesheets(codiconsUri: vscode.Uri): string {
-        return `
-      <link href="${codiconsUri}" rel="stylesheet" />
+  /**
+   * Get stylesheet links
+   */
+  private getStylesheets(codiconsUri: vscode.Uri): string {
+    return `
+      <link href="${codiconsUri.toString()}" rel="stylesheet" />
       <script src="https://cdn.tailwindcss.com"></script>
       <script>
         tailwind.config = {
@@ -104,13 +104,13 @@ export class HtmlGenerator {
       </script>
       <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
     `;
-    }
+  }
 
-    /**
-     * Get inline styles for the webview
-     */
-    private getInlineStyles(): string {
-        return `
+  /**
+   * Get inline styles for the webview
+   */
+  private getInlineStyles(): string {
+    return `
       <style>
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
@@ -123,5 +123,5 @@ export class HtmlGenerator {
         .dim-bit { opacity: 0.4; }
       </style>
     `;
-    }
+  }
 }

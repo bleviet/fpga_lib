@@ -103,7 +103,7 @@ export class MessageHandler {
             await vscode.window.showInformationMessage('YAML parsed successfully.');
             this.logger.info('YAML validation successful');
         } else {
-            await vscode.window.showErrorMessage(`YAML parse error: ${result.error}`);
+            await vscode.window.showErrorMessage(`YAML parse error: ${result.error ?? 'Unknown error'}`);
             this.logger.warn('YAML validation failed', result.error);
         }
     }
@@ -112,7 +112,7 @@ export class MessageHandler {
      * Send an update message to the webview
      */
     sendUpdate(webview: vscode.Webview, document: vscode.TextDocument): void {
-        webview.postMessage({
+        void webview.postMessage({
             type: 'update',
             text: this.documentManager.getText(document),
             fileName: this.documentManager.getRelativePath(document.uri),

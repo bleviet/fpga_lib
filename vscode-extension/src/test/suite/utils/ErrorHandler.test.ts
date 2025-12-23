@@ -114,15 +114,13 @@ describe('ErrorHandler', () => {
 
     describe('wrapAsync', () => {
         it('should return result when function succeeds', async () => {
-            const fn = async () => 'success';
+            const fn = () => Promise.resolve('success');
             const result = await ErrorHandler.wrapAsync(fn, 'TestContext');
             expect(result).toBe('success');
         });
 
         it('should return undefined when function throws', async () => {
-            const fn = async () => {
-                throw new Error('Test error');
-            };
+            const fn = () => Promise.reject(new Error('Test error'));
             const result = await ErrorHandler.wrapAsync(fn, 'TestContext');
             expect(result).toBeUndefined();
         });
@@ -130,7 +128,7 @@ describe('ErrorHandler', () => {
 
     describe('wrapAsyncWithNotification', () => {
         it('should return result when function succeeds', async () => {
-            const fn = async () => 42;
+            const fn = () => Promise.resolve(42);
             mockShowErrorMessage.mockResolvedValue(undefined);
 
             const result = await ErrorHandler.wrapAsyncWithNotification(fn, 'TestContext');
@@ -139,9 +137,7 @@ describe('ErrorHandler', () => {
         });
 
         it('should show notification and return undefined when function throws', async () => {
-            const fn = async () => {
-                throw new Error('Test error');
-            };
+            const fn = () => Promise.reject(new Error('Test error'));
             mockShowErrorMessage.mockResolvedValue(undefined);
 
             const result = await ErrorHandler.wrapAsyncWithNotification(fn, 'TestContext');

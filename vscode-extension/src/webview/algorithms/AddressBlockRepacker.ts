@@ -13,8 +13,13 @@ export function repackBlocksForward(blocks: any[], fromIndex: number): any[] {
     const newBlocks = [...blocks];
 
     // Start from the block just before fromIndex to determine the starting position
-    let nextBase =
-        fromIndex > 0 ? newBlocks[fromIndex - 1].base_address + newBlocks[fromIndex - 1].size : 0;
+    let nextBase = 0;
+    if (fromIndex > 0) {
+        const prevBlock = newBlocks[fromIndex - 1];
+        const prevBase = typeof prevBlock.base_address === 'number' ? prevBlock.base_address : 0;
+        const prevSize = typeof prevBlock.size === 'number' ? prevBlock.size : 0;
+        nextBase = prevBase + prevSize;
+    }
 
     for (let i = fromIndex; i < newBlocks.length; i++) {
         const block = newBlocks[i];
@@ -22,7 +27,7 @@ export function repackBlocksForward(blocks: any[], fromIndex: number): any[] {
             ...block,
             base_address: nextBase,
         };
-        nextBase += block.size;
+        nextBase += (typeof block.size === 'number' ? block.size : 0);
     }
 
     return newBlocks;
