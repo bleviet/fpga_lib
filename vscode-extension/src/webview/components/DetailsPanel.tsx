@@ -55,6 +55,213 @@ function repackFieldsFrom(fields: any[], regWidth: number, startIdx: number) {
     return newFields;
 }
 
+// ========== Spatial Repacking Helpers for o/O insertion ==========
+
+/**
+ * Repack bit fields downward (toward LSB/bit 0) starting from the given index.
+ * Maintains field widths but shifts them to lower bit positions.
+ * @param fields Array of bit fields
+ * @param fromIndex Starting index for repacking (inclusive)
+ * @param regWidth Register width in bits
+ * @returns New array with repacked fields
+ */
+function repackFieldsDownward(fields: any[], fromIndex: number, regWidth: number): any[] {
+    const newFields = [...fields];
+    const toBitsLocal = (f: any) => {
+        const o = Number(f?.bit_offset ?? 0);
+        const w = Number(f?.bit_width ?? 1);
+        if (!Number.isFinite(o) || !Number.isFinite(w)) return '[?:?]';
+        const msb = o + w - 1;
+        return `[${msb}:${o}]`;
+    };
+
+    // Start from the field just before fromIndex to determine the starting position
+    let nextMsb = fromIndex > 0 ? (() => {
+        const prev = newFields[fromIndex - 1];
+        const prevBits = prev.bits || toBitsLocal(prev);
+        const prevRange = parseBitsRange(prevBits);
+        return prevRange ? prevRange[1] - 1 : regWidth - 1; // LSB - 1
+    })() : regWidth - 1;
+
+    for (let i = fromIndex; i < newFields.length; i++) {
+        const field = newFields[i];
+        const bitsStr = field.bits || toBitsLocal(field);
+        const parsed = parseBitsRange(bitsStr);
+        const width = parsed ? Math.abs(parsed[0] - parsed[1]) + 1 : 1;
+
+        const msb = nextMsb;
+        const lsb = Math.max(0, msb - width + 1);
+        nextMsb = lsb - 1;
+
+        newFields[i] = {
+            ...field,
+            bits: formatBits(msb, lsb),
+            bit_offset: lsb,
+            bit_width: width,
+            bit_range: [msb, lsb]
+        };
+    }
+
+    return newFields;
+}
+
+/**
+ * Repack bit fields upward (toward MSB) starting from the given index going backwards.
+ * Maintains field widths but shifts them to higher bit positions.
+ * @param fields Array of bit fields
+ * @param fromIndex Starting index for repacking (inclusive), goes backward to index 0
+ * @param regWidth Register width in bits
+ * @returns New array with repacked fields
+ */
+function repackFieldsUpward(fields: any[], fromIndex: number, regWidth: number): any[] {
+    const newFields = [...fields];
+    const toBitsLocal = (f: any) => {
+        const o = Number(f?.bit_offset ?? 0);
+        const w = Number(f?.bit_width ?? 1);
+        if (!Number.isFinite(o) || !Number.isFinite(w)) return '[?:?]';
+        const msb = o + w - 1;
+        return `[${msb}:${o}]`;
+    };
+
+    // Start from the field just after fromIndex to determine the starting position
+    let nextLsb = fromIndex < newFields.length - 1 ? (() => {
+        const next = newFields[fromIndex + 1];
+        const nextBits = next.bits || toBitsLocal(next);
+        const nextRange = parseBitsRange(nextBits);
+        return nextRange ? nextRange[0] + 1 : 0; // MSB + 1
+    })() : 0;
+
+    for (let i = fromIndex; i >= 0; i--) {
+        const field = newFields[i];
+        const bitsStr = field.bits || toBitsLocal(field);
+        const parsed = parseBitsRange(bitsStr);
+        const width = parsed ? Math.abs(parsed[0] - parsed[1]) + 1 : 1;
+
+        const lsb = nextLsb;
+        const msb = Math.min(regWidth - 1, lsb + width - 1);
+        nextLsb = msb + 1;
+
+        newFields[i] = {
+            ...field,
+            bits: formatBits(msb, lsb),
+            bit_offset: lsb,
+            bit_width: width,
+            bit_range: [msb, lsb]
+        };
+    }
+
+    return newFields;
+}
+
+/**
+ * Repack address blocks forward (toward higher addresses) starting from the given index.
+ * Maintains block sizes but shifts them to higher addresses.
+ * @param blocks Array of address blocks
+ * @param fromIndex Starting index for repacking (inclusive)
+ * @returns New array with repacked blocks
+ */
+function repackBlocksForward(blocks: any[], fromIndex: number): any[] {
+    const newBlocks = [...blocks];
+
+    // Start from the block just before fromIndex to determine the starting position
+    let nextBase = fromIndex > 0
+        ? newBlocks[fromIndex - 1].base_address + newBlocks[fromIndex - 1].size
+        : 0;
+
+    for (let i = fromIndex; i < newBlocks.length; i++) {
+        const block = newBlocks[i];
+        newBlocks[i] = {
+            ...block,
+            base_address: nextBase
+        };
+        nextBase += block.size;
+    }
+
+    return newBlocks;
+}
+
+/**
+ * Repack address blocks backward (toward lower addresses) starting from the given index going backwards.
+ * Maintains block sizes but shifts them to lower addresses.
+ * @param blocks Array of address blocks
+ * @param fromIndex Starting index for repacking (inclusive), goes backward to index 0
+ * @returns New array with repacked blocks
+ */
+function repackBlocksBackward(blocks: any[], fromIndex: number): any[] {
+    const newBlocks = [...blocks];
+
+    // Start from the block just after fromIndex to determine the starting position
+    let nextEnd = fromIndex < newBlocks.length - 1
+        ? newBlocks[fromIndex + 1].base_address - 1
+        : Infinity;
+
+    for (let i = fromIndex; i >= 0; i--) {
+        const block = newBlocks[i];
+        const size = block.size || 0;
+        const base = nextEnd === Infinity ? block.base_address : (nextEnd - size + 1);
+        newBlocks[i] = {
+            ...block,
+            base_address: Math.max(0, base)
+        };
+        nextEnd = base - 1;
+    }
+
+    return newBlocks;
+}
+
+/**
+ * Repack registers forward (toward higher offsets) starting from the given index.
+ * Maintains 4-byte alignment.
+ * @param registers Array of registers
+ * @param fromIndex Starting index for repacking (inclusive)
+ * @returns New array with repacked registers
+ */
+function repackRegistersForward(registers: any[], fromIndex: number): any[] {
+    const newRegs = [...registers];
+
+    // Start from the register just before fromIndex to determine the starting position
+    let nextOffset = fromIndex > 0
+        ? newRegs[fromIndex - 1].offset + 4
+        : 0;
+
+    for (let i = fromIndex; i < newRegs.length; i++) {
+        newRegs[i] = {
+            ...newRegs[i],
+            offset: nextOffset
+        };
+        nextOffset += 4;
+    }
+
+    return newRegs;
+}
+
+/**
+ * Repack registers backward (toward lower offsets) starting from the given index going backwards.
+ * Maintains 4-byte alignment.
+ * @param registers Array of registers
+ * @param fromIndex Starting index for repacking (inclusive), goes backward to index 0
+ * @returns New array with repacked registers
+ */
+function repackRegistersBackward(registers: any[], fromIndex: number): any[] {
+    const newRegs = [...registers];
+
+    // Start from the register just after fromIndex to determine the starting position
+    let nextOffset = fromIndex < newRegs.length - 1
+        ? newRegs[fromIndex + 1].offset - 4
+        : Infinity;
+
+    for (let i = fromIndex; i >= 0; i--) {
+        const offset = nextOffset === Infinity ? newRegs[i].offset : nextOffset;
+        newRegs[i] = {
+            ...newRegs[i],
+            offset: Math.max(0, offset)
+        };
+        nextOffset = offset - 4;
+    }
+
+    return newRegs;
+}
+
 import React, { useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import { VSCodeDropdown, VSCodeOption, VSCodeTextField, VSCodeTextArea } from '@vscode/webview-ui-toolkit/react';
 import { Register } from '../types/memoryMap';
@@ -131,6 +338,10 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(({ 
     };
     const [resetDrafts, setResetDrafts] = useState<Record<number, string>>({});
     const [resetErrors, setResetErrors] = useState<Record<number, string | null>>({});
+    // Insert error states for vim-style insertion
+    const [fieldsInsertError, setFieldsInsertError] = useState<string | null>(null);
+    const [blocksInsertError, setBlocksInsertError] = useState<string | null>(null);
+    const [regsInsertError, setRegsInsertError] = useState<string | null>(null);
     // Memory map states
     const [selectedBlockIndex, setSelectedBlockIndex] = useState<number>(-1);
     const [hoveredBlockIndex, setHoveredBlockIndex] = useState<number | null>(null);
@@ -259,8 +470,222 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(({ 
     // - Vim keys: h/j/k/l move between cells
     // - Alt+ArrowUp / Alt+ArrowDown: move selected field (repack offsets)
     // - F2 or e: edit active cell
+    // --- Bit Field Table: Keyboard Shortcuts (including o/O insert) ---
     useEffect(() => {
         if (!isRegister) return;
+
+        // Helper to get bits string for a field
+        const toBits = (f: any) => {
+            const o = Number(f?.bit_offset ?? 0);
+            const w = Number(f?.bit_width ?? 1);
+            if (!Number.isFinite(o) || !Number.isFinite(w)) {
+                return '[?:?]';
+            }
+            const msb = o + w - 1;
+            return `[${msb}:${o}]`;
+        };
+
+        const getNextFieldName = () => {
+            // Find max fieldN
+            let maxN = 0;
+            for (const f of fields) {
+                const m = String(f.name || '').match(/^field(\d+)$/);
+                if (m) maxN = Math.max(maxN, parseInt(m[1], 10));
+            }
+            return `field${maxN + 1}`;
+        };
+
+        const tryInsertField = (after: boolean) => {
+            setFieldsInsertError(null);
+            const regSize = reg?.size || 32;
+            const newFieldWidth = 1; // Default 1-bit field
+
+            // CASE 1: Empty register - place at LSB
+            if (fields.length === 0) {
+                const name = getNextFieldName();
+                const newField = {
+                    name,
+                    bits: '[0]',
+                    bit_offset: 0,
+                    bit_width: 1,
+                    bit_range: [0, 0],
+                    access: 'read-write',
+                    reset_value: 0,
+                    description: '',
+                };
+                onUpdate(['fields'], [newField]);
+                setSelectedFieldIndex(0);
+                setHoveredFieldIndex(0);
+                setActiveCell({ rowIndex: 0, key: 'name' });
+                window.setTimeout(() => {
+                    const row = document.querySelector(`tr[data-field-idx="0"]`);
+                    row?.scrollIntoView({ block: 'nearest' });
+                }, 0);
+                return;
+            }
+
+            // Get selected field or use last field
+            const selIdx = selectedFieldIndex >= 0 ? selectedFieldIndex : fields.length - 1;
+            const selected = fields[selIdx];
+            const selectedBits = parseBitsRange(toBits(selected));
+            if (!selectedBits) {
+                setFieldsInsertError('Cannot determine selected field position');
+                return;
+            }
+
+            const [selectedMsb, selectedLsb] = selectedBits;
+
+            if (after) {
+                // INSERT AFTER: new field goes to lower bits (MSB = selectedMsb + 1)
+                const newMsb = selectedMsb + 1;
+                const newLsb = newMsb - newFieldWidth + 1;
+
+                // Check if new field fits within register
+                if (newLsb < 0 || newMsb >= regSize) {
+                    setFieldsInsertError(`Cannot insert after: would place field at [${newMsb}:${newLsb}], outside register bounds`);
+                    return;
+                }
+
+                // Check if any existing field overlaps with the new field position
+                for (const f of fields) {
+                    if (f === selected) continue; // Skip the selected field itself
+                    const bits = parseBitsRange(toBits(f));
+                    if (!bits) continue;
+                    const [fMsb, fLsb] = bits;
+                    // Check if field f overlaps with the range [newMsb:newLsb]
+                    // Overlap occurs if: (fLsb <= newMsb && fMsb >= newLsb)
+                    if (fLsb <= newMsb && fMsb >= newLsb) {
+                        setFieldsInsertError(`Cannot insert: bits [${newMsb}:${newLsb}] already occupied by ${f.name}`);
+                        return;
+                    }
+                }
+
+                // Create new field
+                const name = getNextFieldName();
+                const newField = {
+                    name,
+                    bits: formatBits(newMsb, newLsb),
+                    bit_offset: newLsb,
+                    bit_width: newFieldWidth,
+                    bit_range: [newMsb, newLsb],
+                    access: 'read-write',
+                    reset_value: 0,
+                    description: '',
+                };
+
+                // Insert after selected field in array
+                let newFields = [...fields.slice(0, selIdx + 1), newField, ...fields.slice(selIdx + 1)];
+
+                // Repack subsequent fields downward (toward LSB)
+                newFields = repackFieldsDownward(newFields, selIdx + 2, regSize);
+
+                // Sort by LSB ascending to maintain array order (bit 0 first)
+                newFields.sort((a, b) => {
+                    const aBits = parseBitsRange(toBits(a));
+                    const bBits = parseBitsRange(toBits(b));
+                    if (!aBits || !bBits) return 0;
+                    return aBits[1] - bBits[1]; // LSB ascending
+                });
+
+                // Find new index after sort
+                const newIdx = newFields.findIndex(f => f.name === name);
+
+                // Check for overflow after repacking
+                let minLsb = Infinity;
+                for (const f of newFields) {
+                    const bits = parseBitsRange(toBits(f));
+                    if (bits) minLsb = Math.min(minLsb, bits[1]);
+                }
+                if (minLsb < 0) {
+                    setFieldsInsertError('Cannot insert: not enough space for repacking');
+                    return;
+                }
+
+                onUpdate(['fields'], newFields);
+                setSelectedFieldIndex(newIdx);
+                setHoveredFieldIndex(newIdx);
+                setActiveCell({ rowIndex: newIdx, key: 'name' });
+                window.setTimeout(() => {
+                    const row = document.querySelector(`tr[data-field-idx="${newIdx}"]`);
+                    row?.scrollIntoView({ block: 'nearest' });
+                }, 0);
+
+            } else {
+                // INSERT BEFORE: new field goes to higher bits (LSB = selectedLsb - 1)
+                const newLsb = selectedLsb - 1;
+                const newMsb = newLsb + newFieldWidth - 1;
+
+                // Check if new field fits within register
+                if (newLsb < 0 || newMsb >= regSize) {
+                    setFieldsInsertError(`Cannot insert before: would place field at [${newMsb}:${newLsb}], outside register bounds`);
+                    return;
+                }
+
+                // Check if any existing field overlaps with the new field position
+                for (const f of fields) {
+                    if (f === selected) continue; // Skip the selected field itself
+                    const bits = parseBitsRange(toBits(f));
+                    if (!bits) continue;
+                    const [fMsb, fLsb] = bits;
+                    // Check if field f overlaps with the range [newMsb:newLsb]
+                    // Overlap occurs if: (fLsb <= newMsb && fMsb >= newLsb)
+                    if (fLsb <= newMsb && fMsb >= newLsb) {
+                        setFieldsInsertError(`Cannot insert: bits [${newMsb}:${newLsb}] already occupied by ${f.name}`);
+                        return;
+                    }
+                }
+
+                // Create new field
+                const name = getNextFieldName();
+                const newField = {
+                    name,
+                    bits: formatBits(newMsb, newLsb),
+                    bit_offset: newLsb,
+                    bit_width: newFieldWidth,
+                    bit_range: [newMsb, newLsb],
+                    access: 'read-write',
+                    reset_value: 0,
+                    description: '',
+                };
+
+                // Insert before selected field in array
+                let newFields = [...fields.slice(0, selIdx), newField, ...fields.slice(selIdx)];
+
+                // Repack previous fields upward (toward MSB)
+                newFields = repackFieldsUpward(newFields, selIdx - 1 >= 0 ? selIdx - 1 : 0, regSize);
+
+                // Sort by LSB ascending to maintain array order (bit 0 first)
+                newFields.sort((a, b) => {
+                    const aBits = parseBitsRange(toBits(a));
+                    const bBits = parseBitsRange(toBits(b));
+                    if (!aBits || !bBits) return 0;
+                    return aBits[1] - bBits[1]; // LSB ascending
+                });
+
+                // Find new index after sort
+                const newIdx = newFields.findIndex(f => f.name === name);
+
+                // Check for overflow after repacking
+                let maxMsb = -Infinity;
+                for (const f of newFields) {
+                    const bits = parseBitsRange(toBits(f));
+                    if (bits) maxMsb = Math.max(maxMsb, bits[0]);
+                }
+                if (maxMsb >= regSize) {
+                    setFieldsInsertError('Cannot insert: not enough space for repacking');
+                    return;
+                }
+
+                onUpdate(['fields'], newFields);
+                setSelectedFieldIndex(newIdx);
+                setHoveredFieldIndex(newIdx);
+                setActiveCell({ rowIndex: newIdx, key: 'name' });
+                window.setTimeout(() => {
+                    const row = document.querySelector(`tr[data-field-idx="${newIdx}"]`);
+                    row?.scrollIntoView({ block: 'nearest' });
+                }, 0);
+            }
+        };
 
         const onKeyDown = (e: KeyboardEvent) => {
             const keyLower = (e.key || '').toLowerCase();
@@ -277,7 +702,9 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(({ 
             const isArrow = normalizedKey === 'ArrowUp' || normalizedKey === 'ArrowDown' || normalizedKey === 'ArrowLeft' || normalizedKey === 'ArrowRight';
             const isEdit = normalizedKey === 'F2' || keyLower === 'e';
             const isDelete = keyLower === 'd' || e.key === 'Delete';
-            if (!isArrow && !isEdit && !isDelete) return;
+            const isInsertAfter = keyLower === 'o' && !e.shiftKey;
+            const isInsertBefore = keyLower === 'o' && e.shiftKey;
+            if (!isArrow && !isEdit && !isDelete && !isInsertAfter && !isInsertBefore) return;
 
             // Avoid hijacking common editor chords.
             if (e.ctrlKey || e.metaKey) return;
@@ -317,6 +744,12 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(({ 
                 return;
             }
 
+            if (isInsertAfter || isInsertBefore) {
+                e.preventDefault();
+                e.stopPropagation();
+                tryInsertField(isInsertAfter);
+                return;
+            }
             if (isDelete) {
                 if (currentRow < 0 || currentRow >= fields.length) return;
                 e.preventDefault();
@@ -383,11 +816,161 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(({ 
     // Keyboard shortcuts for Memory Map blocks table (when focused):
     // - Arrow keys or Vim h/j/k/l to move active cell
     // - F2 or e focuses the editor for the active cell
+    // --- Address Block Table: Keyboard Shortcuts (including o/O insert) ---
     useEffect(() => {
         if (selectedType !== 'memoryMap') return;
 
         const blocks = (selectedObject as any)?.address_blocks || (selectedObject as any)?.addressBlocks || [];
         if (!Array.isArray(blocks) || blocks.length === 0) return;
+
+        const getNextBlockName = () => {
+            let maxN = 0;
+            for (const b of blocks) {
+                const m = String(b.name || '').match(/^block(\d+)$/);
+                if (m) maxN = Math.max(maxN, parseInt(m[1], 10));
+            }
+            return `block${maxN + 1}`;
+        };
+
+        const tryInsertBlock = (after: boolean) => {
+            setBlocksInsertError(null);
+            const defaultBlockSize = 4096; // 4KB default
+
+            // CASE 1: Empty memory map - place at base address 0
+            if (blocks.length === 0) {
+                const name = getNextBlockName();
+                const newBlock = {
+                    name,
+                    base_address: 0,
+                    size: defaultBlockSize,
+                    usage: 'register',
+                    description: '',
+                };
+                onUpdate(['addressBlocks'], [newBlock]);
+                setSelectedBlockIndex(0);
+                setHoveredBlockIndex(0);
+                setBlockActiveCell({ rowIndex: 0, key: 'name' });
+                window.setTimeout(() => {
+                    const row = document.querySelector(`tr[data-block-idx="0"]`);
+                    row?.scrollIntoView({ block: 'nearest' });
+                }, 0);
+                return;
+            }
+
+            // Get selected block or use last block
+            const selIdx = selectedBlockIndex >= 0 ? selectedBlockIndex : blocks.length - 1;
+            const selected = blocks[selIdx];
+            const selectedBase = selected.base_address ?? selected.offset ?? 0;
+            const selectedSize = selected.size ?? selected.range ?? 4096;
+
+            if (after) {
+                // INSERT AFTER: new block goes to higher address (base = selected.base + selected.size)
+                const newBase = selectedBase + selectedSize;
+
+                const name = getNextBlockName();
+                const newBlock = {
+                    name,
+                    base_address: newBase,
+                    size: defaultBlockSize,
+                    usage: 'register',
+                    description: '',
+                };
+
+                // Insert after selected block in array
+                let newBlocks = [...blocks.slice(0, selIdx + 1), newBlock, ...blocks.slice(selIdx + 1)];
+
+                // Repack subsequent blocks forward (toward higher addresses)
+                newBlocks = repackBlocksForward(newBlocks, selIdx + 2);
+
+                // Sort by base address ascending
+                newBlocks.sort((a, b) => {
+                    const aBase = a.base_address ?? a.offset ?? 0;
+                    const bBase = b.base_address ?? b.offset ?? 0;
+                    return aBase - bBase;
+                });
+
+                // Find new index after sort
+                const newIdx = newBlocks.findIndex(b => b.name === name);
+
+                onUpdate(['addressBlocks'], newBlocks);
+                setSelectedBlockIndex(newIdx);
+                setHoveredBlockIndex(newIdx);
+                setBlockActiveCell({ rowIndex: newIdx, key: 'name' });
+                window.setTimeout(() => {
+                    const row = document.querySelector(`tr[data-block-idx="${newIdx}"]`);
+                    row?.scrollIntoView({ block: 'nearest' });
+                }, 0);
+
+            } else {
+                // INSERT BEFORE: new block goes to lower address (end = selected.base - 1)
+                const newEnd = selectedBase - 1;
+                const newBase = Math.max(0, newEnd - defaultBlockSize + 1);
+
+                // Check if we have room
+                if (newBase < 0) {
+                    setBlocksInsertError('Cannot insert before: not enough address space');
+                    return;
+                }
+
+                const name = getNextBlockName();
+                const newBlock = {
+                    name,
+                    base_address: newBase,
+                    size: defaultBlockSize,
+                    usage: 'register',
+                    description: '',
+                };
+
+                // Insert before selected block in array
+                let newBlocks = [...blocks.slice(0, selIdx), newBlock, ...blocks.slice(selIdx)];
+
+                // Repack previous blocks backward (toward lower addresses)
+                // Need to resize or shift blocks if there's overlap
+                // For simplicity with auto-resize: check if previous block needs to be resized
+                if (selIdx > 0) {
+                    const prevBlock = newBlocks[selIdx - 1];
+                    const prevBase = prevBlock.base_address ?? prevBlock.offset ?? 0;
+                    const prevSize = prevBlock.size ?? prevBlock.range ?? 4096;
+                    const prevEnd = prevBase + prevSize - 1;
+
+                    // Check if previous block overlaps with new block
+                    if (prevEnd >= newBase) {
+                        // Auto-resize previous block to fit
+                        const newPrevSize = newBase - prevBase;
+                        if (newPrevSize <= 0) {
+                            setBlocksInsertError('Cannot insert before: insufficient space, previous block would have zero or negative size');
+                            return;
+                        }
+                        newBlocks[selIdx - 1] = {
+                            ...prevBlock,
+                            size: newPrevSize
+                        };
+                    }
+                }
+
+                // Repack blocks backward if needed
+                newBlocks = repackBlocksBackward(newBlocks, selIdx - 1 >= 0 ? selIdx - 1 : 0);
+
+                // Sort by base address ascending
+                newBlocks.sort((a, b) => {
+                    const aBase = a.base_address ?? a.offset ?? 0;
+                    const bBase = b.base_address ?? b.offset ?? 0;
+                    return aBase - bBase;
+                });
+
+                // Find new index after sort
+                const newIdx = newBlocks.findIndex(b => b.name === name);
+
+                onUpdate(['addressBlocks'], newBlocks);
+                setSelectedBlockIndex(newIdx);
+                setHoveredBlockIndex(newIdx);
+                setBlockActiveCell({ rowIndex: newIdx, key: 'name' });
+                window.setTimeout(() => {
+                    const row = document.querySelector(`tr[data-block-idx="${newIdx}"]`);
+                    row?.scrollIntoView({ block: 'nearest' });
+                }, 0);
+            }
+        };
 
         const onKeyDown = (e: KeyboardEvent) => {
             const keyLower = (e.key || '').toLowerCase();
@@ -404,7 +987,9 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(({ 
             const isArrow = normalizedKey === 'ArrowUp' || normalizedKey === 'ArrowDown' || normalizedKey === 'ArrowLeft' || normalizedKey === 'ArrowRight';
             const isEdit = normalizedKey === 'F2' || keyLower === 'e';
             const isDelete = keyLower === 'd' || e.key === 'Delete';
-            if (!isArrow && !isEdit && !isDelete) return;
+            const isInsertAfter = keyLower === 'o' && !e.shiftKey;
+            const isInsertBefore = keyLower === 'o' && e.shiftKey;
+            if (!isArrow && !isEdit && !isDelete && !isInsertAfter && !isInsertBefore) return;
 
             if (e.ctrlKey || e.metaKey) return;
 
@@ -449,6 +1034,12 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(({ 
                 return;
             }
 
+            if (isInsertAfter || isInsertBefore) {
+                e.preventDefault();
+                e.stopPropagation();
+                tryInsertBlock(isInsertAfter);
+                return;
+            }
             if (isDelete) {
                 if (currentRow < 0 || currentRow >= blocks.length) return;
                 e.preventDefault();
@@ -495,11 +1086,143 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(({ 
     // Keyboard shortcuts for Address Block registers table (when focused):
     // - Arrow keys or Vim h/j/k/l to move active cell
     // - F2 or e focuses the editor for the active cell
+    // --- Registers Table: Keyboard Shortcuts (including o/O insert) ---
     useEffect(() => {
         if (selectedType !== 'block') return;
 
         const registers = (selectedObject as any)?.registers || [];
         if (!Array.isArray(registers) || registers.length === 0) return;
+
+        const getNextRegName = () => {
+            let maxN = 0;
+            for (const r of registers) {
+                const m = String(r.name || '').match(/^reg(\d+)$/);
+                if (m) maxN = Math.max(maxN, parseInt(m[1], 10));
+            }
+            return `reg${maxN + 1}`;
+        };
+
+        const tryInsertReg = (after: boolean) => {
+            setRegsInsertError(null);
+
+            // CASE 1: Empty block - place at offset 0x00
+            if (registers.length === 0) {
+                const name = getNextRegName();
+                const newReg = {
+                    name,
+                    address_offset: 0,
+                    offset: 0,
+                    access: 'read-write',
+                    description: '',
+                };
+                onUpdate(['registers'], [newReg]);
+                setSelectedRegIndex(0);
+                setHoveredRegIndex(0);
+                setRegActiveCell({ rowIndex: 0, key: 'name' });
+                window.setTimeout(() => {
+                    const row = document.querySelector(`tr[data-reg-idx="0"]`);
+                    row?.scrollIntoView({ block: 'nearest' });
+                }, 0);
+                return;
+            }
+
+            // Get selected register or use last register
+            const selIdx = selectedRegIndex >= 0 ? selectedRegIndex : registers.length - 1;
+            const selected = registers[selIdx];
+            const selectedOffset = selected.address_offset ?? selected.offset ?? 0;
+
+            if (after) {
+                // INSERT AFTER: new register goes to higher offset (offset = selected.offset + 4)
+                const newOffset = selectedOffset + 4;
+
+                const name = getNextRegName();
+                const newReg = {
+                    name,
+                    address_offset: newOffset,
+                    offset: newOffset,
+                    access: 'read-write',
+                    description: '',
+                };
+
+                // Insert after selected register in array
+                let newRegs = [...registers.slice(0, selIdx + 1), newReg, ...registers.slice(selIdx + 1)];
+
+                // Repack subsequent registers forward (toward higher offsets)
+                newRegs = repackRegistersForward(newRegs, selIdx + 2);
+
+                // Sort by offset ascending
+                newRegs.sort((a, b) => {
+                    const aOffset = a.address_offset ?? a.offset ?? 0;
+                    const bOffset = b.address_offset ?? b.offset ?? 0;
+                    return aOffset - bOffset;
+                });
+
+                // Find new index after sort
+                const newIdx = newRegs.findIndex(r => r.name === name);
+
+                onUpdate(['registers'], newRegs);
+                setSelectedRegIndex(newIdx);
+                setHoveredRegIndex(newIdx);
+                setRegActiveCell({ rowIndex: newIdx, key: 'name' });
+                window.setTimeout(() => {
+                    const row = document.querySelector(`tr[data-reg-idx="${newIdx}"]`);
+                    row?.scrollIntoView({ block: 'nearest' });
+                }, 0);
+
+            } else {
+                // INSERT BEFORE: new register goes to lower offset (offset = selected.offset - 4)
+                const newOffset = selectedOffset - 4;
+
+                // Check if we have room
+                if (newOffset < 0) {
+                    setRegsInsertError('Cannot insert before: offset would be negative');
+                    return;
+                }
+
+                const name = getNextRegName();
+                const newReg = {
+                    name,
+                    address_offset: newOffset,
+                    offset: newOffset,
+                    access: 'read-write',
+                    description: '',
+                };
+
+                // Insert before selected register in array
+                let newRegs = [...registers.slice(0, selIdx), newReg, ...registers.slice(selIdx)];
+
+                // Repack previous registers backward (toward lower offsets)
+                newRegs = repackRegistersBackward(newRegs, selIdx - 1 >= 0 ? selIdx - 1 : 0);
+
+                // Sort by offset ascending
+                newRegs.sort((a, b) => {
+                    const aOffset = a.address_offset ?? a.offset ?? 0;
+                    const bOffset = b.address_offset ?? b.offset ?? 0;
+                    return aOffset - bOffset;
+                });
+
+                // Find new index after sort
+                const newIdx = newRegs.findIndex(r => r.name === name);
+
+                // Check for negative offsets after repacking
+                for (const r of newRegs) {
+                    const rOffset = r.address_offset ?? r.offset ?? 0;
+                    if (rOffset < 0) {
+                        setRegsInsertError('Cannot insert: not enough offset space for repacking');
+                        return;
+                    }
+                }
+
+                onUpdate(['registers'], newRegs);
+                setSelectedRegIndex(newIdx);
+                setHoveredRegIndex(newIdx);
+                setRegActiveCell({ rowIndex: newIdx, key: 'name' });
+                window.setTimeout(() => {
+                    const row = document.querySelector(`tr[data-reg-idx="${newIdx}"]`);
+                    row?.scrollIntoView({ block: 'nearest' });
+                }, 0);
+            }
+        };
 
         const onKeyDown = (e: KeyboardEvent) => {
             const keyLower = (e.key || '').toLowerCase();
@@ -516,7 +1239,9 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(({ 
             const isArrow = normalizedKey === 'ArrowUp' || normalizedKey === 'ArrowDown' || normalizedKey === 'ArrowLeft' || normalizedKey === 'ArrowRight';
             const isEdit = normalizedKey === 'F2' || keyLower === 'e';
             const isDelete = keyLower === 'd' || e.key === 'Delete';
-            if (!isArrow && !isEdit && !isDelete) return;
+            const isInsertAfter = keyLower === 'o' && !e.shiftKey;
+            const isInsertBefore = keyLower === 'o' && e.shiftKey;
+            if (!isArrow && !isEdit && !isDelete && !isInsertAfter && !isInsertBefore) return;
 
             if (e.ctrlKey || e.metaKey) return;
 
@@ -561,6 +1286,12 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(({ 
                 return;
             }
 
+            if (isInsertAfter || isInsertBefore) {
+                e.preventDefault();
+                e.stopPropagation();
+                tryInsertReg(isInsertAfter);
+                return;
+            }
             if (isDelete) {
                 if (currentRow < 0 || currentRow >= registers.length) return;
                 e.preventDefault();
@@ -885,6 +1616,9 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(({ 
                             data-fields-table="true"
                             className="flex-1 overflow-auto min-h-0 outline-none focus:outline-none"
                         >
+                            {fieldsInsertError ? (
+                                <div className="vscode-error px-4 py-2 text-xs">{fieldsInsertError}</div>
+                            ) : null}
                             <table className="w-full text-left border-collapse table-fixed">
                                 <colgroup>
                                     <col className="w-[18%] min-w-[120px]" />
@@ -1238,6 +1972,9 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(({ 
                             data-blocks-table="true"
                             className="flex-1 overflow-auto min-h-0 outline-none focus:outline-none"
                         >
+                            {blocksInsertError ? (
+                                <div className="vscode-error px-4 py-2 text-xs">{blocksInsertError}</div>
+                            ) : null}
                             <table className="w-full text-left border-collapse table-fixed">
                                 <colgroup>
                                     <col className="w-[25%] min-w-[200px]" />
@@ -1427,6 +2164,9 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(({ 
                             data-regs-table="true"
                             className="flex-1 overflow-auto min-h-0 outline-none focus:outline-none"
                         >
+                            {regsInsertError ? (
+                                <div className="vscode-error px-4 py-2 text-xs">{regsInsertError}</div>
+                            ) : null}
                             <table className="w-full text-left border-collapse table-fixed">
                                 <colgroup>
                                     <col className="w-[30%] min-w-[200px]" />
