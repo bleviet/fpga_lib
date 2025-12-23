@@ -1,3 +1,60 @@
+// Helper to parse [msb:lsb] or [n]
+function parseBitsRange(bits: string): [number, number] | null {
+    if (!bits) return null;
+    const m = bits.match(/^\[(\d+):(\d+)\]$/);
+    if (m) return [parseInt(m[1], 10), parseInt(m[2], 10)];
+    const s = bits.match(/^\[(\d+)\]$/);
+    if (s) return [parseInt(s[1], 10), parseInt(s[1], 10)];
+    return null;
+}
+
+// Helper to format [msb:lsb] or [n]
+function formatBits(msb: number, lsb: number): string {
+    return msb === lsb ? `[${msb}]` : `[${msb}:${lsb}]`;
+}
+
+// Repack only the updated field and subsequent fields, preserving order
+function repackFieldsFrom(fields: any[], regWidth: number, startIdx: number) {
+    // Helper for fallback bits string
+    const toBitsLocal = (f: any) => {
+        const o = Number(f?.bit_offset ?? 0);
+        const w = Number(f?.bit_width ?? 1);
+        if (!Number.isFinite(o) || !Number.isFinite(w)) {
+            return '[?:?]';
+        }
+        const msb = o + w - 1;
+        return `[${msb}:${o}]`;
+    };
+    // Calculate starting MSB for the updated field
+    let nextMsb = regWidth - 1;
+    if (startIdx > 0) {
+        // Previous field's LSB
+        const prev = fields[startIdx - 1];
+        let prevBits = prev.bits;
+        let prevRange = parseBitsRange(typeof prevBits === 'string' ? prevBits : toBitsLocal(prev));
+        if (prevRange) {
+            nextMsb = prevRange[1] - 1;
+        }
+    }
+    const newFields = [...fields];
+    for (let i = startIdx; i < fields.length; ++i) {
+        let width = 1;
+        let bitsStr = newFields[i].bits;
+        let parsed = parseBitsRange(typeof bitsStr === 'string' ? bitsStr : toBitsLocal(newFields[i]));
+        if (parsed) width = Math.abs(parsed[0] - parsed[1]) + 1;
+        const msb = nextMsb;
+        let lsb = msb - width + 1;
+        // Clamp LSB to zero
+        if (lsb < 0) {
+            lsb = 0;
+            // Optionally, flag overflow here (e.g., set an error property)
+        }
+        nextMsb = lsb - 1;
+        newFields[i] = { ...newFields[i], bits: formatBits(msb, lsb), bit_offset: lsb, bit_width: width, bit_range: [msb, lsb] };
+    }
+    return newFields;
+}
+
 import React, { useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import { VSCodeDropdown, VSCodeOption, VSCodeTextField, VSCodeTextArea } from '@vscode/webview-ui-toolkit/react';
 import { Register } from '../types/memoryMap';
@@ -975,12 +1032,45 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(({ 
                                                                         }
                                                                         setBitsErrors((prev) => ({ ...prev, [idx]: err }));
                                                                         if (!err) {
-                                                                            const parsed = parseBitsInput(next);
-                                                                            if (parsed) {
-                                                                                onUpdate(['fields', idx, 'bit_offset'], parsed.bit_offset);
-                                                                                onUpdate(['fields', idx, 'bit_width'], parsed.bit_width);
-                                                                                onUpdate(['fields', idx, 'bit_range'], parsed.bit_range);
+                                                                            // Update this field's bits, and if overlap, repack subsequent fields
+                                                                            let updatedFields = fields.map((f, i) => {
+                                                                                if (i !== idx) return { ...f };
+                                                                                // Parse new bits
+                                                                                const parsed = parseBitsInput(next);
+                                                                                if (parsed) {
+                                                                                    return {
+                                                                                        ...f,
+                                                                                        bits: next,
+                                                                                        bit_offset: parsed.bit_offset,
+                                                                                        bit_width: parsed.bit_width,
+                                                                                        bit_range: parsed.bit_range
+                                                                                    };
+                                                                                } else {
+                                                                                    return { ...f, bits: next };
+                                                                                }
+                                                                            });
+
+                                                                            // Check for overlap with next field
+                                                                            const curr = updatedFields[idx];
+                                                                            const currMSB = curr.bit_range ? curr.bit_range[0] : (curr.bit_offset + curr.bit_width - 1);
+                                                                            let prevMSB = currMSB;
+                                                                            let prevLSB = curr.bit_offset;
+                                                                            for (let i = idx + 1; i < updatedFields.length; ++i) {
+                                                                                const f = updatedFields[i];
+                                                                                const width = f.bit_width || 1;
+                                                                                const lsb = prevMSB + 1;
+                                                                                const msb = lsb + width - 1;
+                                                                                updatedFields[i] = {
+                                                                                    ...f,
+                                                                                    bit_offset: lsb,
+                                                                                    bit_width: width,
+                                                                                    bit_range: [msb, lsb],
+                                                                                    bits: formatBits(msb, lsb)
+                                                                                };
+                                                                                prevMSB = msb;
+                                                                                prevLSB = lsb;
                                                                             }
+                                                                            onUpdate(['fields'], updatedFields);
                                                                         }
                                                                     }}
                                                                 />
