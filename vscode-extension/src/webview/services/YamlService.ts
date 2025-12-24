@@ -9,7 +9,8 @@ export class YamlService {
      * NOTE: This will not preserve comments or formatting from the original YAML
      */
     static dump(data: any): string {
-        return jsyaml.dump(data, { noRefs: true, sortKeys: false, lineWidth: -1 });
+        const cleaned = YamlService.cleanForYaml(data);
+        return jsyaml.dump(cleaned, { noRefs: true, sortKeys: false, lineWidth: -1 });
     }
 
     /**
@@ -29,5 +30,31 @@ export class YamlService {
             console.warn('YAML parse error:', err);
             return null;
         }
+    }
+
+    /**
+     * Clean object before YAML serialization
+     * Removes computed properties that shouldn't be in the YAML output
+     */
+    static cleanForYaml(obj: any): any {
+        if (!obj || typeof obj !== 'object') return obj;
+
+        if (Array.isArray(obj)) {
+            return obj.map(item => YamlService.cleanForYaml(item));
+        }
+
+        const cleaned: any = {};
+        for (const key in obj) {
+            if (!obj.hasOwnProperty(key)) continue;
+
+            // Skip computed properties for bit fields
+            if (key === 'bit_offset' || key === 'bit_width' || key === 'bit_range') {
+                // Only skip if 'bits' property exists
+                if (obj.bits) continue;
+            }
+
+            cleaned[key] = YamlService.cleanForYaml(obj[key]);
+        }
+        return cleaned;
     }
 }
