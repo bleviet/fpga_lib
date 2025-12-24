@@ -8,9 +8,9 @@
  */
 export function parseBitsRange(bits: string): [number, number] | null {
     if (!bits) return null;
-    const m = bits.match(/^\\[(\\d+):(\\d+)\\]$/);
+    const m = bits.match(/^\[(\d+):(\d+)\]$/);
     if (m) return [parseInt(m[1], 10), parseInt(m[2], 10)];
-    const s = bits.match(/^\\[(\\d+)\\]$/);
+    const s = bits.match(/^\[(\d+)\]$/);
     if (s) return [parseInt(s[1], 10), parseInt(s[1], 10)];
     return null;
 }
