@@ -1,4 +1,5 @@
 import jsyaml from 'js-yaml';
+import { BitFieldUtils } from '../utils/BitFieldUtils';
 
 /**
  * Service for YAML serialization and parsing operations
@@ -44,17 +45,49 @@ export class YamlService {
         }
 
         const cleaned: any = {};
+
+        // Check if we need to convert bit_offset/bit_width to bits
+        const hasBitOffset = obj.hasOwnProperty('bit_offset');
+        const hasBitWidth = obj.hasOwnProperty('bit_width');
+        const shouldAddBits = hasBitOffset && hasBitWidth;
+
+        let bitsValue: string | undefined;
+        if (shouldAddBits) {
+            const bit_offset = Number(obj.bit_offset);
+            const bit_width = Number(obj.bit_width);
+
+            if (Number.isFinite(bit_offset) && Number.isFinite(bit_width)) {
+                bitsValue = BitFieldUtils.formatBitsLike(bit_offset, bit_width);
+            }
+        }
+
+        // Iterate through properties in original order, inserting bits after name
+        let nameProcessed = false;
         for (const key in obj) {
             if (!obj.hasOwnProperty(key)) continue;
 
-            // Skip computed properties for bit fields
+            // Skip internal bit field representation - we'll add 'bits' instead
             if (key === 'bit_offset' || key === 'bit_width' || key === 'bit_range') {
-                // Only skip if 'bits' property exists
-                if (obj.bits) continue;
+                continue;
             }
 
+            // Add the property
             cleaned[key] = YamlService.cleanForYaml(obj[key]);
+
+            // After adding 'name', insert 'bits' if needed
+            if (key === 'name' && !nameProcessed && bitsValue) {
+                cleaned.bits = bitsValue;
+                nameProcessed = true;
+            }
         }
+
+        // If we didn't encounter 'name' but still need to add bits, add it now
+        if (shouldAddBits && bitsValue && !nameProcessed) {
+            // Insert bits at the beginning by recreating the object
+            const temp = { bits: bitsValue, ...cleaned };
+            return temp;
+        }
+
         return cleaned;
     }
 }

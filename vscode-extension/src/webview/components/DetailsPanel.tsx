@@ -253,7 +253,7 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(({ 
                 const name = getNextFieldName();
                 const newField = {
                     name,
-                    bits: '[0]',
+                    bits: formatBits(0, 0),
                     bit_offset: 0,
                     bit_width: 1,
                     bit_range: [0, 0],

@@ -17,9 +17,10 @@ export function parseBitsRange(bits: string): [number, number] | null {
 
 /**
  * Format a bits range as a string
+ * Always outputs full range format [MSB:LSB] for YAML compatibility
  */
 export function formatBits(msb: number, lsb: number): string {
-    return msb === lsb ? `[${msb}]` : `[${msb}:${lsb}]`;
+    return `[${msb}:${lsb}]`;
 }
 
 /**
