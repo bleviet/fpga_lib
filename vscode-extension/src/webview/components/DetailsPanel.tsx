@@ -1466,6 +1466,10 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(({ 
                                                                         setNameDrafts((prev) => ({ ...prev, [fieldKey]: next }));
                                                                         const err = validateVhdlIdentifier(next);
                                                                         setNameErrors((prev) => ({ ...prev, [fieldKey]: err }));
+                                                                    }}
+                                                                    onBlur={(e: any) => {
+                                                                        const next = String(e.target.value ?? '');
+                                                                        const err = validateVhdlIdentifier(next);
                                                                         if (!err) onUpdate(['fields', idx, 'name'], next.trim());
                                                                     }}
                                                                 />
@@ -1801,7 +1805,7 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(({ 
                                                             data-edit-key="name"
                                                             className="flex-1"
                                                             value={block.name || ''}
-                                                            onInput={(e: any) => onUpdate(['addressBlocks', idx, 'name'], e.target.value)}
+                                                            onBlur={(e: any) => onUpdate(['addressBlocks', idx, 'name'], e.target.value)}
                                                         />
                                                     </div>
                                                 </td>
@@ -1990,7 +1994,7 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(({ 
                                                             data-edit-key="name"
                                                             className="flex-1"
                                                             value={reg.name || ''}
-                                                            onInput={(e: any) => onUpdate(['registers', idx, 'name'], e.target.value)}
+                                                            onBlur={(e: any) => onUpdate(['registers', idx, 'name'], e.target.value)}
                                                         />
                                                     </div>
                                                 </td>
