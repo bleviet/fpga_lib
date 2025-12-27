@@ -1,0 +1,131 @@
+import React from 'react';
+import { MetadataEditor } from '../sections/MetadataEditor';
+import { ClocksTable } from '../sections/ClocksTable';
+import { ResetsTable } from '../sections/ResetsTable';
+import { PortsTable } from '../sections/PortsTable';
+import { ParametersTable } from '../sections/ParametersTable';
+import { FileSetsEditor } from '../sections/FileSetsEditor';
+import { Section } from '../../hooks/useNavigation';
+
+interface EditorPanelProps {
+    selectedSection: Section;
+    ipCore: any;
+    onUpdate: (path: Array<string | number>, value: any) => void;
+}
+
+/**
+ * Main editor panel that displays the selected section
+ */
+export const EditorPanel: React.FC<EditorPanelProps> = ({
+    selectedSection,
+    ipCore,
+    onUpdate,
+}) => {
+    if (!ipCore) {
+        return (
+            <div className="flex-1 flex items-center justify-center text-gray-500">
+                <p>No IP core loaded</p>
+            </div>
+        );
+    }
+
+    const renderSection = () => {
+        switch (selectedSection) {
+            case 'metadata':
+                return <MetadataEditor ipCore={ipCore} onUpdate={onUpdate} />;
+            case 'clocks':
+                return <ClocksTable clocks={ipCore.clocks || []} onUpdate={onUpdate} />;
+            case 'resets':
+                return <ResetsTable resets={ipCore.resets || []} onUpdate={onUpdate} />;
+            case 'ports':
+                return <PortsTable ports={ipCore.ports || []} onUpdate={onUpdate} />;
+            case 'busInterfaces':
+                return <BusInterfacesSection busInterfaces={ipCore.busInterfaces || []} onUpdate={onUpdate} />;
+            case 'memoryMaps':
+                return <MemoryMapsSection memoryMaps={ipCore.memoryMaps || []} onUpdate={onUpdate} />;
+            case 'parameters':
+                return <ParametersTable parameters={ipCore.parameters || []} onUpdate={onUpdate} />;
+            case 'fileSets':
+                return <FileSetsEditor fileSets={ipCore.fileSets || []} onUpdate={onUpdate} />;
+            default:
+                return <div>Unknown section</div>;
+        }
+    };
+
+    return (
+        <div className="flex-1 overflow-y-auto">
+            {renderSection()}
+        </div>
+    );
+};
+
+// Placeholder section components (will be replaced as we build editors in Phase 2)
+const ClocksSection: React.FC<any> = ({ clocks }) => (
+    <div className="p-6 space-y-4">
+        <h2 className="text-2xl font-semibold">Clocks</h2>
+        <p className="text-sm" style={{ opacity: 0.7 }}>Found {clocks.length} clock(s)</p>
+        {clocks.map((clock: any, idx: number) => (
+            <div key={idx} className="p-4 rounded shadow" style={{ background: 'var(--vscode-editor-background)', border: '1px solid var(--vscode-panel-border)' }}>
+                <p className="font-semibold">{clock.name}</p>
+                <p className="text-sm" style={{ opacity: 0.7 }}>Physical Port: {clock.physicalPort}</p>
+                <p className="text-sm" style={{ opacity: 0.7 }}>Frequency: {clock.frequency || 'N/A'}</p>
+            </div>
+        ))}
+    </div>
+);
+
+const ResetsSection: React.FC<any> = ({ resets }) => (
+    <div className="p-6 space-y-4">
+        <h2 className="text-2xl font-semibold">Resets</h2>
+        <p className="text-sm" style={{ opacity: 0.7 }}>Found {resets.length} reset(s)</p>
+        {resets.map((reset: any, idx: number) => (
+            <div key={idx} className="p-4 rounded shadow" style={{ background: 'var(--vscode-editor-background)', border: '1px solid var(--vscode-panel-border)' }}>
+                <p className="font-semibold">{reset.name}</p>
+                <p className="text-sm" style={{ opacity: 0.7 }}>Physical Port: {reset.physicalPort}</p>
+                <p className="text-sm" style={{ opacity: 0.7 }}>Polarity: {reset.polarity}</p>
+            </div>
+        ))}
+    </div>
+);
+
+const PortsSection: React.FC<any> = ({ ports }) => (
+    <div className="p-6 space-y-4">
+        <h2 className="text-2xl font-semibold">Ports</h2>
+        <p className="text-sm" style={{ opacity: 0.7 }}>Found {ports.length} port(s)</p>
+    </div>
+);
+
+const BusInterfacesSection: React.FC<any> = ({ busInterfaces }) => (
+    <div className="p-6 space-y-4">
+        <h2 className="text-2xl font-semibold">Bus Interfaces</h2>
+        <p className="text-sm" style={{ opacity: 0.7 }}>Found {busInterfaces.length} bus interface(s)</p>
+        {busInterfaces.map((bus: any, idx: number) => (
+            <div key={idx} className="p-4 rounded shadow" style={{ background: 'var(--vscode-editor-background)', border: '1px solid var(--vscode-panel-border)' }}>
+                <p className="font-semibold">{bus.name}</p>
+                <p className="text-sm" style={{ opacity: 0.7 }}>Type: {bus.type}</p>
+                <p className="text-sm" style={{ opacity: 0.7 }}>Mode: {bus.mode}</p>
+            </div>
+        ))}
+    </div>
+);
+
+const MemoryMapsSection: React.FC<any> = ({ memoryMaps }) => (
+    <div className="p-6 space-y-4">
+        <h2 className="text-2xl font-semibold">Memory Maps</h2>
+        <p className="text-sm" style={{ opacity: 0.7 }}>Memory map integration coming in Phase 4</p>
+    </div>
+);
+
+const ParametersSection: React.FC<any> = ({ parameters }) => (
+    <div className="p-6 space-y-4">
+        <h2 className="text-2xl font-semibold">Parameters</h2>
+        <p className="text-sm" style={{ opacity: 0.7 }}>Found {parameters.length} parameter(s)</p>
+    </div>
+);
+
+const FileSetsSection: React.FC<any> = ({ fileSets }) => (
+    <div className="p-6 space-y-4">
+        <h2 className="text-2xl font-semibold">File Sets</h2>
+        <p className="text-sm" style={{ opacity: 0.7 }}>Found {fileSets.length} file set(s)</p>
+    </div>
+);

@@ -22,6 +22,16 @@
                     }
                 ],
                 "priority": "default"
+            },
+            {
+                "viewType": "fpgaIpCore.editor",
+                "displayName": "IP Core Visual Editor",
+                "selector": [
+                    {
+                        "filenamePattern": "*.yml"
+                    }
+                ],
+                "priority": "default"
             }
         ]
     },

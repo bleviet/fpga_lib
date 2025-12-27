@@ -1,0 +1,123 @@
+apiVersion: v1
+vlnv:
+  vendor: large.com
+  library: test
+  name: large_stress_test
+  version: 1.0.0
+
+description: Large IP core for stress testing with many clocks, resets, and bus interfaces
+
+clocks:
+  - name: clk_sys
+    physicalPort: CLK_SYS
+    frequency: "100 MHz"
+  - name: clk_axi
+    physicalPort: CLK_AXI
+    frequency: "200 MHz"
+  - name: clk_ddr
+    physicalPort: CLK_DDR
+    frequency: "400 MHz"
+  - name: clk_eth
+    physicalPort: CLK_ETH
+    frequency: "125 MHz"
+  - name: clk_pcie
+    physicalPort: CLK_PCIE
+    frequency: "250 MHz"
+  - name: clk_usb
+    physicalPort: CLK_USB
+    frequency: "60 MHz"
+  - name: clk_aux
+    physicalPort: CLK_AUX
+    frequency: "50 MHz"
+
+resets:
+  - name: rst_sys
+    physicalPort: RST_SYS
+    polarity: active_low
+  - name: rst_axi
+    physicalPort: RST_AXI
+    polarity: active_low
+  - name: rst_ddr
+    physicalPort: RST_DDR
+    polarity: active_high
+  - name: rst_eth
+    physicalPort: RST_ETH
+    polarity: active_low
+  - name: rst_pcie
+    physicalPort: RST_PCIE
+    polarity: active_high
+
+ports:
+  - name: irq_out
+    direction: output
+    width: 8
+
+busInterfaces:
+  - name: control_reg
+    type: axi4lite
+    mode: slave
+    associatedClock: clk_sys
+    associatedReset: rst_sys
+  
+  - name: dma_control
+    type: axi4lite
+    mode: slave
+    associatedClock: clk_axi
+    associatedReset: rst_axi
+  
+  - name: memory_port
+    type: axi4
+    mode: master
+    associatedClock: clk_ddr
+    associatedReset: rst_ddr
+  
+  - name: data_stream_in
+    type: axis
+    mode: slave
+    associatedClock: clk_eth
+    associatedReset: rst_eth
+  
+  - name: data_stream_out
+    type: axis
+    mode: master
+    associatedClock: clk_eth
+    associatedReset: rst_eth
+  
+  - name: pcie_interface
+    type: axi4
+    mode: master
+    associatedClock: clk_pcie
+    associatedReset: rst_pcie
+  
+  - name: usb_data_in
+    type: axis
+    mode: slave
+    associatedClock: clk_usb
+    associatedReset: rst_sys
+  
+  - name: usb_data_out
+    type: axis
+    mode: master
+    associatedClock: clk_usb
+    associatedReset: rst_sys
+
+parameters:
+  - name: DATA_WIDTH
+    dataType: integer
+    defaultValue: 32
+    description: "Width of data bus"
+  
+  - name: ADDR_WIDTH
+    dataType: integer
+    defaultValue: 32
+    description: "Width of address bus"
+  
+  - name: FIFO_DEPTH
+    dataType: integer
+    defaultValue: 1024
+    description: "Depth of internal FIFO"
+  
+  - name: ENABLE_DMA
+    dataType: boolean
+    defaultValue: true
+    description: "Enable DMA functionality"

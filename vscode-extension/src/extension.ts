@@ -1,17 +1,18 @@
 import * as vscode from 'vscode';
 import { Logger, LogLevel } from './utils/Logger';
 import { MemoryMapEditorProvider } from './providers/MemoryMapEditorProvider';
+import { IpCoreEditorProvider } from './providers/IpCoreEditorProvider';
 
 /**
  * Extension activation entry point
  */
 export function activate(context: vscode.ExtensionContext): void {
     // Initialize logging
-    Logger.initialize('FPGA Memory Map Editor', LogLevel.INFO);
+    Logger.initialize('FPGA Memory Map & IP Core Editor', LogLevel.INFO);
     const logger = new Logger('Extension');
     logger.info('Extension activating');
 
-    // Register the custom editor provider
+    // Register Memory Map custom editor provider
     context.subscriptions.push(
         vscode.window.registerCustomEditorProvider(
             'fpgaMemoryMap.editor',
@@ -24,6 +25,22 @@ export function activate(context: vscode.ExtensionContext): void {
             }
         )
     );
+    logger.info('Memory Map editor registered');
+
+    // Register IP Core custom editor provider
+    context.subscriptions.push(
+        vscode.window.registerCustomEditorProvider(
+            'fpgaIpCore.editor',
+            new IpCoreEditorProvider(context),
+            {
+                webviewOptions: {
+                    retainContextWhenHidden: true,
+                },
+                supportsMultipleEditorsPerDocument: false,
+            }
+        )
+    );
+    logger.info('IP Core editor registered');
 
     logger.info('Extension activated successfully');
 }

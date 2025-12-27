@@ -46,7 +46,8 @@ const webviewConfig = {
     devtool: 'inline-source-map',
     target: 'web',
     entry: {
-        webview: './src/webview/index.tsx'
+        webview: './src/webview/index.tsx',
+        ipcore: './src/webview/ipcore/IpCoreApp.tsx',
     },
     output: {
         path: path.resolve(__dirname, 'dist'),

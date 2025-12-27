@@ -46,6 +46,42 @@ export class HtmlGenerator {
   }
 
   /**
+   * Generate HTML for IP Core editor webview
+   */
+  generateIpCoreHtml(webview: vscode.Webview): string {
+    const scriptUri = this.getWebviewUri(webview, 'dist', 'ipcore.js');
+    const codiconsUri = this.getWebviewUri(
+      webview,
+      'node_modules',
+      '@vscode/codicons',
+      'dist',
+      'codicon.css'
+    );
+
+    const csp = this.getContentSecurityPolicy(webview);
+
+    this.logger.debug('Generating IP Core HTML for webview');
+
+    return `
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        ${csp}
+        ${this.getStylesheets(codiconsUri)}
+        ${this.getInlineStyles()}
+        <title>IP Core Editor</title>
+      </head>
+      <body class="bg-gray-50 text-gray-900 font-sans h-screen flex flex-col overflow-hidden">
+        <div id="ipcore-root"></div>
+        <script src="${scriptUri.toString()}"></script>
+      </body>
+      </html>
+    `;
+  }
+
+  /**
    * Get a webview URI for a resource in the extension
    */
   private getWebviewUri(webview: vscode.Webview, ...pathSegments: string[]): vscode.Uri {

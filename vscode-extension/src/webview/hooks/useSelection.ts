@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useCallback } from 'react';
 
 /**
  * YAML path type
@@ -36,27 +36,28 @@ export function useSelection() {
 
     /**
      * Handle selection change
+     * IMPORTANT: Wrapped in useCallback to prevent infinite loops in useEffect dependencies
      */
-    const handleSelect = (selection: Selection) => {
+    const handleSelect = useCallback((selection: Selection) => {
         selectionRef.current = selection;
         setSelectedId(selection.id);
         setSelectedType(selection.type);
         setSelectedObject(selection.object);
         setBreadcrumbs(selection.breadcrumbs);
         setSelectionMeta(selection.meta);
-    };
+    }, []);
 
     /**
      * Clear selection
      */
-    const clearSelection = () => {
+    const clearSelection = useCallback(() => {
         selectionRef.current = null;
         setSelectedId('');
         setSelectedType(null);
         setSelectedObject(null);
         setBreadcrumbs([]);
         setSelectionMeta(undefined);
-    };
+    }, []);
 
     return {
         selectedId,

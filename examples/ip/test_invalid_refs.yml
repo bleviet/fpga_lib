@@ -1,0 +1,32 @@
+apiVersion: v1
+vlnv:
+  vendor: test.com
+  library: test_lib
+  name: invalid_refs_core
+  version: 1.0.0
+
+description: Test core with invalid references to verify validation
+
+clocks:
+  - name: sys_clk
+    physicalPort: SYS_CLK
+    frequency: "100 MHz"
+
+resets:
+  - name: sys_rst
+    physicalPort: SYS_RST
+    polarity: active_low
+
+busInterfaces:
+  - name: ctrl
+    type: axi4lite
+    mode: slave
+    associatedClock: nonexistent_clock  # ERROR: This clock doesn't exist
+    associatedReset: nonexistent_reset  # ERROR: This reset doesn't exist
+  
+  - name: data_port
+    type: axis
+    mode: master
+    associatedClock: sys_clk
+    associatedReset: sys_rst
+    memoryMapRef: nonexistent_map  # ERROR: This memory map doesn't exist

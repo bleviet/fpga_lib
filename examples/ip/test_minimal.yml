@@ -1,0 +1,8 @@
+apiVersion: v1
+vlnv:
+  vendor: minimal.com
+  library: test
+  name: minimal_core
+  version: 0.1.0
+
+description: Minimal IP core with only required fields - no interfaces or other optional elements
