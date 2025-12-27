@@ -22,6 +22,28 @@ const createEmptyClock = (): Clock => ({
     direction: 'input',
 });
 
+// Normalize direction from in/out to input/output
+const normalizeClock = (clock: Clock): Clock => {
+    const dirMap: { [key: string]: string } = {
+        'in': 'input',
+        'out': 'output',
+        'input': 'input',
+        'output': 'output',
+    };
+    return { ...clock, direction: dirMap[clock.direction || 'input'] || 'input' };
+};
+
+// Helper to display normalized direction
+const displayDirection = (dir?: string): string => {
+    const dirMap: { [key: string]: string } = {
+        'in': 'input',
+        'out': 'output',
+        'input': 'input',
+        'output': 'output',
+    };
+    return dirMap[dir || 'input'] || 'input';
+};
+
 const COLUMN_KEYS = ['name', 'physicalPort', 'frequency', 'direction'];
 
 /**
@@ -55,6 +77,7 @@ export const ClocksTable: React.FC<ClocksTableProps> = ({ clocks, onUpdate }) =>
         onUpdate,
         dataKey: 'clocks',
         createEmptyItem: createEmptyClock,
+        normalizeItem: normalizeClock,
         columnKeys: COLUMN_KEYS,
     });
 
@@ -139,7 +162,7 @@ export const ClocksTable: React.FC<ClocksTableProps> = ({ clocks, onUpdate }) =>
                                     <td className="px-4 py-3 text-sm font-mono" {...getCellProps(index, 'name')}>{clock.name}</td>
                                     <td className="px-4 py-3 text-sm font-mono" {...getCellProps(index, 'physicalPort')}>{clock.physicalPort}</td>
                                     <td className="px-4 py-3 text-sm" {...getCellProps(index, 'frequency')}>{clock.frequency || '—'}</td>
-                                    <td className="px-4 py-3 text-sm" {...getCellProps(index, 'direction')}>{clock.direction || 'input'}</td>
+                                    <td className="px-4 py-3 text-sm" {...getCellProps(index, 'direction')}>{displayDirection(clock.direction)}</td>
                                     <td className="px-4 py-3 text-right">
                                         <div className="flex items-center justify-end gap-2">
                                             <button onClick={(e) => { e.stopPropagation(); handleEdit(index); }} disabled={isAdding || editingIndex !== null} className="p-1 rounded" style={{ opacity: (isAdding || editingIndex !== null) ? 0.3 : 1 }} title="Edit (e)">

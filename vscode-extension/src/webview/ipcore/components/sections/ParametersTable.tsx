@@ -77,7 +77,9 @@ export const ParametersTable: React.FC<ParametersTableProps> = ({ parameters, on
 
     const formatDefaultValue = (param: Parameter): string => {
         if (param.dataType === 'boolean') return param.defaultValue ? 'true' : 'false';
-        return String(param.defaultValue);
+        if (param.dataType === 'integer') return String(param.defaultValue ?? 0);
+        // For string type, show the value or empty string
+        return String(param.defaultValue ?? '');
     };
 
     const renderEditRow = (isNew: boolean) => (

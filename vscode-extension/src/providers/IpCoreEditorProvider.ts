@@ -47,7 +47,8 @@ export class IpCoreEditorProvider implements vscode.CustomTextEditorProvider {
 
             // Check for IP core signature: apiVersion + vlnv
             const data = parsed as any;
-            const hasApiVersion = 'apiVersion' in data && typeof data.apiVersion === 'string';
+            // apiVersion can be string or number (YAML parses "1.0" as number)
+            const hasApiVersion = 'apiVersion' in data && (typeof data.apiVersion === 'string' || typeof data.apiVersion === 'number');
             const hasVlnv = 'vlnv' in data && typeof data.vlnv === 'object';
 
             return hasApiVersion && hasVlnv;
@@ -70,12 +71,46 @@ export class IpCoreEditorProvider implements vscode.CustomTextEditorProvider {
         // Check if this is actually an IP core file
         const isIpCore = await this.isIpCoreDocument(document);
         if (!isIpCore) {
-            this.logger.info('Document is not an IP core file, skipping');
-            // Show message and close
-            void vscode.window.showInformationMessage(
-                'This file does not appear to be an IP core YAML file (missing apiVersion + vlnv)'
-            );
-            webviewPanel.dispose();
+            this.logger.info('Document is not an IP core file, showing error in webview');
+            // Show error in webview instead of disposing - disposing causes VS Code state issues
+            webviewPanel.webview.options = { enableScripts: false };
+            webviewPanel.webview.html = `
+                <!DOCTYPE html>
+                <html lang="en">
+                <head>
+                    <meta charset="UTF-8">
+                    <style>
+                        body {
+                            font-family: var(--vscode-font-family);
+                            padding: 20px;
+                            color: var(--vscode-foreground);
+                            background: var(--vscode-editor-background);
+                        }
+                        .error-container {
+                            display: flex;
+                            flex-direction: column;
+                            align-items: center;
+                            justify-content: center;
+                            height: 80vh;
+                            text-align: center;
+                        }
+                        .error-icon { font-size: 48px; margin-bottom: 16px; }
+                        .error-title { font-size: 18px; font-weight: bold; margin-bottom: 8px; }
+                        .error-message { opacity: 0.7; }
+                    </style>
+                </head>
+                <body>
+                    <div class="error-container">
+                        <div class="error-icon">⚠️</div>
+                        <div class="error-title">Not an IP Core File</div>
+                        <div class="error-message">
+                            This file does not appear to be an IP core YAML file.<br>
+                            Expected: <code>apiVersion</code> and <code>vlnv</code> fields.
+                        </div>
+                    </div>
+                </body>
+                </html>
+            `;
             return;
         }
 
@@ -89,8 +124,15 @@ export class IpCoreEditorProvider implements vscode.CustomTextEditorProvider {
         // Set HTML content - use ipcore-specific HTML
         webviewPanel.webview.html = this.htmlGenerator.generateIpCoreHtml(webviewPanel.webview);
 
+        // Track if webview is disposed
+        let isDisposed = false;
+
         // Send initial update to webview with resolved imports
         const updateWebview = async () => {
+            if (isDisposed) {
+                this.logger.debug('Webview already disposed, skipping update');
+                return;
+            }
             try {
                 this.logger.debug('updateWebview called');
                 const text = document.getText();
@@ -102,6 +144,12 @@ export class IpCoreEditorProvider implements vscode.CustomTextEditorProvider {
                 const baseDir = path.dirname(document.uri.fsPath);
                 const imports = await this.importResolver.resolveImports(parsed as any, baseDir);
                 this.logger.debug(`Imports resolved: ${Object.keys(imports).length} items`);
+
+                // Check again after async operation
+                if (isDisposed) {
+                    this.logger.debug('Webview disposed during import resolution, skipping update');
+                    return;
+                }
 
                 // Send to webview
                 const message = {
@@ -127,6 +175,7 @@ export class IpCoreEditorProvider implements vscode.CustomTextEditorProvider {
 
         // Clean up subscriptions when webview is disposed
         webviewPanel.onDidDispose(() => {
+            isDisposed = true;
             changeDocumentSubscription.dispose();
             this.logger.debug('Webview panel disposed');
         });

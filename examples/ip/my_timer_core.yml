@@ -2,7 +2,7 @@
 #
 # Main component definition for the timer core.
 # This is the "root" file your generator script should parse.
-apiVersion: my-ip-schema/v2.3
+apiVersion: 1.0
 
 vlnv:
   vendor: "my-company.com"

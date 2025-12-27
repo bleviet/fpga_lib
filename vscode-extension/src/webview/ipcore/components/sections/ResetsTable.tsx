@@ -30,7 +30,26 @@ const normalizeReset = (reset: Reset): Reset => {
     } else if (reset.polarity === 'active_high') {
         normalizedPolarity = 'activeHigh';
     }
-    return { ...reset, polarity: normalizedPolarity };
+    // Normalize direction from in/out to input/output
+    const dirMap: { [key: string]: string } = {
+        'in': 'input',
+        'out': 'output',
+        'input': 'input',
+        'output': 'output',
+    };
+    const normalizedDirection = dirMap[reset.direction || 'input'] || 'input';
+    return { ...reset, polarity: normalizedPolarity, direction: normalizedDirection };
+};
+
+// Helper to display normalized direction
+const displayDirection = (dir?: string): string => {
+    const dirMap: { [key: string]: string } = {
+        'in': 'input',
+        'out': 'output',
+        'input': 'input',
+        'output': 'output',
+    };
+    return dirMap[dir || 'input'] || 'input';
 };
 
 const COLUMN_KEYS = ['name', 'physicalPort', 'polarity', 'direction'];
@@ -125,7 +144,7 @@ export const ResetsTable: React.FC<ResetsTableProps> = ({ resets, onUpdate }) =>
                                     <td className="px-4 py-3 text-sm font-mono" {...getCellProps(index, 'name')}>{reset.name}</td>
                                     <td className="px-4 py-3 text-sm font-mono" {...getCellProps(index, 'physicalPort')}>{reset.physicalPort}</td>
                                     <td className="px-4 py-3 text-sm" {...getCellProps(index, 'polarity')}>{reset.polarity}</td>
-                                    <td className="px-4 py-3 text-sm" {...getCellProps(index, 'direction')}>{reset.direction || 'input'}</td>
+                                    <td className="px-4 py-3 text-sm" {...getCellProps(index, 'direction')}>{displayDirection(reset.direction)}</td>
                                     <td className="px-4 py-3 text-right">
                                         <button onClick={(e) => { e.stopPropagation(); handleEdit(index); }} disabled={isAdding || editingIndex !== null} className="p-1 mr-2" title="Edit (e)"><span className="codicon codicon-edit"></span></button>
                                         <button onClick={(e) => { e.stopPropagation(); handleDelete(index); }} disabled={isAdding || editingIndex !== null} className="p-1" style={{ color: 'var(--vscode-errorForeground)' }} title="Delete (d)"><span className="codicon codicon-trash"></span></button>

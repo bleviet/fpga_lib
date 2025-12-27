@@ -13,13 +13,27 @@ interface NavigationSidebarProps {
 interface SectionItem {
     id: Section;
     label: string;
-    icon: string;
+    icon?: string;
+    customIcon?: React.ReactNode;
     count?: (ipCore: any) => number;
 }
 
+// Custom square wave icon for clocks (single pulse pattern)
+const SquareWaveIcon: React.FC = () => (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ display: 'inline-block', verticalAlign: 'middle' }}>
+        <path
+            d="M1 12 L1 4 L5 4 L5 12 L9 12 L9 4 L13 4 L13 12 L15 12"
+            stroke="currentColor"
+            strokeWidth="1.2"
+            fill="none"
+            strokeLinecap="square"
+        />
+    </svg>
+);
+
 const SECTIONS: SectionItem[] = [
     { id: 'metadata', label: 'Metadata', icon: 'info' },
-    { id: 'clocks', label: 'Clocks', icon: 'clock', count: (ip) => ip?.clocks?.length || 0 },
+    { id: 'clocks', label: 'Clocks', customIcon: <SquareWaveIcon />, count: (ip) => ip?.clocks?.length || 0 },
     { id: 'resets', label: 'Resets', icon: 'debug-restart', count: (ip) => ip?.resets?.length || 0 },
     { id: 'ports', label: 'Ports', icon: 'plug', count: (ip) => ip?.ports?.length || 0 },
     { id: 'busInterfaces', label: 'Bus Interfaces', icon: 'circuit-board', count: (ip) => ip?.busInterfaces?.length || 0 },
@@ -130,7 +144,7 @@ export const NavigationSidebar: React.FC<NavigationSidebarProps> = ({
                             }}
                         >
                             <div className="flex items-center gap-2">
-                                <span className={`codicon codicon-${section.icon}`} />
+                                {section.customIcon ? section.customIcon : <span className={`codicon codicon-${section.icon}`} />}
                                 <span className="text-sm">{section.label}</span>
                             </div>
                             {count !== undefined && (
