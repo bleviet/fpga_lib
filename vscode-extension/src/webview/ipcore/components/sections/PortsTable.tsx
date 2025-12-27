@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { FormField, SelectField, NumberField } from '../../../shared/components';
 import { validateVhdlIdentifier, validateUniqueName } from '../../../shared/utils/validation';
+import { useVimTableNavigation } from '../../hooks/useVimTableNavigation';
 
 interface Port {
     name: string;
@@ -13,59 +14,94 @@ interface PortsTableProps {
     onUpdate: (path: Array<string | number>, value: any) => void;
 }
 
+const createEmptyPort = (): Port => ({
+    name: '',
+    direction: 'input',
+    width: 1,
+});
+
+const normalizePort = (port: Port): Port => {
+    // Normalize direction from in/out to input/output
+    const dirMap: { [key: string]: string } = {
+        'in': 'input',
+        'out': 'output',
+        'inout': 'inout',
+        'input': 'input',
+        'output': 'output',
+    };
+    return { ...port, direction: dirMap[port.direction] || 'input' };
+};
+
+// Helper to display normalized direction
+const displayDirection = (dir: string): string => {
+    const dirMap: { [key: string]: string } = {
+        'in': 'input',
+        'out': 'output',
+        'inout': 'inout',
+        'input': 'input',
+        'output': 'output',
+    };
+    return dirMap[dir] || dir;
+};
+
+const COLUMN_KEYS = ['name', 'direction', 'width'];
+
 /**
  * Editable table for IP Core ports
+ * Vim-style: h/j/k/l navigate cells, e edit, d delete, o add
  */
 export const PortsTable: React.FC<PortsTableProps> = ({ ports, onUpdate }) => {
-    const [editingIndex, setEditingIndex] = useState<number | null>(null);
-    const [isAdding, setIsAdding] = useState(false);
-    const [draft, setDraft] = useState<Port>({
-        name: '',
-        direction: 'input',
-        width: 1,
+    const {
+        selectedIndex,
+        activeColumn,
+        editingIndex,
+        isAdding,
+        draft,
+        setDraft,
+        handleEdit,
+        handleAdd,
+        handleSave,
+        handleCancel,
+        handleDelete,
+        containerRef,
+        getRowProps,
+        getCellProps,
+    } = useVimTableNavigation<Port>({
+        items: ports,
+        onUpdate,
+        dataKey: 'ports',
+        createEmptyItem: createEmptyPort,
+        normalizeItem: normalizePort,
+        columnKeys: COLUMN_KEYS,
     });
-
-    const handleSave = () => {
-        if (isAdding) {
-            onUpdate(['ports'], [...ports, draft]);
-        } else if (editingIndex !== null) {
-            const updated = [...ports];
-            updated[editingIndex] = draft;
-            onUpdate(['ports'], updated);
-        }
-        setIsAdding(false);
-        setEditingIndex(null);
-    };
-
-    const handleDelete = (index: number) => {
-        if (confirm(`Delete port "${ports[index].name}"?`)) {
-            onUpdate(['ports'], ports.filter((_, i) => i !== index));
-        }
-    };
 
     const existingNames = ports.map(p => p.name).filter((_, i) => i !== editingIndex);
     const nameError = validateVhdlIdentifier(draft.name) || validateUniqueName(draft.name, existingNames);
+    const canSave = !nameError;
 
-    // Normalize direction from YAML shorthand to full names
-    const normalizeDirection = (dir: string): string => {
-        const dirMap: { [key: string]: string } = {
-            'in': 'input',
-            'out': 'output',
-            'inout': 'inout',
-            'input': 'input',
-            'output': 'output',
-        };
-        return dirMap[dir] || 'input';
-    };
+    const renderEditRow = (isNew: boolean) => (
+        <tr style={{ background: 'var(--vscode-list-activeSelectionBackground)', borderBottom: '1px solid var(--vscode-panel-border)' }} data-row-idx={editingIndex ?? ports.length}>
+            <td className="px-4 py-3"><FormField label="" value={draft.name} onChange={(v: string) => setDraft({ ...draft, name: v })} error={nameError || undefined} placeholder="port_name" required data-edit-key="name" /></td>
+            <td className="px-4 py-3"><SelectField label="" value={draft.direction} options={[{ value: 'input', label: 'input' }, { value: 'output', label: 'output' }, { value: 'inout', label: 'inout' }]} onChange={(v: string) => setDraft({ ...draft, direction: v })} data-edit-key="direction" /></td>
+            <td className="px-4 py-3"><NumberField label="" value={draft.width || 1} onChange={(v: number) => setDraft({ ...draft, width: v })} min={1} data-edit-key="width" /></td>
+            <td className="px-4 py-3 text-right">
+                <button onClick={handleSave} disabled={!canSave} className="px-3 py-1 rounded text-xs mr-2" style={{ background: canSave ? 'var(--vscode-button-background)' : 'var(--vscode-button-secondaryBackground)', color: 'var(--vscode-button-foreground)', opacity: canSave ? 1 : 0.5 }}>{isNew ? 'Add' : 'Save'}</button>
+                <button onClick={handleCancel} className="px-3 py-1 rounded text-xs" style={{ background: 'var(--vscode-button-secondaryBackground)', color: 'var(--vscode-button-foreground)' }}>Cancel</button>
+            </td>
+        </tr>
+    );
 
     return (
-        <div className="p-6 space-y-4">
+        <div ref={containerRef} className="p-6 space-y-4" tabIndex={0}>
             <div className="flex items-center justify-between">
                 <div>
                     <h2 className="text-2xl font-semibold">Ports</h2>
-                    <p className="text-sm mt-1" style={{ opacity: 0.7 }}>{ports.length} port{ports.length !== 1 ? 's' : ''}</p>
+                    <p className="text-sm mt-1" style={{ opacity: 0.7 }}>
+                        {ports.length} port{ports.length !== 1 ? 's' : ''} •
+                        <span className="ml-2 text-xs font-mono" style={{ opacity: 0.5 }}>h/j/k/l: navigate • e: edit • d: delete • o: add</span>
+                    </p>
                 </div>
-                <button onClick={() => { setIsAdding(true); setDraft({ name: '', direction: 'input', width: 1 }); }} disabled={isAdding || editingIndex !== null} className="px-4 py-2 rounded text-sm flex items-center gap-2" style={{ background: (isAdding || editingIndex !== null) ? 'var(--vscode-button-secondaryBackground)' : 'var(--vscode-button-background)', color: 'var(--vscode-button-foreground)', opacity: (isAdding || editingIndex !== null) ? 0.5 : 1 }}>
+                <button onClick={handleAdd} disabled={isAdding || editingIndex !== null} className="px-4 py-2 rounded text-sm flex items-center gap-2" style={{ background: (isAdding || editingIndex !== null) ? 'var(--vscode-button-secondaryBackground)' : 'var(--vscode-button-background)', color: 'var(--vscode-button-foreground)', opacity: (isAdding || editingIndex !== null) ? 0.5 : 1 }}>
                     <span className="codicon codicon-add"></span>Add Port
                 </button>
             </div>
@@ -81,42 +117,24 @@ export const PortsTable: React.FC<PortsTableProps> = ({ ports, onUpdate }) => {
                         </tr>
                     </thead>
                     <tbody>
-                        {ports.map((port, idx) => (
-                            editingIndex === idx ? (
-                                <tr key={idx} style={{ background: 'var(--vscode-list-activeSelectionBackground)', borderBottom: '1px solid var(--vscode-panel-border)' }}>
-                                    <td className="px-4 py-3"><FormField label="" value={draft.name} onChange={(v: string) => setDraft({ ...draft, name: v })} error={nameError || undefined} placeholder="port_name" required /></td>
-                                    <td className="px-4 py-3"><SelectField label="" value={draft.direction} options={[{ value: 'input', label: 'input' }, { value: 'output', label: 'output' }, { value: 'inout', label: 'inout' }]} onChange={(v: string) => setDraft({ ...draft, direction: v })} /></td>
-                                    <td className="px-4 py-3"><NumberField label="" value={draft.width || 1} onChange={(v: number) => setDraft({ ...draft, width: v })} min={1} /></td>
+                        {ports.map((port, index) => {
+                            if (editingIndex === index) return <React.Fragment key={index}>{renderEditRow(false)}</React.Fragment>;
+                            const rowProps = getRowProps(index);
+                            return (
+                                <tr key={index} {...rowProps} onDoubleClick={() => handleEdit(index)}>
+                                    <td className="px-4 py-3 text-sm font-mono" {...getCellProps(index, 'name')}>{port.name}</td>
+                                    <td className="px-4 py-3 text-sm" {...getCellProps(index, 'direction')}>{displayDirection(port.direction)}</td>
+                                    <td className="px-4 py-3 text-sm" {...getCellProps(index, 'width')}>{port.width || 1}</td>
                                     <td className="px-4 py-3 text-right">
-                                        <button onClick={handleSave} disabled={!!nameError} className="px-3 py-1 rounded text-xs mr-2" style={{ background: !nameError ? 'var(--vscode-button-background)' : 'var(--vscode-button-secondaryBackground)', color: 'var(--vscode-button-foreground)' }}>Save</button>
-                                        <button onClick={() => { setEditingIndex(null); }} className="px-3 py-1 rounded text-xs" style={{ background: 'var(--vscode-button-secondaryBackground)', color: 'var(--vscode-button-foreground)' }}>Cancel</button>
+                                        <button onClick={(e) => { e.stopPropagation(); handleEdit(index); }} disabled={isAdding || editingIndex !== null} className="p-1 mr-2" title="Edit (e)"><span className="codicon codicon-edit"></span></button>
+                                        <button onClick={(e) => { e.stopPropagation(); handleDelete(index); }} disabled={isAdding || editingIndex !== null} className="p-1" style={{ color: 'var(--vscode-errorForeground)' }} title="Delete (d)"><span className="codicon codicon-trash"></span></button>
                                     </td>
                                 </tr>
-                            ) : (
-                                <tr key={idx} style={{ background: 'var(--vscode-editor-background)', borderBottom: '1px solid var(--vscode-panel-border)' }} onMouseEnter={(e) => e.currentTarget.style.background = 'var(--vscode-list-hoverBackground)'} onMouseLeave={(e) => e.currentTarget.style.background = 'var(--vscode-editor-background)'}>
-                                    <td className="px-4 py-3 text-sm font-mono">{port.name}</td>
-                                    <td className="px-4 py-3 text-sm">{port.direction}</td>
-                                    <td className="px-4 py-3 text-sm">{port.width || 1}</td>
-                                    <td className="px-4 py-3 text-right">
-                                        <button onClick={() => { setEditingIndex(idx); setDraft({ ...port, direction: normalizeDirection(port.direction) }); }} disabled={isAdding || editingIndex !== null} className="p-1 mr-2" title="Edit"><span className="codicon codicon-edit"></span></button>
-                                        <button onClick={() => handleDelete(idx)} disabled={isAdding || editingIndex !== null} className="p-1" style={{ color: 'var(--vscode-errorForeground)' }} title="Delete"><span className="codicon codicon-trash"></span></button>
-                                    </td>
-                                </tr>
-                            )
-                        ))}
-                        {isAdding && (
-                            <tr style={{ background: 'var(--vscode-list-activeSelectionBackground)', borderBottom: '1px solid var(--vscode-panel-border)' }}>
-                                <td className="px-4 py-3"><FormField label="" value={draft.name} onChange={(v: string) => setDraft({ ...draft, name: v })} error={nameError || undefined} placeholder="port_name" required /></td>
-                                <td className="px-4 py-3"><SelectField label="" value={draft.direction} options={[{ value: 'input', label: 'input' }, { value: 'output', label: 'output' }, { value: 'inout', label: 'inout' }]} onChange={(v: string) => setDraft({ ...draft, direction: v })} /></td>
-                                <td className="px-4 py-3"><NumberField label="" value={draft.width || 1} onChange={(v: number) => setDraft({ ...draft, width: v })} min={1} /></td>
-                                <td className="px-4 py-3 text-right">
-                                    <button onClick={handleSave} disabled={!!nameError} className="px-3 py-1 rounded text-xs mr-2" style={{ background: !nameError ? 'var(--vscode-button-background)' : 'var(--vscode-button-secondaryBackground)', color: 'var(--vscode-button-foreground)' }}>Add</button>
-                                    <button onClick={() => setIsAdding(false)} className="px-3 py-1 rounded text-xs" style={{ background: 'var(--vscode-button-secondaryBackground)', color: 'var(--vscode-button-foreground)' }}>Cancel</button>
-                                </td>
-                            </tr>
-                        )}
+                            );
+                        })}
+                        {isAdding && renderEditRow(true)}
                         {ports.length === 0 && !isAdding && (
-                            <tr><td colSpan={4} className="px-4 py-8 text-center text-sm" style={{ opacity: 0.6 }}>No ports defined.</td></tr>
+                            <tr><td colSpan={4} className="px-4 py-8 text-center text-sm" style={{ opacity: 0.6 }}>No ports defined. Press 'o' or click "Add Port".</td></tr>
                         )}
                     </tbody>
                 </table>

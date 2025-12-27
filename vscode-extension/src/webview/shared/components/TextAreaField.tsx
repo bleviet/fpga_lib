@@ -1,4 +1,5 @@
 import React from 'react';
+import { VSCodeTextArea } from '@vscode/webview-ui-toolkit/react';
 
 export interface TextAreaFieldProps {
     label: string;
@@ -9,11 +10,15 @@ export interface TextAreaFieldProps {
     error?: string;
     required?: boolean;
     disabled?: boolean;
+    /** Additional data attribute for edit key (vim navigation) */
+    'data-edit-key'?: string;
+    /** Additional className for the text area */
+    className?: string;
 }
 
 /**
  * Multi-line text area field
- * Theme-aware with validation support
+ * Uses VSCode Web UI Toolkit for native VS Code look and feel
  */
 export const TextAreaField: React.FC<TextAreaFieldProps> = ({
     label,
@@ -24,30 +29,28 @@ export const TextAreaField: React.FC<TextAreaFieldProps> = ({
     error,
     required = false,
     disabled = false,
+    'data-edit-key': dataEditKey,
+    className,
 }) => {
     return (
         <div className="flex flex-col gap-1">
-            <label className="text-sm font-semibold flex items-center gap-1">
-                {label}
-                {required && <span style={{ color: 'var(--vscode-errorForeground)' }}>*</span>}
-            </label>
-            <textarea
+            {label && (
+                <label className="text-sm font-semibold flex items-center gap-1">
+                    {label}
+                    {required && <span style={{ color: 'var(--vscode-errorForeground)' }}>*</span>}
+                </label>
+            )}
+            <VSCodeTextArea
+                data-edit-key={dataEditKey}
+                className={className}
                 value={value}
-                onChange={(e) => onChange(e.target.value)}
                 rows={rows}
                 placeholder={placeholder}
                 disabled={disabled}
-                className="px-3 py-2 rounded text-sm resize-vertical"
+                onInput={(e: any) => onChange(e.target.value ?? '')}
                 style={{
-                    background: 'var(--vscode-input-background)',
-                    color: 'var(--vscode-input-foreground)',
-                    border: error
-                        ? '1px solid var(--vscode-inputValidation-errorBorder)'
-                        : '1px solid var(--vscode-input-border)',
-                    opacity: disabled ? 0.5 : 1,
-                    cursor: disabled ? 'not-allowed' : 'text',
-                    fontFamily: 'var(--vscode-font-family)',
-                }}
+                    '--input-border-color': error ? 'var(--vscode-inputValidation-errorBorder)' : undefined
+                } as React.CSSProperties}
             />
             {error && (
                 <span className="text-xs" style={{ color: 'var(--vscode-errorForeground)' }}>
@@ -57,3 +60,4 @@ export const TextAreaField: React.FC<TextAreaFieldProps> = ({
         </div>
     );
 };
+

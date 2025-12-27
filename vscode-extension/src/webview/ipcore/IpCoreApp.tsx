@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { createRoot } from 'react-dom/client';
 import { NavigationSidebar } from './components/layout/NavigationSidebar';
 import { EditorPanel } from './components/layout/EditorPanel';
@@ -7,6 +7,8 @@ import { useNavigation } from './hooks/useNavigation';
 import { useIpCoreSync } from './hooks/useIpCoreSync';
 import { vscode } from '../vscode';
 
+export type FocusedPanel = 'left' | 'right';
+
 /**
  * Main IP Core Visual Editor application
  */
@@ -14,6 +16,32 @@ const IpCoreApp: React.FC = () => {
     const { ipCore, rawYaml, parseError, fileName, imports, updateFromYaml, updateIpCore, getValidationErrors } = useIpCoreState();
     const { selectedSection, navigate } = useNavigation();
     const { sendUpdate } = useIpCoreSync(rawYaml);
+
+    // Panel focus state for Ctrl+H/L navigation
+    const [focusedPanel, setFocusedPanel] = useState<FocusedPanel>('left');
+    const leftPanelRef = useRef<HTMLDivElement>(null);
+    const rightPanelRef = useRef<HTMLDivElement>(null);
+
+    // Handle global keyboard shortcuts for panel switching
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            // Ctrl+H: Focus left panel
+            if (e.ctrlKey && e.key.toLowerCase() === 'h') {
+                e.preventDefault();
+                setFocusedPanel('left');
+                leftPanelRef.current?.focus();
+            }
+            // Ctrl+L: Focus right panel (EditorPanel's useEffect will auto-focus the table)
+            else if (e.ctrlKey && e.key.toLowerCase() === 'l') {
+                e.preventDefault();
+                setFocusedPanel('right');
+                // The EditorPanel will auto-focus the inner table container via its useEffect
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, []);
 
     // Notify extension that webview is ready
     useEffect(() => {
@@ -88,11 +116,17 @@ const IpCoreApp: React.FC = () => {
                             selectedSection={selectedSection}
                             onNavigate={navigate}
                             ipCore={{ ...ipCore, imports }}
+                            isFocused={focusedPanel === 'left'}
+                            onFocus={() => setFocusedPanel('left')}
+                            panelRef={leftPanelRef}
                         />
                         <EditorPanel
                             selectedSection={selectedSection}
                             ipCore={ipCore}
                             onUpdate={updateIpCore}
+                            isFocused={focusedPanel === 'right'}
+                            onFocus={() => setFocusedPanel('right')}
+                            panelRef={rightPanelRef}
                         />
                     </>
                 )}

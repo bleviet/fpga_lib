@@ -1,10 +1,13 @@
-import React from 'react';
+import React, { useEffect, RefObject, useCallback } from 'react';
 import { Section } from '../../hooks/useNavigation';
 
 interface NavigationSidebarProps {
     selectedSection: Section;
     onNavigate: (section: Section) => void;
     ipCore: any;
+    isFocused?: boolean;
+    onFocus?: () => void;
+    panelRef?: RefObject<HTMLDivElement>;
 }
 
 interface SectionItem {
@@ -27,18 +30,67 @@ const SECTIONS: SectionItem[] = [
 
 /**
  * Navigation sidebar for IP Core sections
+ * Supports vim-style navigation: j/k for up/down, Enter to select
  */
 export const NavigationSidebar: React.FC<NavigationSidebarProps> = ({
     selectedSection,
     onNavigate,
     ipCore,
+    isFocused = false,
+    onFocus,
+    panelRef,
 }) => {
+    // Get the current section index
+    const getCurrentIndex = useCallback(() => {
+        return SECTIONS.findIndex(s => s.id === selectedSection);
+    }, [selectedSection]);
+
+    // Handle keyboard navigation
+    useEffect(() => {
+        if (!isFocused || !panelRef?.current) return;
+
+        const handleKeyDown = (e: KeyboardEvent) => {
+            const key = e.key.toLowerCase();
+            const currentIdx = getCurrentIndex();
+
+            // j or ArrowDown: Move to next section
+            if (key === 'j' || e.key === 'ArrowDown') {
+                e.preventDefault();
+                const nextIdx = Math.min(currentIdx + 1, SECTIONS.length - 1);
+                onNavigate(SECTIONS[nextIdx].id);
+            }
+            // k or ArrowUp: Move to previous section
+            else if (key === 'k' || e.key === 'ArrowUp') {
+                e.preventDefault();
+                const prevIdx = Math.max(currentIdx - 1, 0);
+                onNavigate(SECTIONS[prevIdx].id);
+            }
+            // g: Go to first section
+            else if (key === 'g') {
+                e.preventDefault();
+                onNavigate(SECTIONS[0].id);
+            }
+            // G (Shift+g): Go to last section
+            else if (e.key === 'G' && e.shiftKey) {
+                e.preventDefault();
+                onNavigate(SECTIONS[SECTIONS.length - 1].id);
+            }
+        };
+
+        const panel = panelRef.current;
+        panel.addEventListener('keydown', handleKeyDown);
+        return () => panel.removeEventListener('keydown', handleKeyDown);
+    }, [isFocused, getCurrentIndex, onNavigate, panelRef]);
+
     return (
         <div
-            className="w-64 flex flex-col"
+            ref={panelRef}
+            tabIndex={0}
+            onClick={onFocus}
+            className="w-64 flex flex-col outline-none"
             style={{
                 background: 'var(--vscode-sideBar-background)',
-                borderRight: '1px solid var(--vscode-panel-border)',
+                borderRight: isFocused ? '2px solid var(--vscode-focusBorder)' : '1px solid var(--vscode-panel-border)',
                 color: 'var(--vscode-sideBar-foreground)'
             }}
         >

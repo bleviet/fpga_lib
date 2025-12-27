@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { FormField, SelectField } from '../../../shared/components';
 import { validateVhdlIdentifier, validateUniqueName } from '../../../shared/utils/validation';
+import { useVimTableNavigation } from '../../hooks/useVimTableNavigation';
 
 interface Reset {
     name: string;
@@ -14,117 +15,90 @@ interface ResetsTableProps {
     onUpdate: (path: Array<string | number>, value: any) => void;
 }
 
+const createEmptyReset = (): Reset => ({
+    name: '',
+    physicalPort: '',
+    polarity: 'activeLow',
+    direction: 'input',
+});
+
+const normalizeReset = (reset: Reset): Reset => {
+    // Normalize polarity from snake_case (active_low) to camelCase (activeLow)
+    let normalizedPolarity = reset.polarity;
+    if (reset.polarity === 'active_low') {
+        normalizedPolarity = 'activeLow';
+    } else if (reset.polarity === 'active_high') {
+        normalizedPolarity = 'activeHigh';
+    }
+    return { ...reset, polarity: normalizedPolarity };
+};
+
+const COLUMN_KEYS = ['name', 'physicalPort', 'polarity', 'direction'];
+
 /**
  * Editable table for IP Core resets
+ * Vim-style: h/j/k/l navigate cells, e edit, d delete, o add
  */
 export const ResetsTable: React.FC<ResetsTableProps> = ({ resets, onUpdate }) => {
-    const [editingIndex, setEditingIndex] = useState<number | null>(null);
-    const [isAdding, setIsAdding] = useState(false);
-    const [draft, setDraft] = useState<Reset>({
-        name: '',
-        physicalPort: '',
-        polarity: 'active_low',
-        direction: 'input',
+    const {
+        selectedIndex,
+        activeColumn,
+        editingIndex,
+        isAdding,
+        draft,
+        setDraft,
+        handleEdit,
+        handleAdd,
+        handleSave,
+        handleCancel,
+        handleDelete,
+        containerRef,
+        getRowProps,
+        getCellProps,
+    } = useVimTableNavigation<Reset>({
+        items: resets,
+        onUpdate,
+        dataKey: 'resets',
+        createEmptyItem: createEmptyReset,
+        normalizeItem: normalizeReset,
+        columnKeys: COLUMN_KEYS,
     });
-
-    const handleAdd = () => {
-        setIsAdding(true);
-        setDraft({
-            name: '',
-            physicalPort: '',
-            polarity: 'active_low',
-            direction: 'input',
-        });
-    };
-
-    const handleEdit = (index: number) => {
-        setEditingIndex(index);
-        const reset = resets[index];
-        // Normalize polarity to handle both activeLow/activeHigh and active_low/active_high
-        const normalizedPolarity = reset.polarity.includes('_')
-            ? reset.polarity
-            : reset.polarity.replace(/([A-Z])/g, '_$1').toLowerCase();
-        setDraft({ ...reset, polarity: normalizedPolarity });
-    };
-
-    const handleSave = () => {
-        if (isAdding) {
-            onUpdate(['resets'], [...resets, draft]);
-        } else if (editingIndex !== null) {
-            const updated = [...resets];
-            updated[editingIndex] = draft;
-            onUpdate(['resets'], updated);
-        }
-        handleCancel();
-    };
-
-    const handleCancel = () => {
-        setIsAdding(false);
-        setEditingIndex(null);
-        setDraft({
-            name: '',
-            physicalPort: '',
-            polarity: 'active_low',
-            direction: 'input',
-        });
-    };
-
-    const handleDelete = (index: number) => {
-        const confirmed = confirm(`Delete reset "${resets[index].name}"?`);
-        if (confirmed) {
-            onUpdate(['resets'], resets.filter((_, i) => i !== index));
-        }
-    };
 
     const existingNames = resets.map(r => r.name).filter((_, i) => i !== editingIndex);
     const nameError = validateVhdlIdentifier(draft.name) || validateUniqueName(draft.name, existingNames);
     const physicalPortError = validateVhdlIdentifier(draft.physicalPort);
     const canSave = !nameError && !physicalPortError;
 
-    const renderRow = (reset: Reset, index: number, isEditing: boolean) => {
-        if (isEditing) {
-            return (
-                <tr key={index} style={{ background: 'var(--vscode-list-activeSelectionBackground)', borderBottom: '1px solid var(--vscode-panel-border)' }}>
-                    <td className="px-4 py-3">
-                        <FormField label="" value={draft.name} onChange={(v: string) => setDraft({ ...draft, name: v })} error={nameError || undefined} placeholder="rst_name" required />
-                    </td>
-                    <td className="px-4 py-3">
-                        <FormField label="" value={draft.physicalPort} onChange={(v: string) => setDraft({ ...draft, physicalPort: v })} error={physicalPortError || undefined} placeholder="RST_PORT" required />
-                    </td>
-                    <td className="px-4 py-3">
-                        <SelectField label="" value={draft.polarity} options={[{ value: 'active_low', label: 'active_low' }, { value: 'active_high', label: 'active_high' }]} onChange={(v: string) => setDraft({ ...draft, polarity: v })} />
-                    </td>
-                    <td className="px-4 py-3">
-                        <SelectField label="" value={draft.direction || 'input'} options={[{ value: 'input', label: 'input' }, { value: 'output', label: 'output' }]} onChange={(v: string) => setDraft({ ...draft, direction: v })} />
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                        <button onClick={handleSave} disabled={!canSave} className="px-3 py-1 rounded text-xs mr-2" style={{ background: canSave ? 'var(--vscode-button-background)' : 'var(--vscode-button-secondaryBackground)', color: 'var(--vscode-button-foreground)', opacity: canSave ? 1 : 0.5 }}>Save</button>
-                        <button onClick={handleCancel} className="px-3 py-1 rounded text-xs" style={{ background: 'var(--vscode-button-secondaryBackground)', color: 'var(--vscode-button-foreground)' }}>Cancel</button>
-                    </td>
-                </tr>
-            );
-        }
-
-        return (
-            <tr key={index} style={{ background: 'var(--vscode-editor-background)', borderBottom: '1px solid var(--vscode-panel-border)' }} onMouseEnter={(e) => e.currentTarget.style.background = 'var(--vscode-list-hoverBackground)'} onMouseLeave={(e) => e.currentTarget.style.background = 'var(--vscode-editor-background)'}>
-                <td className="px-4 py-3 text-sm font-mono">{reset.name}</td>
-                <td className="px-4 py-3 text-sm font-mono">{reset.physicalPort}</td>
-                <td className="px-4 py-3 text-sm">{reset.polarity}</td>
-                <td className="px-4 py-3 text-sm">{reset.direction || 'input'}</td>
-                <td className="px-4 py-3 text-right">
-                    <button onClick={() => handleEdit(index)} disabled={isAdding || editingIndex !== null} className="p-1 mr-2" title="Edit"><span className="codicon codicon-edit"></span></button>
-                    <button onClick={() => handleDelete(index)} disabled={isAdding || editingIndex !== null} className="p-1" style={{ color: 'var(--vscode-errorForeground)' }} title="Delete"><span className="codicon codicon-trash"></span></button>
-                </td>
-            </tr>
-        );
-    };
+    const renderEditRow = (isNew: boolean) => (
+        <tr style={{ background: 'var(--vscode-list-activeSelectionBackground)', borderBottom: '1px solid var(--vscode-panel-border)' }} data-row-idx={editingIndex ?? resets.length}>
+            <td className="px-4 py-3">
+                <FormField label="" value={draft.name} onChange={(v: string) => setDraft({ ...draft, name: v })} error={nameError || undefined} placeholder="rst_name" required data-edit-key="name" />
+            </td>
+            <td className="px-4 py-3">
+                <FormField label="" value={draft.physicalPort} onChange={(v: string) => setDraft({ ...draft, physicalPort: v })} error={physicalPortError || undefined} placeholder="RST_PORT" required data-edit-key="physicalPort" />
+            </td>
+            <td className="px-4 py-3">
+                <SelectField label="" value={draft.polarity} options={[{ value: 'activeLow', label: 'activeLow' }, { value: 'activeHigh', label: 'activeHigh' }]} onChange={(v: string) => setDraft({ ...draft, polarity: v })} data-edit-key="polarity" />
+            </td>
+            <td className="px-4 py-3">
+                <SelectField label="" value={draft.direction || 'input'} options={[{ value: 'input', label: 'input' }, { value: 'output', label: 'output' }]} onChange={(v: string) => setDraft({ ...draft, direction: v })} data-edit-key="direction" />
+            </td>
+            <td className="px-4 py-3 text-right">
+                <button onClick={handleSave} disabled={!canSave} className="px-3 py-1 rounded text-xs mr-2" style={{ background: canSave ? 'var(--vscode-button-background)' : 'var(--vscode-button-secondaryBackground)', color: 'var(--vscode-button-foreground)', opacity: canSave ? 1 : 0.5 }}>{isNew ? 'Add' : 'Save'}</button>
+                <button onClick={handleCancel} className="px-3 py-1 rounded text-xs" style={{ background: 'var(--vscode-button-secondaryBackground)', color: 'var(--vscode-button-foreground)' }}>Cancel</button>
+            </td>
+        </tr>
+    );
 
     return (
-        <div className="p-6 space-y-4">
+        <div ref={containerRef} className="p-6 space-y-4" tabIndex={0}>
             <div className="flex items-center justify-between">
                 <div>
                     <h2 className="text-2xl font-semibold">Resets</h2>
-                    <p className="text-sm mt-1" style={{ opacity: 0.7 }}>{resets.length} reset{resets.length !== 1 ? 's' : ''}</p>
+                    <p className="text-sm mt-1" style={{ opacity: 0.7 }}>
+                        {resets.length} reset{resets.length !== 1 ? 's' : ''} •
+                        <span className="ml-2 text-xs font-mono" style={{ opacity: 0.5 }}>h/j/k/l: navigate • e: edit • d: delete • o: add</span>
+                    </p>
                 </div>
                 <button onClick={handleAdd} disabled={isAdding || editingIndex !== null} className="px-4 py-2 rounded text-sm flex items-center gap-2" style={{ background: (isAdding || editingIndex !== null) ? 'var(--vscode-button-secondaryBackground)' : 'var(--vscode-button-background)', color: 'var(--vscode-button-foreground)', opacity: (isAdding || editingIndex !== null) ? 0.5 : 1 }}>
                     <span className="codicon codicon-add"></span>Add Reset
@@ -143,10 +117,25 @@ export const ResetsTable: React.FC<ResetsTableProps> = ({ resets, onUpdate }) =>
                         </tr>
                     </thead>
                     <tbody>
-                        {resets.map((reset, index) => renderRow(reset, index, editingIndex === index))}
-                        {isAdding && renderRow(draft, -1, true)}
+                        {resets.map((reset, index) => {
+                            if (editingIndex === index) return <React.Fragment key={index}>{renderEditRow(false)}</React.Fragment>;
+                            const rowProps = getRowProps(index);
+                            return (
+                                <tr key={index} {...rowProps} onDoubleClick={() => handleEdit(index)}>
+                                    <td className="px-4 py-3 text-sm font-mono" {...getCellProps(index, 'name')}>{reset.name}</td>
+                                    <td className="px-4 py-3 text-sm font-mono" {...getCellProps(index, 'physicalPort')}>{reset.physicalPort}</td>
+                                    <td className="px-4 py-3 text-sm" {...getCellProps(index, 'polarity')}>{reset.polarity}</td>
+                                    <td className="px-4 py-3 text-sm" {...getCellProps(index, 'direction')}>{reset.direction || 'input'}</td>
+                                    <td className="px-4 py-3 text-right">
+                                        <button onClick={(e) => { e.stopPropagation(); handleEdit(index); }} disabled={isAdding || editingIndex !== null} className="p-1 mr-2" title="Edit (e)"><span className="codicon codicon-edit"></span></button>
+                                        <button onClick={(e) => { e.stopPropagation(); handleDelete(index); }} disabled={isAdding || editingIndex !== null} className="p-1" style={{ color: 'var(--vscode-errorForeground)' }} title="Delete (d)"><span className="codicon codicon-trash"></span></button>
+                                    </td>
+                                </tr>
+                            );
+                        })}
+                        {isAdding && renderEditRow(true)}
                         {resets.length === 0 && !isAdding && (
-                            <tr><td colSpan={5} className="px-4 py-8 text-center text-sm" style={{ opacity: 0.6 }}>No resets defined.</td></tr>
+                            <tr><td colSpan={5} className="px-4 py-8 text-center text-sm" style={{ opacity: 0.6 }}>No resets defined. Press 'o' or click "Add Reset".</td></tr>
                         )}
                     </tbody>
                 </table>

@@ -1,45 +1,35 @@
 import React from 'react';
+import { VSCodeCheckbox } from '@vscode/webview-ui-toolkit/react';
 
 export interface CheckboxFieldProps {
     label: string;
     checked: boolean;
     onChange: (checked: boolean) => void;
     disabled?: boolean;
+    /** Additional data attribute for edit key (vim navigation) */
+    'data-edit-key'?: string;
 }
 
 /**
  * Checkbox field for boolean values
- * Theme-aware with label
+ * Uses VSCode Web UI Toolkit for native VS Code look and feel
  */
 export const CheckboxField: React.FC<CheckboxFieldProps> = ({
     label,
     checked,
     onChange,
     disabled = false,
+    'data-edit-key': dataEditKey,
 }) => {
     return (
-        <div className="flex items-center gap-2">
-            <input
-                type="checkbox"
-                checked={checked}
-                onChange={(e) => onChange(e.target.checked)}
-                disabled={disabled}
-                className="cursor-pointer"
-                style={{
-                    opacity: disabled ? 0.5 : 1,
-                    cursor: disabled ? 'not-allowed' : 'pointer',
-                }}
-            />
-            <label
-                className="text-sm cursor-pointer"
-                onClick={() => !disabled && onChange(!checked)}
-                style={{
-                    opacity: disabled ? 0.5 : 1,
-                    cursor: disabled ? 'not-allowed' : 'pointer',
-                }}
-            >
-                {label}
-            </label>
-        </div>
+        <VSCodeCheckbox
+            data-edit-key={dataEditKey}
+            checked={checked}
+            disabled={disabled}
+            onChange={(e: any) => onChange(e.target.checked)}
+        >
+            {label}
+        </VSCodeCheckbox>
     );
 };
+

@@ -1,4 +1,5 @@
 import React from 'react';
+import { VSCodeTextField } from '@vscode/webview-ui-toolkit/react';
 
 export interface FormFieldProps {
     label: string;
@@ -10,11 +11,15 @@ export interface FormFieldProps {
     disabled?: boolean;
     validator?: (value: string) => string | null;
     onBlur?: () => void;
+    /** Additional data attribute for edit key (vim navigation) */
+    'data-edit-key'?: string;
+    /** Additional className for the text field */
+    className?: string;
 }
 
 /**
  * Text input form field with validation
- * Theme-aware, supports validation, errors, and required fields
+ * Uses VSCode Web UI Toolkit for native VS Code look and feel
  */
 export const FormField: React.FC<FormFieldProps> = ({
     label,
@@ -26,6 +31,8 @@ export const FormField: React.FC<FormFieldProps> = ({
     disabled = false,
     validator,
     onBlur,
+    'data-edit-key': dataEditKey,
+    className,
 }) => {
     const [localError, setLocalError] = React.useState<string | null>(null);
 
@@ -41,33 +48,30 @@ export const FormField: React.FC<FormFieldProps> = ({
 
     return (
         <div className="flex flex-col gap-1">
-            <label className="text-sm font-semibold flex items-center gap-1">
-                {label}
-                {required && <span style={{ color: 'var(--vscode-errorForeground)' }}>*</span>}
-            </label>
-            <input
-                type="text"
+            {label && (
+                <label className="text-sm font-semibold flex items-center gap-1">
+                    {label}
+                    {required && <span style={{ color: 'var(--vscode-errorForeground)' }}>*</span>}
+                </label>
+            )}
+            <VSCodeTextField
+                data-edit-key={dataEditKey}
+                className={className}
                 value={value}
-                onChange={(e) => {
-                    onChange(e.target.value);
+                placeholder={placeholder}
+                disabled={disabled}
+                onInput={(e: any) => {
+                    const newValue = e.target.value ?? '';
+                    onChange(newValue);
                     if (localError && validator) {
-                        const validationError = validator(e.target.value);
+                        const validationError = validator(newValue);
                         setLocalError(validationError);
                     }
                 }}
                 onBlur={handleBlur}
-                placeholder={placeholder}
-                disabled={disabled}
-                className="px-3 py-2 rounded text-sm"
                 style={{
-                    background: disabled ? 'var(--vscode-input-background)' : 'var(--vscode-input-background)',
-                    color: 'var(--vscode-input-foreground)',
-                    border: displayError
-                        ? '1px solid var(--vscode-inputValidation-errorBorder)'
-                        : '1px solid var(--vscode-input-border)',
-                    opacity: disabled ? 0.5 : 1,
-                    cursor: disabled ? 'not-allowed' : 'text',
-                }}
+                    '--input-border-color': displayError ? 'var(--vscode-inputValidation-errorBorder)' : undefined
+                } as React.CSSProperties}
             />
             {displayError && (
                 <span className="text-xs" style={{ color: 'var(--vscode-errorForeground)' }}>
@@ -77,3 +81,4 @@ export const FormField: React.FC<FormFieldProps> = ({
         </div>
     );
 };
+

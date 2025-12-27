@@ -1,4 +1,5 @@
 import React from 'react';
+import { VSCodeDropdown, VSCodeOption } from '@vscode/webview-ui-toolkit/react';
 
 export interface SelectFieldProps {
     label: string;
@@ -8,11 +9,15 @@ export interface SelectFieldProps {
     error?: string;
     required?: boolean;
     disabled?: boolean;
+    /** Additional data attribute for edit key (vim navigation) */
+    'data-edit-key'?: string;
+    /** Additional className for the dropdown */
+    className?: string;
 }
 
 /**
  * Dropdown select field
- * Theme-aware with validation support
+ * Uses VSCode Web UI Toolkit for native VS Code look and feel
  */
 export const SelectField: React.FC<SelectFieldProps> = ({
     label,
@@ -22,34 +27,33 @@ export const SelectField: React.FC<SelectFieldProps> = ({
     error,
     required = false,
     disabled = false,
+    'data-edit-key': dataEditKey,
+    className,
 }) => {
     return (
         <div className="flex flex-col gap-1">
-            <label className="text-sm font-semibold flex items-center gap-1">
-                {label}
-                {required && <span style={{ color: 'var(--vscode-errorForeground)' }}>*</span>}
-            </label>
-            <select
+            {label && (
+                <label className="text-sm font-semibold flex items-center gap-1">
+                    {label}
+                    {required && <span style={{ color: 'var(--vscode-errorForeground)' }}>*</span>}
+                </label>
+            )}
+            <VSCodeDropdown
+                data-edit-key={dataEditKey}
+                className={className}
                 value={value}
-                onChange={(e) => onChange(e.target.value)}
                 disabled={disabled}
-                className="px-3 py-2 rounded text-sm"
+                onChange={(e: any) => onChange(e.target.value)}
                 style={{
-                    background: 'var(--vscode-dropdown-background)',
-                    color: 'var(--vscode-dropdown-foreground)',
-                    border: error
-                        ? '1px solid var(--vscode-inputValidation-errorBorder)'
-                        : '1px solid var(--vscode-dropdown-border)',
-                    opacity: disabled ? 0.5 : 1,
-                    cursor: disabled ? 'not-allowed' : 'pointer',
-                }}
+                    '--dropdown-border': error ? '1px solid var(--vscode-inputValidation-errorBorder)' : undefined
+                } as React.CSSProperties}
             >
                 {options.map((option) => (
-                    <option key={option.value} value={option.value}>
+                    <VSCodeOption key={option.value} value={option.value}>
                         {option.label}
-                    </option>
+                    </VSCodeOption>
                 ))}
-            </select>
+            </VSCodeDropdown>
             {error && (
                 <span className="text-xs" style={{ color: 'var(--vscode-errorForeground)' }}>
                     {error}
@@ -58,3 +62,4 @@ export const SelectField: React.FC<SelectFieldProps> = ({
         </div>
     );
 };
+

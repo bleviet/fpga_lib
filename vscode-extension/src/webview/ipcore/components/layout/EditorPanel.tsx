@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { RefObject, useEffect, useRef } from 'react';
 import { MetadataEditor } from '../sections/MetadataEditor';
 import { ClocksTable } from '../sections/ClocksTable';
 import { ResetsTable } from '../sections/ResetsTable';
@@ -11,6 +11,9 @@ interface EditorPanelProps {
     selectedSection: Section;
     ipCore: any;
     onUpdate: (path: Array<string | number>, value: any) => void;
+    isFocused?: boolean;
+    onFocus?: () => void;
+    panelRef?: RefObject<HTMLDivElement>;
 }
 
 /**
@@ -20,7 +23,23 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
     selectedSection,
     ipCore,
     onUpdate,
+    isFocused = false,
+    onFocus,
+    panelRef,
 }) => {
+    const contentRef = useRef<HTMLDivElement>(null);
+
+    // Auto-focus the inner table container when panel receives focus
+    useEffect(() => {
+        if (isFocused && contentRef.current) {
+            // Find and focus the first focusable element with tabIndex (table container)
+            const focusableElement = contentRef.current.querySelector('[tabindex="0"]') as HTMLElement;
+            if (focusableElement) {
+                focusableElement.focus();
+            }
+        }
+    }, [isFocused]);
+
     if (!ipCore) {
         return (
             <div className="flex-1 flex items-center justify-center text-gray-500">
@@ -53,8 +72,18 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
     };
 
     return (
-        <div className="flex-1 overflow-y-auto">
-            {renderSection()}
+        <div
+            ref={panelRef}
+            tabIndex={-1}
+            onClick={onFocus}
+            className="flex-1 overflow-y-auto outline-none"
+            style={{
+                borderLeft: isFocused ? '2px solid var(--vscode-focusBorder)' : 'none'
+            }}
+        >
+            <div ref={contentRef}>
+                {renderSection()}
+            </div>
         </div>
     );
 };
