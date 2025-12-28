@@ -190,10 +190,11 @@ export class IpCoreEditorProvider implements vscode.CustomTextEditorProvider {
                 // Handle file selection dialog
                 this.logger.info('Opening file picker dialog');
                 const options: vscode.OpenDialogOptions = {
-                    canSelectMany: true,  // Always allow multi-select
+                    canSelectMany: message.multi !== undefined ? message.multi : true,
                     openLabel: 'Select Files',
                     canSelectFiles: true,
                     canSelectFolders: false,
+                    filters: message.filters, // Support file filters
                 };
 
                 const fileUris = await vscode.window.showOpenDialog(options);

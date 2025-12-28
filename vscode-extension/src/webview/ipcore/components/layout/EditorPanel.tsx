@@ -7,12 +7,13 @@ import { PortsTable } from '../sections/PortsTable';
 import { ParametersTable } from '../sections/ParametersTable';
 import { FileSetsEditor } from '../sections/FileSetsEditor';
 import { BusInterfacesEditor } from '../sections/BusInterfacesEditor';
+import { MemoryMapsEditor } from '../sections/MemoryMapsEditor';
 import { Section } from '../../hooks/useNavigation';
 
 interface EditorPanelProps {
     selectedSection: Section;
     ipCore: any;
-    imports?: { busLibrary?: any };
+    imports?: { busLibrary?: any; memoryMaps?: any[] };
     onUpdate: (path: Array<string | number>, value: any) => void;
     isFocused?: boolean;
     onFocus?: () => void;
@@ -65,9 +66,9 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
             case 'ports':
                 return <PortsTable ports={ipCore.ports || []} onUpdate={onUpdate} />;
             case 'busInterfaces':
-                return <BusInterfacesEditor busInterfaces={ipCore.busInterfaces || []} busLibrary={imports.busLibrary} clocks={ipCore.clocks || []} resets={ipCore.resets || []} onUpdate={onUpdate} highlight={highlight} />;
+                return <BusInterfacesEditor busInterfaces={ipCore.busInterfaces || []} busLibrary={imports.busLibrary} imports={imports} clocks={ipCore.clocks || []} resets={ipCore.resets || []} onUpdate={onUpdate} highlight={highlight} />;
             case 'memoryMaps':
-                return <MemoryMapsSection memoryMaps={ipCore.memoryMaps || []} onUpdate={onUpdate} />;
+                return <MemoryMapsEditor memoryMaps={ipCore.memoryMaps} imports={imports} onUpdate={onUpdate} />;
             case 'parameters':
                 return <ParametersTable parameters={ipCore.parameters || []} onUpdate={onUpdate} />;
             case 'fileSets':
@@ -147,45 +148,7 @@ const BusInterfacesSection: React.FC<any> = ({ busInterfaces }) => (
     </div>
 );
 
-const MemoryMapsSection: React.FC<any> = ({ memoryMaps }) => {
-    // Check if it's an import object (as per schema using 'import' keyword)
-    const importFile = memoryMaps?.import;
 
-    return (
-        <div className="p-6 space-y-4">
-            <h2 className="text-2xl font-semibold">Memory Maps</h2>
-
-            {importFile ? (
-                <div className="p-4 rounded border-l-4" style={{
-                    background: 'var(--vscode-editor-background)',
-                    border: '1px solid var(--vscode-panel-border)',
-                    borderLeftColor: 'var(--vscode-textLink-foreground)'
-                }}>
-                    <h3 className="font-semibold mb-2">External Memory Map</h3>
-                    <p className="text-sm mb-4" style={{ opacity: 0.8 }}>
-                        Linked file: <code className="px-1 py-0.5 rounded" style={{ background: 'var(--vscode-textBlockQuote-background)' }}>{importFile}</code>
-                    </p>
-                    <button
-                        onClick={() => vscode.postMessage({ type: 'command', command: 'openFile', path: importFile })}
-                        className="px-4 py-2 rounded text-sm flex items-center gap-2"
-                        style={{ background: 'var(--vscode-button-background)', color: 'var(--vscode-button-foreground)' }}
-                    >
-                        <span className="codicon codicon-go-to-file"></span>
-                        Open Memory Map Editor
-                    </button>
-                    <p className="text-xs mt-3 opacity-60">
-                        Opens the dedicated Memory Map Editor in a new tab.
-                    </p>
-                </div>
-            ) : (
-                <div className="p-8 text-center text-sm" style={{ opacity: 0.6 }}>
-                    No external memory map linked. Inline memory maps are not yet supported.
-                    {/* TODO: Support creating new memory map file or inline editing */}
-                </div>
-            )}
-        </div>
-    );
-};
 
 const ParametersSection: React.FC<any> = ({ parameters }) => (
     <div className="p-6 space-y-4">

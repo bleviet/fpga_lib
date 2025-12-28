@@ -163,7 +163,9 @@ export function useIpCoreState() {
 
                 // Check memory map reference
                 if (bus.memoryMapRef) {
-                    const memMapExists = (Array.isArray(ipCore.memoryMaps) && ipCore.memoryMaps.some((m: any) => m.name === bus.memoryMapRef))
+                    const isFilePath = bus.memoryMapRef.toLowerCase().endsWith('.yml') || bus.memoryMapRef.toLowerCase().endsWith('.yaml');
+                    const memMapExists = isFilePath
+                        || (Array.isArray(ipCore.memoryMaps) && ipCore.memoryMaps.some((m: any) => m.name === bus.memoryMapRef))
                         || (Array.isArray(state.imports.memoryMaps) && state.imports.memoryMaps.some((m: any) => m.name === bus.memoryMapRef));
                     if (!memMapExists) {
                         errors.push({

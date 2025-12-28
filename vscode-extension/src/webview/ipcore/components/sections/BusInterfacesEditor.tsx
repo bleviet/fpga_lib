@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { vscode } from '../../../vscode';
 
 interface BusPort {
     name: string;
@@ -47,6 +48,7 @@ interface BusInterfacesEditorProps {
     resets?: Reset[];
     onUpdate: (path: Array<string | number>, value: any) => void;
     highlight?: { entityName: string; field: string };
+    imports?: { memoryMaps?: any[] };
 }
 
 // Consistent text styles
@@ -90,7 +92,7 @@ function getEffectivePorts(
 /**
  * Bus Interfaces Editor - Clean consistent styling
  */
-export const BusInterfacesEditor: React.FC<BusInterfacesEditorProps> = ({ busInterfaces, busLibrary, clocks = [], resets = [], onUpdate, highlight }) => {
+export const BusInterfacesEditor: React.FC<BusInterfacesEditorProps> = ({ busInterfaces, busLibrary, imports, clocks = [], resets = [], onUpdate, highlight }) => {
     const [selectedIndex, setSelectedIndex] = useState(0);
     const [expandedIndexes, setExpandedIndexes] = useState<Set<number>>(new Set());
     const [expandAll, setExpandAll] = useState(false);
@@ -352,6 +354,34 @@ export const BusInterfacesEditor: React.FC<BusInterfacesEditorProps> = ({ busInt
         setDraftBusValue('');
         setTimeout(() => containerRef.current?.focus(), 0);
     }, []);
+
+    const handleBrowseMemoryMap = useCallback((busIndex: number) => {
+        // Send message to extension to open file picker with filter
+        vscode?.postMessage({
+            type: 'selectFiles',
+            multi: false, // Single file selection
+            filters: { 'Memory Map': ['memmap.yml', 'yml'] },
+        });
+
+        // Listen for response
+        const handler = (event: MessageEvent) => {
+            const message = event.data;
+            if (message.type === 'filesSelected' && message.files && message.files.length > 0) {
+                // Update the memory map reference
+                const filePath = message.files[0];
+                onUpdate(['busInterfaces', busIndex, 'memoryMapRef'], filePath);
+
+                window.removeEventListener('message', handler);
+            }
+        };
+        window.addEventListener('message', handler);
+    }, [onUpdate]);
+
+    const handleClearMemoryMap = useCallback((busIndex: number) => {
+        onUpdate(['busInterfaces', busIndex, 'memoryMapRef'], undefined);
+    }, [onUpdate]);
+
+
 
     useEffect(() => {
         const container = containerRef.current;
@@ -752,12 +782,56 @@ export const BusInterfacesEditor: React.FC<BusInterfacesEditorProps> = ({ busInt
                                         })()}
 
                                         {/* Memory Map */}
-                                        {bus.memoryMapRef && (
-                                            <div className="px-4 py-2 text-sm" style={{ background: 'var(--vscode-editor-background)', borderTop: '1px solid var(--vscode-panel-border)' }}>
-                                                <span style={TEXT_STYLES.label}>Memory Map: </span>
-                                                <span style={{ ...TEXT_STYLES.value, color: 'var(--vscode-textLink-foreground)' }}>{bus.memoryMapRef}</span>
+                                        <div className="px-4 py-2 text-sm" style={{ background: 'var(--vscode-editor-background)', borderTop: '1px solid var(--vscode-panel-border)' }}>
+                                            <div className="flex items-center gap-2">
+                                                <span style={TEXT_STYLES.label}>Memory Map:</span>
+                                                <div className="flex-1">
+                                                    {(() => {
+                                                        const availableMaps = imports?.memoryMaps || [];
+                                                        // Also check if current value is a file path (legacy/direct)
+                                                        const isFilePath = bus.memoryMapRef && (bus.memoryMapRef.endsWith('.yml') || bus.memoryMapRef.endsWith('.yaml'));
+
+                                                        return (
+                                                            <div className="flex items-center gap-2">
+                                                                <select
+                                                                    value={bus.memoryMapRef || ''}
+                                                                    onChange={(e) => onUpdate(['busInterfaces', index, 'memoryMapRef'], e.target.value || undefined)}
+                                                                    className="flex-1 px-1 py-0.5 rounded"
+                                                                    style={{
+                                                                        ...TEXT_STYLES.value,
+                                                                        background: 'var(--vscode-input-background)',
+                                                                        border: '1px solid var(--vscode-input-border)',
+                                                                        color: 'var(--vscode-input-foreground)',
+                                                                        outline: 'none',
+                                                                        fontSize: 'inherit',
+                                                                        boxShadow: highlight?.entityName === bus.name && highlight?.field === 'memoryMapRef'
+                                                                            ? '0 0 0 1px var(--vscode-inputValidation-errorBorder)'
+                                                                            : 'none'
+                                                                    }}
+                                                                    onClick={(e) => e.stopPropagation()}
+                                                                >
+                                                                    <option value="">None</option>
+
+                                                                    {/* Available Logical Maps */}
+                                                                    {availableMaps.length > 0 && (
+                                                                        <optgroup label="Detected Maps">
+                                                                            {availableMaps.map((map: any, i: number) => (
+                                                                                <option key={map.name || i} value={map.name}>{map.name}</option>
+                                                                            ))}
+                                                                        </optgroup>
+                                                                    )}
+
+                                                                    {/* Preserve existing value if it's not in the list (e.g. file path or unknown ref) */}
+                                                                    {bus.memoryMapRef && !availableMaps.find((m: any) => m.name === bus.memoryMapRef) && (
+                                                                        <option value={bus.memoryMapRef}>{bus.memoryMapRef} {isFilePath ? '(File Path - Deprecated)' : '(Unknown)'}</option>
+                                                                    )}
+                                                                </select>
+                                                            </div>
+                                                        );
+                                                    })()}
+                                                </div>
                                             </div>
-                                        )}
+                                        </div>
 
                                         {/* Array Configuration */}
                                         <div className="px-4 py-2 text-sm" style={{ background: 'var(--vscode-editor-background)', borderTop: '1px solid var(--vscode-panel-border)' }}>

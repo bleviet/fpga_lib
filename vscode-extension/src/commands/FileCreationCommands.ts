@@ -26,22 +26,23 @@ busInterfaces: []
 parameters: []
 `;
 
-const MEMORY_MAP_TEMPLATE = `schemaVersion: 1.0.0
-addressBlocks:
-  - name: Default_Block
-    baseAddress: 0x00000000
-    range: 4096
-    width: 32
-    usage: register
-    access: read-write
-    description: Default address block
-    registers:
-      - name: CTRL
-        addressOffset: 0x0
-        size: 32
-        access: read-write
-        description: Control register
-        fields: []
+const MEMORY_MAP_TEMPLATE = `- name: NEW_MEMORY_MAP
+  description: Description of this memory map
+  addressBlocks:
+    - name: BLOCK_0
+      offset: 0
+      usage: register
+      defaultRegWidth: 32
+      registers:
+        - name: CTRL
+          offset: 0
+          access: read-write
+          description: Control register
+          fields:
+            - name: ENABLE
+              bits: "[0:0]"
+              access: read-write
+              description: Enable bit
 `;
 
 export async function createIpCoreCommand(): Promise<void> {
