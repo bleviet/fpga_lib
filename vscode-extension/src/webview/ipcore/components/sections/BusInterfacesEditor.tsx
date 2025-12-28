@@ -105,6 +105,9 @@ export const BusInterfacesEditor: React.FC<BusInterfacesEditorProps> = ({ busInt
     // Array field editing
     const [editingArrayField, setEditingArrayField] = useState<{ busIndex: number; field: 'count' | 'indexStart' | 'namingPattern' | 'physicalPrefixPattern' } | null>(null);
     const [draftArrayValue, setDraftArrayValue] = useState('');
+    // Bus field editing
+    const [editingBusField, setEditingBusField] = useState<{ busIndex: number; field: 'name' | 'type' | 'mode' } | null>(null);
+    const [draftBusValue, setDraftBusValue] = useState('');
     const containerRef = useRef<HTMLDivElement>(null);
 
     const toggleExpand = useCallback((index: number) => {
@@ -288,13 +291,74 @@ export const BusInterfacesEditor: React.FC<BusInterfacesEditorProps> = ({ busInt
         return (libraryDef.ports || []).filter(p => p.presence === 'optional');
     }, [busLibrary]);
 
+    // Bus interface management
+    const addBusInterface = useCallback(() => {
+        // Default to AXI4 or the first available type
+        const availableTypes = busLibrary ? Object.keys(busLibrary) : [];
+        const defaultType = availableTypes.includes('AXI4') ? 'AXI4' : availableTypes[0] || 'AXI4';
+
+        const newBus: BusInterface = {
+            name: `NEW_INTERFACE_${busInterfaces.length}`,
+            type: defaultType,
+            mode: 'slave',
+        };
+
+        onUpdate(['busInterfaces'], [...busInterfaces, newBus]);
+
+        // Auto-select the new interface
+        setTimeout(() => {
+            setSelectedIndex(busInterfaces.length);
+            setExpandedIndexes(prev => new Set(prev).add(busInterfaces.length));
+        }, 50);
+    }, [busInterfaces, busLibrary, onUpdate]);
+
+    const removeBusInterface = useCallback((index: number) => {
+        const newInterfaces = [...busInterfaces];
+        newInterfaces.splice(index, 1);
+        onUpdate(['busInterfaces'], newInterfaces);
+
+        // Adjust selection if needed
+        if (selectedIndex >= newInterfaces.length) {
+            setSelectedIndex(Math.max(0, newInterfaces.length - 1));
+        }
+    }, [busInterfaces, selectedIndex, onUpdate]);
+
+    // Bus field editing
+    type BusField = 'name' | 'type' | 'mode';
+
+    const startEditBusField = useCallback((busIndex: number, field: BusField, currentValue: string) => {
+        setEditingBusField({ busIndex, field });
+        setDraftBusValue(currentValue);
+    }, []);
+
+    const saveBusField = useCallback((busIndex: number, overrideValue?: string) => {
+        if (!editingBusField) return;
+        const { field } = editingBusField;
+
+        const valueToSave = overrideValue !== undefined ? overrideValue : draftBusValue;
+
+        if (valueToSave.trim()) {
+            onUpdate(['busInterfaces', busIndex, field], valueToSave.trim());
+        }
+
+        setEditingBusField(null);
+        setDraftBusValue('');
+        setTimeout(() => containerRef.current?.focus(), 0);
+    }, [editingBusField, draftBusValue, onUpdate]);
+
+    const cancelEditBusField = useCallback(() => {
+        setEditingBusField(null);
+        setDraftBusValue('');
+        setTimeout(() => containerRef.current?.focus(), 0);
+    }, []);
+
     useEffect(() => {
         const container = containerRef.current;
         if (!container) return;
 
         const handleKeyDown = (e: KeyboardEvent) => {
             // Skip vim navigation when editing
-            if (editingPortName !== null || editingPrefix !== null || editingPortWidth !== null || editingArrayField !== null) return;
+            if (editingPortName !== null || editingPrefix !== null || editingPortWidth !== null || editingArrayField !== null || editingBusField !== null) return;
 
             const key = e.key.toLowerCase();
             const currentBusExpanded = expandedIndexes.has(selectedIndex);
@@ -358,13 +422,17 @@ export const BusInterfacesEditor: React.FC<BusInterfacesEditorProps> = ({ busInt
                 } else if (key === '0') {
                     e.preventDefault();
                     toggleExpandAll();
+                } else if (key === 'd' && e.ctrlKey) {
+                    // Delete bus interface with Ctrl+D
+                    e.preventDefault();
+                    removeBusInterface(selectedIndex);
                 }
             }
         };
 
         container.addEventListener('keydown', handleKeyDown);
         return () => container.removeEventListener('keydown', handleKeyDown);
-    }, [busInterfaces, busLibrary, selectedIndex, selectedPortIndex, selectedColumn, expandedIndexes, toggleExpand, toggleExpandAll, editingPortName, editingPrefix, editingPortWidth, editingArrayField, startEditPortName, startEditPortWidth]);
+    }, [busInterfaces, busLibrary, selectedIndex, selectedPortIndex, selectedColumn, expandedIndexes, toggleExpand, toggleExpandAll, editingPortName, editingPrefix, editingPortWidth, editingArrayField, editingBusField, startEditPortName, startEditPortWidth, removeBusInterface]);
 
     const isExpanded = (index: number) => expandedIndexes.has(index);
 
@@ -381,14 +449,24 @@ export const BusInterfacesEditor: React.FC<BusInterfacesEditorProps> = ({ busInt
                         {busInterfaces.length} interface(s) · <span style={{ fontFamily: 'monospace', fontSize: '11px' }}>j/k navigate · Space expand · h/l column · e edit · 0 toggle all</span>
                     </p>
                 </div>
-                <button
-                    onClick={toggleExpandAll}
-                    className="px-3 py-1.5 rounded text-sm flex items-center gap-2"
-                    style={{ background: 'var(--vscode-button-secondaryBackground)', color: 'var(--vscode-button-foreground)' }}
-                >
-                    <span className={`codicon codicon-${expandAll ? 'collapse-all' : 'expand-all'}`}></span>
-                    {expandAll ? 'Collapse All' : 'Expand All'}
-                </button>
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={addBusInterface}
+                        className="px-3 py-1.5 rounded text-sm flex items-center gap-2"
+                        style={{ background: 'var(--vscode-button-background)', color: 'var(--vscode-button-foreground)' }}
+                    >
+                        <span className="codicon codicon-add"></span>
+                        Add Interface
+                    </button>
+                    <button
+                        onClick={toggleExpandAll}
+                        className="px-3 py-1.5 rounded text-sm flex items-center gap-2"
+                        style={{ background: 'var(--vscode-button-secondaryBackground)', color: 'var(--vscode-button-foreground)' }}
+                    >
+                        <span className={`codicon codicon-${expandAll ? 'collapse-all' : 'expand-all'}`}></span>
+                        {expandAll ? 'Collapse All' : 'Expand All'}
+                    </button>
+                </div>
             </div>
 
             {/* Interface list */}
@@ -411,7 +489,7 @@ export const BusInterfacesEditor: React.FC<BusInterfacesEditorProps> = ({ busInt
                                 <div
                                     onClick={() => setSelectedIndex(index)}
                                     onDoubleClick={() => toggleExpand(index)}
-                                    className="flex items-center gap-3 px-4 py-3 cursor-pointer"
+                                    className="flex items-center gap-3 px-4 py-3 cursor-pointer group"
                                     style={{ background: isSelected ? 'var(--vscode-list-activeSelectionBackground)' : 'var(--vscode-editor-background)' }}
                                 >
                                     <button onClick={(e) => { e.stopPropagation(); toggleExpand(index); }} className="p-0.5">
@@ -421,9 +499,87 @@ export const BusInterfacesEditor: React.FC<BusInterfacesEditorProps> = ({ busInt
                                     <div className="flex-1 min-w-0">
                                         {/* Name and badges */}
                                         <div className="flex items-center gap-2 flex-wrap">
-                                            <span className="text-sm font-semibold" style={TEXT_STYLES.value}>{bus.name}</span>
-                                            <span className="px-1.5 py-0.5 rounded text-xs" style={{ background: 'var(--vscode-badge-background)', color: 'var(--vscode-badge-foreground)' }}>{bus.type}</span>
-                                            <span className="text-sm" style={TEXT_STYLES.muted}>{bus.mode}</span>
+                                            {/* Name Editing */}
+                                            {editingBusField?.busIndex === index && editingBusField?.field === 'name' ? (
+                                                <div className="flex items-center gap-1">
+                                                    <input
+                                                        type="text"
+                                                        value={draftBusValue}
+                                                        onChange={(e) => setDraftBusValue(e.target.value)}
+                                                        className="px-1 py-0.5 rounded text-sm font-semibold"
+                                                        style={{ background: 'var(--vscode-input-background)', border: '1px solid var(--vscode-input-border)', color: 'var(--vscode-input-foreground)', outline: 'none', width: '200px' }}
+                                                        autoFocus
+                                                        onClick={(e) => e.stopPropagation()}
+                                                        onKeyDown={(e) => { e.stopPropagation(); if (e.key === 'Enter') saveBusField(index); else if (e.key === 'Escape') cancelEditBusField(); }}
+                                                    />
+                                                    <button onClick={(e) => { e.stopPropagation(); saveBusField(index); }} className="px-1 py-0.5 rounded text-xs" style={{ background: 'var(--vscode-button-background)', color: 'var(--vscode-button-foreground)' }}>✓</button>
+                                                    <button onClick={(e) => { e.stopPropagation(); cancelEditBusField(); }} className="px-1 py-0.5 rounded text-xs" style={{ background: 'var(--vscode-button-secondaryBackground)', color: 'var(--vscode-button-foreground)' }}>✗</button>
+                                                </div>
+                                            ) : (
+                                                <span
+                                                    className="text-sm font-semibold cursor-pointer hover:underline decoration-dotted"
+                                                    style={TEXT_STYLES.value}
+                                                    onClick={(e) => { e.stopPropagation(); startEditBusField(index, 'name', bus.name); }}
+                                                    title="Click to edit name"
+                                                >
+                                                    {bus.name}
+                                                </span>
+                                            )}
+
+                                            {/* Type Editing */}
+                                            {editingBusField?.busIndex === index && editingBusField?.field === 'type' ? (
+                                                <select
+                                                    value={draftBusValue}
+                                                    onChange={(e) => saveBusField(index, e.target.value)}
+                                                    className="px-1 py-0.5 rounded text-xs"
+                                                    style={{ background: 'var(--vscode-input-background)', border: '1px solid var(--vscode-input-border)', color: 'var(--vscode-input-foreground)', outline: 'none' }}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                    onKeyDown={(e) => { e.stopPropagation(); if (e.key === 'Escape') cancelEditBusField(); }}
+                                                    onBlur={() => cancelEditBusField()}
+                                                    autoFocus
+                                                >
+                                                    {busLibrary && Object.keys(busLibrary).map(type => (
+                                                        <option key={type} value={type}>{type}</option>
+                                                    ))}
+                                                </select>
+                                            ) : (
+                                                <span
+                                                    className="px-1.5 py-0.5 rounded text-xs cursor-pointer hover:opacity-80"
+                                                    style={{ background: 'var(--vscode-badge-background)', color: 'var(--vscode-badge-foreground)' }}
+                                                    onClick={(e) => { e.stopPropagation(); startEditBusField(index, 'type', bus.type); }}
+                                                    title="Click to change type"
+                                                >
+                                                    {bus.type}
+                                                </span>
+                                            )}
+
+                                            {/* Mode Editing */}
+                                            {editingBusField?.busIndex === index && editingBusField?.field === 'mode' ? (
+                                                <select
+                                                    value={draftBusValue}
+                                                    onChange={(e) => saveBusField(index, e.target.value)}
+                                                    className="px-1 py-0.5 rounded text-xs"
+                                                    style={{ background: 'var(--vscode-input-background)', border: '1px solid var(--vscode-input-border)', color: 'var(--vscode-input-foreground)', outline: 'none' }}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                    onKeyDown={(e) => { e.stopPropagation(); if (e.key === 'Escape') cancelEditBusField(); }}
+                                                    onBlur={() => cancelEditBusField()}
+                                                    autoFocus
+                                                >
+                                                    <option value="master">master</option>
+                                                    <option value="slave">slave</option>
+                                                    <option value="monitor">monitor</option>
+                                                </select>
+                                            ) : (
+                                                <span
+                                                    className="text-sm cursor-pointer hover:underline decoration-dotted"
+                                                    style={TEXT_STYLES.muted}
+                                                    onClick={(e) => { e.stopPropagation(); startEditBusField(index, 'mode', bus.mode); }}
+                                                    title="Click to change mode"
+                                                >
+                                                    {bus.mode}
+                                                </span>
+                                            )}
+
                                             {bus.array && <span className="text-xs px-1 rounded" style={{ background: 'var(--vscode-badge-background)', color: 'var(--vscode-badge-foreground)' }}>[{bus.array.count}]</span>}
                                         </div>
                                         {/* Clock, Reset, Ports info */}
@@ -443,6 +599,17 @@ export const BusInterfacesEditor: React.FC<BusInterfacesEditorProps> = ({ busInt
                                             <span>{ports.length} ports</span>
                                         </div>
                                     </div>
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            removeBusInterface(index);
+                                        }}
+                                        className="p-1 rounded opacity-60 hover:opacity-100 hover:bg-vscode-toolbar-hoverBackground transition-opacity"
+                                        title="Delete Bus Interface"
+                                        style={{ color: 'var(--vscode-list-errorForeground)' }}
+                                    >
+                                        <span className="codicon codicon-trash"></span>
+                                    </button>
                                 </div>
 
                                 {/* Expanded content */}
