@@ -82,7 +82,10 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
             onClick={onFocus}
             className="flex-1 overflow-y-auto outline-none"
             style={{
-                borderLeft: isFocused ? '2px solid var(--vscode-focusBorder)' : 'none'
+                outline: isFocused ? '1px solid var(--vscode-focusBorder)' : 'none',
+                outlineOffset: '-1px',
+                opacity: isFocused ? 1 : 0.7,
+                transition: 'opacity 0.2s'
             }}
         >
             <div ref={contentRef}>

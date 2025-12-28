@@ -104,7 +104,11 @@ export const NavigationSidebar: React.FC<NavigationSidebarProps> = ({
             className="w-64 flex flex-col outline-none"
             style={{
                 background: 'var(--vscode-sideBar-background)',
-                borderRight: isFocused ? '2px solid var(--vscode-focusBorder)' : '1px solid var(--vscode-panel-border)',
+                borderRight: '1px solid var(--vscode-panel-border)',
+                outline: isFocused ? '1px solid var(--vscode-focusBorder)' : 'none',
+                outlineOffset: '-1px',
+                opacity: isFocused ? 1 : 0.7,
+                transition: 'opacity 0.2s',
                 color: 'var(--vscode-sideBar-foreground)'
             }}
         >
@@ -126,7 +130,7 @@ export const NavigationSidebar: React.FC<NavigationSidebarProps> = ({
                         <button
                             key={section.id}
                             onClick={() => onNavigate(section.id)}
-                            className="w-full px-4 py-2 text-left flex items-center justify-between transition-colors"
+                            className="w-full px-4 py-2 text-left flex items-center justify-between transition-colors outline-none"
                             style={{
                                 background: isActive ? 'var(--vscode-list-activeSelectionBackground)' : 'transparent',
                                 color: isActive ? 'var(--vscode-list-activeSelectionForeground)' : 'inherit',

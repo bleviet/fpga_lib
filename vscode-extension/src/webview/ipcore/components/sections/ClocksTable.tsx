@@ -128,7 +128,7 @@ export const ClocksTable: React.FC<ClocksTableProps> = ({ clocks, busInterfaces 
     );
 
     return (
-        <div ref={containerRef} className="p-6 space-y-4" tabIndex={0}>
+        <div ref={containerRef} className="p-6 space-y-4 outline-none" tabIndex={0}>
             <div className="flex items-center justify-between">
                 <div>
                     <h2 className="text-2xl font-semibold">Clocks</h2>
