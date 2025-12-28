@@ -103,7 +103,7 @@ export function useIpCoreState() {
                 doc.setIn(path, value);
 
                 // Convert back to string (preserves format and comments)
-                const newYaml = doc.toString();
+                const newYaml = doc.toString({ indent: 2 });
 
                 // Get new JS object for the state
                 const newIpCore = doc.toJSON();

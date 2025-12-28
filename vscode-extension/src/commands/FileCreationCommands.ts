@@ -46,37 +46,37 @@ const MEMORY_MAP_TEMPLATE = `- name: NEW_MEMORY_MAP
 `;
 
 export async function createIpCoreCommand(): Promise<void> {
-    await createFileWithTemplate('new_ip_core.yml', IP_CORE_TEMPLATE);
+  await createFileWithTemplate('new_ip_core.yml', IP_CORE_TEMPLATE);
 }
 
 export async function createMemoryMapCommand(): Promise<void> {
-    await createFileWithTemplate('new_memory_map.memmap.yml', MEMORY_MAP_TEMPLATE);
+  await createFileWithTemplate('new_memory_map.memmap.yml', MEMORY_MAP_TEMPLATE);
 }
 
 async function createFileWithTemplate(defaultFileName: string, template: string): Promise<void> {
-    const workspaceFolders = vscode.workspace.workspaceFolders;
-    let defaultUri: vscode.Uri | undefined;
+  const workspaceFolders = vscode.workspace.workspaceFolders;
+  let defaultUri: vscode.Uri | undefined;
 
-    if (workspaceFolders && workspaceFolders.length > 0) {
-        defaultUri = vscode.Uri.joinPath(workspaceFolders[0].uri, defaultFileName);
+  if (workspaceFolders && workspaceFolders.length > 0) {
+    defaultUri = vscode.Uri.joinPath(workspaceFolders[0].uri, defaultFileName);
+  }
+
+  const uri = await vscode.window.showSaveDialog({
+    defaultUri,
+    saveLabel: 'Create File',
+    title: `Create ${defaultFileName}`,
+    filters: {
+      'YAML Files': ['yml', 'yaml']
     }
+  });
 
-    const uri = await vscode.window.showSaveDialog({
-        defaultUri,
-        saveLabel: 'Create File',
-        title: `Create ${defaultFileName}`,
-        filters: {
-            'YAML Files': ['yml', 'yaml']
-        }
-    });
-
-    if (uri) {
-        try {
-            await vscode.workspace.fs.writeFile(uri, new Uint8Array(Buffer.from(template)));
-            const document = await vscode.workspace.openTextDocument(uri);
-            await vscode.window.showTextDocument(document);
-        } catch (error) {
-            vscode.window.showErrorMessage(`Failed to create file: ${error instanceof Error ? error.message : String(error)}`);
-        }
+  if (uri) {
+    try {
+      await vscode.workspace.fs.writeFile(uri, new Uint8Array(Buffer.from(template)));
+      const document = await vscode.workspace.openTextDocument(uri);
+      await vscode.window.showTextDocument(document);
+    } catch (error) {
+      vscode.window.showErrorMessage(`Failed to create file: ${error instanceof Error ? error.message : String(error)}`);
     }
+  }
 }
