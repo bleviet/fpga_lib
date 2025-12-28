@@ -80,8 +80,29 @@ export class MessageHandler {
             case 'validate':
                 await this.handleValidateCommand(document);
                 break;
+            case 'openFile':
+                await this.handleOpenFileCommand(document, (message as any).path);
+                break;
             default:
                 this.logger.warn('Unknown command', message.command);
+        }
+    }
+
+    /**
+     * Handle openFile command
+     */
+    private async handleOpenFileCommand(document: vscode.TextDocument, filePath: string): Promise<void> {
+        try {
+            // Resolve path relative to current document
+            const currentDir = vscode.Uri.joinPath(document.uri, '..');
+            const targetUri = vscode.Uri.joinPath(currentDir, filePath);
+
+            // Open string paths or relative paths
+            await vscode.commands.executeCommand('vscode.open', targetUri);
+            this.logger.info('Opened file:', targetUri.toString());
+        } catch (e) {
+            this.logger.error('Failed to open file', e as Error);
+            vscode.window.showErrorMessage(`Failed to open file: ${filePath}`);
         }
     }
 
