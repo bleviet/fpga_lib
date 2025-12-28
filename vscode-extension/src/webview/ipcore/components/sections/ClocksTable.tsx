@@ -10,8 +10,14 @@ interface Clock {
     direction?: string;
 }
 
+interface BusInterface {
+    name: string;
+    associatedClock?: string;
+}
+
 interface ClocksTableProps {
     clocks: Clock[];
+    busInterfaces?: BusInterface[];
     onUpdate: (path: Array<string | number>, value: any) => void;
 }
 
@@ -44,7 +50,14 @@ const displayDirection = (dir?: string): string => {
     return dirMap[dir || 'input'] || 'input';
 };
 
-const COLUMN_KEYS = ['name', 'physicalPort', 'frequency', 'direction'];
+const COLUMN_KEYS = ['name', 'physicalPort', 'frequency', 'direction', 'usedBy'];
+
+// Helper to find which interfaces use a clock
+const getUsedByInterfaces = (clockName: string, busInterfaces: BusInterface[]): string[] => {
+    return busInterfaces
+        .filter(bus => bus.associatedClock === clockName)
+        .map(bus => bus.name);
+};
 
 /**
  * Editable table for IP Core clocks
@@ -56,7 +69,7 @@ const COLUMN_KEYS = ['name', 'physicalPort', 'frequency', 'direction'];
  * - 'o': Add new row
  * - Escape: Cancel editing
  */
-export const ClocksTable: React.FC<ClocksTableProps> = ({ clocks, onUpdate }) => {
+export const ClocksTable: React.FC<ClocksTableProps> = ({ clocks, busInterfaces = [], onUpdate }) => {
     const {
         selectedIndex,
         activeColumn,
@@ -147,6 +160,7 @@ export const ClocksTable: React.FC<ClocksTableProps> = ({ clocks, onUpdate }) =>
                             <th className="px-4 py-3 text-left text-sm font-semibold">Physical Port</th>
                             <th className="px-4 py-3 text-left text-sm font-semibold">Frequency</th>
                             <th className="px-4 py-3 text-left text-sm font-semibold">Direction</th>
+                            <th className="px-4 py-3 text-left text-sm font-semibold">Used By</th>
                             <th className="px-4 py-3 text-right text-sm font-semibold">Actions</th>
                         </tr>
                     </thead>
@@ -157,12 +171,26 @@ export const ClocksTable: React.FC<ClocksTableProps> = ({ clocks, onUpdate }) =>
                             }
 
                             const rowProps = getRowProps(index);
+                            const usedBy = getUsedByInterfaces(clock.name, busInterfaces);
                             return (
                                 <tr key={index} {...rowProps} onDoubleClick={() => handleEdit(index)}>
                                     <td className="px-4 py-3 text-sm font-mono" {...getCellProps(index, 'name')}>{clock.name}</td>
                                     <td className="px-4 py-3 text-sm font-mono" {...getCellProps(index, 'physicalPort')}>{clock.physicalPort}</td>
                                     <td className="px-4 py-3 text-sm" {...getCellProps(index, 'frequency')}>{clock.frequency || '—'}</td>
                                     <td className="px-4 py-3 text-sm" {...getCellProps(index, 'direction')}>{displayDirection(clock.direction)}</td>
+                                    <td className="px-4 py-3 text-sm" {...getCellProps(index, 'usedBy')}>
+                                        {usedBy.length > 0 ? (
+                                            <div className="flex flex-wrap gap-1">
+                                                {usedBy.map((name, i) => (
+                                                    <span key={i} className="px-2 py-0.5 rounded text-xs font-mono" style={{ background: 'var(--vscode-badge-background)', color: 'var(--vscode-badge-foreground)' }}>
+                                                        {name}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <span style={{ opacity: 0.5 }}>—</span>
+                                        )}
+                                    </td>
                                     <td className="px-4 py-3 text-right">
                                         <div className="flex items-center justify-end gap-2">
                                             <button onClick={(e) => { e.stopPropagation(); handleEdit(index); }} disabled={isAdding || editingIndex !== null} className="p-1 rounded" style={{ opacity: (isAdding || editingIndex !== null) ? 0.3 : 1 }} title="Edit (e)">

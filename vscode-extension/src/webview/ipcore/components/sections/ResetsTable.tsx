@@ -10,8 +10,14 @@ interface Reset {
     direction?: string;
 }
 
+interface BusInterface {
+    name: string;
+    associatedReset?: string;
+}
+
 interface ResetsTableProps {
     resets: Reset[];
+    busInterfaces?: BusInterface[];
     onUpdate: (path: Array<string | number>, value: any) => void;
 }
 
@@ -52,13 +58,20 @@ const displayDirection = (dir?: string): string => {
     return dirMap[dir || 'input'] || 'input';
 };
 
-const COLUMN_KEYS = ['name', 'physicalPort', 'polarity', 'direction'];
+const COLUMN_KEYS = ['name', 'physicalPort', 'polarity', 'direction', 'usedBy'];
+
+// Helper to find which interfaces use a reset
+const getUsedByInterfaces = (resetName: string, busInterfaces: BusInterface[]): string[] => {
+    return busInterfaces
+        .filter(bus => bus.associatedReset === resetName)
+        .map(bus => bus.name);
+};
 
 /**
  * Editable table for IP Core resets
  * Vim-style: h/j/k/l navigate cells, e edit, d delete, o add
  */
-export const ResetsTable: React.FC<ResetsTableProps> = ({ resets, onUpdate }) => {
+export const ResetsTable: React.FC<ResetsTableProps> = ({ resets, busInterfaces = [], onUpdate }) => {
     const {
         selectedIndex,
         activeColumn,
@@ -132,6 +145,7 @@ export const ResetsTable: React.FC<ResetsTableProps> = ({ resets, onUpdate }) =>
                             <th className="px-4 py-3 text-left text-sm font-semibold">Physical Port</th>
                             <th className="px-4 py-3 text-left text-sm font-semibold">Polarity</th>
                             <th className="px-4 py-3 text-left text-sm font-semibold">Direction</th>
+                            <th className="px-4 py-3 text-left text-sm font-semibold">Used By</th>
                             <th className="px-4 py-3 text-right text-sm font-semibold">Actions</th>
                         </tr>
                     </thead>
@@ -139,12 +153,26 @@ export const ResetsTable: React.FC<ResetsTableProps> = ({ resets, onUpdate }) =>
                         {resets.map((reset, index) => {
                             if (editingIndex === index) return <React.Fragment key={index}>{renderEditRow(false)}</React.Fragment>;
                             const rowProps = getRowProps(index);
+                            const usedBy = getUsedByInterfaces(reset.name, busInterfaces);
                             return (
                                 <tr key={index} {...rowProps} onDoubleClick={() => handleEdit(index)}>
                                     <td className="px-4 py-3 text-sm font-mono" {...getCellProps(index, 'name')}>{reset.name}</td>
                                     <td className="px-4 py-3 text-sm font-mono" {...getCellProps(index, 'physicalPort')}>{reset.physicalPort}</td>
                                     <td className="px-4 py-3 text-sm" {...getCellProps(index, 'polarity')}>{reset.polarity}</td>
                                     <td className="px-4 py-3 text-sm" {...getCellProps(index, 'direction')}>{displayDirection(reset.direction)}</td>
+                                    <td className="px-4 py-3 text-sm" {...getCellProps(index, 'usedBy')}>
+                                        {usedBy.length > 0 ? (
+                                            <div className="flex flex-wrap gap-1">
+                                                {usedBy.map((name, i) => (
+                                                    <span key={i} className="px-2 py-0.5 rounded text-xs font-mono" style={{ background: 'var(--vscode-badge-background)', color: 'var(--vscode-badge-foreground)' }}>
+                                                        {name}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <span style={{ opacity: 0.5 }}>—</span>
+                                        )}
+                                    </td>
                                     <td className="px-4 py-3 text-right">
                                         <button onClick={(e) => { e.stopPropagation(); handleEdit(index); }} disabled={isAdding || editingIndex !== null} className="p-1 mr-2" title="Edit (e)"><span className="codicon codicon-edit"></span></button>
                                         <button onClick={(e) => { e.stopPropagation(); handleDelete(index); }} disabled={isAdding || editingIndex !== null} className="p-1" style={{ color: 'var(--vscode-errorForeground)' }} title="Delete (d)"><span className="codicon codicon-trash"></span></button>

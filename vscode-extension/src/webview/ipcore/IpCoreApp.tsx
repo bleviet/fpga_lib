@@ -123,6 +123,7 @@ const IpCoreApp: React.FC = () => {
                         <EditorPanel
                             selectedSection={selectedSection}
                             ipCore={ipCore}
+                            imports={imports}
                             onUpdate={updateIpCore}
                             isFocused={focusedPanel === 'right'}
                             onFocus={() => setFocusedPanel('right')}

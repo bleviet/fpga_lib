@@ -5,11 +5,13 @@ import { ResetsTable } from '../sections/ResetsTable';
 import { PortsTable } from '../sections/PortsTable';
 import { ParametersTable } from '../sections/ParametersTable';
 import { FileSetsEditor } from '../sections/FileSetsEditor';
+import { BusInterfacesEditor } from '../sections/BusInterfacesEditor';
 import { Section } from '../../hooks/useNavigation';
 
 interface EditorPanelProps {
     selectedSection: Section;
     ipCore: any;
+    imports?: { busLibrary?: any };
     onUpdate: (path: Array<string | number>, value: any) => void;
     isFocused?: boolean;
     onFocus?: () => void;
@@ -22,6 +24,7 @@ interface EditorPanelProps {
 export const EditorPanel: React.FC<EditorPanelProps> = ({
     selectedSection,
     ipCore,
+    imports = {},
     onUpdate,
     isFocused = false,
     onFocus,
@@ -53,13 +56,13 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
             case 'metadata':
                 return <MetadataEditor ipCore={ipCore} onUpdate={onUpdate} />;
             case 'clocks':
-                return <ClocksTable clocks={ipCore.clocks || []} onUpdate={onUpdate} />;
+                return <ClocksTable clocks={ipCore.clocks || []} busInterfaces={ipCore.busInterfaces || []} onUpdate={onUpdate} />;
             case 'resets':
-                return <ResetsTable resets={ipCore.resets || []} onUpdate={onUpdate} />;
+                return <ResetsTable resets={ipCore.resets || []} busInterfaces={ipCore.busInterfaces || []} onUpdate={onUpdate} />;
             case 'ports':
                 return <PortsTable ports={ipCore.ports || []} onUpdate={onUpdate} />;
             case 'busInterfaces':
-                return <BusInterfacesSection busInterfaces={ipCore.busInterfaces || []} onUpdate={onUpdate} />;
+                return <BusInterfacesEditor busInterfaces={ipCore.busInterfaces || []} busLibrary={imports.busLibrary} clocks={ipCore.clocks || []} resets={ipCore.resets || []} onUpdate={onUpdate} />;
             case 'memoryMaps':
                 return <MemoryMapsSection memoryMaps={ipCore.memoryMaps || []} onUpdate={onUpdate} />;
             case 'parameters':
