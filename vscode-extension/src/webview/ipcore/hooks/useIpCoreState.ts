@@ -24,6 +24,13 @@ interface UpdateMessage {
     };
 }
 
+export interface ValidationError {
+    message: string;
+    section: 'busInterfaces' | 'clocks' | 'resets' | 'ports' | 'parameters';
+    entityName: string;
+    field: string;
+}
+
 /**
  * Hook for managing IP Core state
  * 
@@ -116,10 +123,13 @@ export function useIpCoreState() {
     /**
      * Get validation errors for cross-references
      */
-    const getValidationErrors = useCallback((): string[] => {
+    /**
+     * Get validation errors for cross-references
+     */
+    const getValidationErrors = useCallback((): ValidationError[] => {
         if (!state.ipCore) return [];
 
-        const errors: string[] = [];
+        const errors: ValidationError[] = [];
         const { ipCore } = state;
 
         // Validate bus interface references
@@ -129,7 +139,12 @@ export function useIpCoreState() {
                 if (bus.associatedClock) {
                     const clockExists = Array.isArray(ipCore.clocks) && ipCore.clocks.some((c: any) => c.name === bus.associatedClock);
                     if (!clockExists) {
-                        errors.push(`Bus interface '${bus.name}' references unknown clock '${bus.associatedClock}'`);
+                        errors.push({
+                            message: `Bus interface '${bus.name}' references unknown clock '${bus.associatedClock}'`,
+                            section: 'busInterfaces',
+                            entityName: bus.name,
+                            field: 'associatedClock'
+                        });
                     }
                 }
 
@@ -137,7 +152,12 @@ export function useIpCoreState() {
                 if (bus.associatedReset) {
                     const resetExists = Array.isArray(ipCore.resets) && ipCore.resets.some((r: any) => r.name === bus.associatedReset);
                     if (!resetExists) {
-                        errors.push(`Bus interface '${bus.name}' references unknown reset '${bus.associatedReset}'`);
+                        errors.push({
+                            message: `Bus interface '${bus.name}' references unknown reset '${bus.associatedReset}'`,
+                            section: 'busInterfaces',
+                            entityName: bus.name,
+                            field: 'associatedReset'
+                        });
                     }
                 }
 
@@ -146,7 +166,12 @@ export function useIpCoreState() {
                     const memMapExists = (Array.isArray(ipCore.memoryMaps) && ipCore.memoryMaps.some((m: any) => m.name === bus.memoryMapRef))
                         || (Array.isArray(state.imports.memoryMaps) && state.imports.memoryMaps.some((m: any) => m.name === bus.memoryMapRef));
                     if (!memMapExists) {
-                        errors.push(`Bus interface '${bus.name}' references unknown memory map '${bus.memoryMapRef}'`);
+                        errors.push({
+                            message: `Bus interface '${bus.name}' references unknown memory map '${bus.memoryMapRef}'`,
+                            section: 'busInterfaces',
+                            entityName: bus.name,
+                            field: 'memoryMapRef'
+                        });
                     }
                 }
             }

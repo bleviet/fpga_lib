@@ -46,6 +46,7 @@ interface BusInterfacesEditorProps {
     clocks?: Clock[];
     resets?: Reset[];
     onUpdate: (path: Array<string | number>, value: any) => void;
+    highlight?: { entityName: string; field: string };
 }
 
 // Consistent text styles
@@ -89,7 +90,7 @@ function getEffectivePorts(
 /**
  * Bus Interfaces Editor - Clean consistent styling
  */
-export const BusInterfacesEditor: React.FC<BusInterfacesEditorProps> = ({ busInterfaces, busLibrary, clocks = [], resets = [], onUpdate }) => {
+export const BusInterfacesEditor: React.FC<BusInterfacesEditorProps> = ({ busInterfaces, busLibrary, clocks = [], resets = [], onUpdate, highlight }) => {
     const [selectedIndex, setSelectedIndex] = useState(0);
     const [expandedIndexes, setExpandedIndexes] = useState<Set<number>>(new Set());
     const [expandAll, setExpandAll] = useState(false);
@@ -434,6 +435,25 @@ export const BusInterfacesEditor: React.FC<BusInterfacesEditorProps> = ({ busInt
         return () => container.removeEventListener('keydown', handleKeyDown);
     }, [busInterfaces, busLibrary, selectedIndex, selectedPortIndex, selectedColumn, expandedIndexes, toggleExpand, toggleExpandAll, editingPortName, editingPrefix, editingPortWidth, editingArrayField, editingBusField, startEditPortName, startEditPortWidth, removeBusInterface]);
 
+    // Auto-expand/scroll to highlighted element
+    useEffect(() => {
+        if (highlight && highlight.entityName) {
+            const index = busInterfaces.findIndex(b => b.name === highlight.entityName);
+            if (index !== -1) {
+                setSelectedIndex(index);
+                setExpandedIndexes(prev => new Set(prev).add(index));
+
+                // If it's the top level bus, ensure it's in view
+                const container = containerRef.current;
+                if (container) {
+                    // Simple scroll attempt - in a real list we might need ref to specific item
+                    // but since we don't have refs for each item easily, we'll let user find it via selection
+                    // The selection logic helps.
+                }
+            }
+        }
+    }, [highlight, busInterfaces]);
+
     const isExpanded = (index: number) => expandedIndexes.has(index);
 
     const getClockInfo = (clockName: string) => clocks.find(c => c.name === clockName);
@@ -654,7 +674,18 @@ export const BusInterfacesEditor: React.FC<BusInterfacesEditorProps> = ({ busInt
                                                     value={bus.associatedClock || ''}
                                                     onChange={(e) => updateAssociation(index, 'associatedClock', e.target.value)}
                                                     className="px-2 py-1 rounded flex-1"
-                                                    style={{ background: 'var(--vscode-input-background)', border: '1px solid var(--vscode-input-border)', color: 'var(--vscode-input-foreground)', outline: 'none', fontSize: 'inherit' }}
+                                                    style={{
+                                                        background: 'var(--vscode-input-background)',
+                                                        border: highlight?.entityName === bus.name && highlight?.field === 'associatedClock'
+                                                            ? '1px solid var(--vscode-inputValidation-errorBorder)'
+                                                            : '1px solid var(--vscode-input-border)',
+                                                        color: 'var(--vscode-input-foreground)',
+                                                        outline: 'none',
+                                                        fontSize: 'inherit',
+                                                        boxShadow: highlight?.entityName === bus.name && highlight?.field === 'associatedClock'
+                                                            ? '0 0 0 1px var(--vscode-inputValidation-errorBorder)'
+                                                            : 'none'
+                                                    }}
                                                     onClick={(e) => e.stopPropagation()}
                                                 >
                                                     <option value="">None</option>
@@ -669,7 +700,18 @@ export const BusInterfacesEditor: React.FC<BusInterfacesEditorProps> = ({ busInt
                                                     value={bus.associatedReset || ''}
                                                     onChange={(e) => updateAssociation(index, 'associatedReset', e.target.value)}
                                                     className="px-2 py-1 rounded flex-1"
-                                                    style={{ background: 'var(--vscode-input-background)', border: '1px solid var(--vscode-input-border)', color: 'var(--vscode-input-foreground)', outline: 'none', fontSize: 'inherit' }}
+                                                    style={{
+                                                        background: 'var(--vscode-input-background)',
+                                                        border: highlight?.entityName === bus.name && highlight?.field === 'associatedReset'
+                                                            ? '1px solid var(--vscode-inputValidation-errorBorder)'
+                                                            : '1px solid var(--vscode-input-border)',
+                                                        color: 'var(--vscode-input-foreground)',
+                                                        outline: 'none',
+                                                        fontSize: 'inherit',
+                                                        boxShadow: highlight?.entityName === bus.name && highlight?.field === 'associatedReset'
+                                                            ? '0 0 0 1px var(--vscode-inputValidation-errorBorder)'
+                                                            : 'none'
+                                                    }}
                                                     onClick={(e) => e.stopPropagation()}
                                                 >
                                                     <option value="">None</option>

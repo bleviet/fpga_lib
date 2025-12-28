@@ -17,6 +17,7 @@ interface EditorPanelProps {
     isFocused?: boolean;
     onFocus?: () => void;
     panelRef?: RefObject<HTMLDivElement>;
+    highlight?: { entityName: string; field: string };
 }
 
 /**
@@ -30,6 +31,7 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
     isFocused = false,
     onFocus,
     panelRef,
+    highlight,
 }) => {
     const contentRef = useRef<HTMLDivElement>(null);
 
@@ -63,7 +65,7 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
             case 'ports':
                 return <PortsTable ports={ipCore.ports || []} onUpdate={onUpdate} />;
             case 'busInterfaces':
-                return <BusInterfacesEditor busInterfaces={ipCore.busInterfaces || []} busLibrary={imports.busLibrary} clocks={ipCore.clocks || []} resets={ipCore.resets || []} onUpdate={onUpdate} />;
+                return <BusInterfacesEditor busInterfaces={ipCore.busInterfaces || []} busLibrary={imports.busLibrary} clocks={ipCore.clocks || []} resets={ipCore.resets || []} onUpdate={onUpdate} highlight={highlight} />;
             case 'memoryMaps':
                 return <MemoryMapsSection memoryMaps={ipCore.memoryMaps || []} onUpdate={onUpdate} />;
             case 'parameters':

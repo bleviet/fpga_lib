@@ -22,6 +22,23 @@ const IpCoreApp: React.FC = () => {
     const leftPanelRef = useRef<HTMLDivElement>(null);
     const rightPanelRef = useRef<HTMLDivElement>(null);
 
+    // Highlight state for validation errors
+    const [highlight, setHighlight] = useState<{ entityName: string; field: string } | undefined>(undefined);
+
+    const validationErrors = getValidationErrors();
+
+    // Clear highlight if the error is no longer in the validation list (e.g., fixed by undo or edit)
+    useEffect(() => {
+        if (highlight) {
+            const errorStillExists = validationErrors.some(
+                e => e.entityName === highlight.entityName && e.field === highlight.field
+            );
+            if (!errorStillExists) {
+                setHighlight(undefined);
+            }
+        }
+    }, [validationErrors, highlight]);
+
     // Handle global keyboard shortcuts for panel switching
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -68,8 +85,6 @@ const IpCoreApp: React.FC = () => {
         window.addEventListener('message', handleMessage);
         return () => window.removeEventListener('message', handleMessage);
     }, [updateFromYaml]);
-
-    const validationErrors = getValidationErrors();
 
     console.log('IpCoreApp render, ipCore:', ipCore ? 'loaded' : 'null', 'parseError:', parseError);
 
@@ -128,6 +143,7 @@ const IpCoreApp: React.FC = () => {
                             isFocused={focusedPanel === 'right'}
                             onFocus={() => setFocusedPanel('right')}
                             panelRef={rightPanelRef}
+                            highlight={highlight}
                         />
                     </>
                 )}
@@ -142,7 +158,13 @@ const IpCoreApp: React.FC = () => {
                     <p className="text-sm font-semibold mb-1">Reference Validation Errors:</p>
                     <ul className="text-xs list-disc list-inside">
                         {validationErrors.map((error, idx) => (
-                            <li key={idx}>{error}</li>
+                            <li key={idx} className="cursor-pointer hover:underline" onClick={() => {
+                                navigate(error.section);
+                                setHighlight({ entityName: error.entityName, field: error.field });
+                                setFocusedPanel('right');
+                            }}>
+                                {error.message}
+                            </li>
                         ))}
                     </ul>
                 </div>
