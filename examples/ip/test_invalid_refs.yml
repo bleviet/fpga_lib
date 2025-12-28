@@ -1,4 +1,4 @@
-apiVersion: v1
+apiVersion: 1.0
 vlnv:
   vendor: test.com
   library: test_lib
@@ -6,6 +6,9 @@ vlnv:
   version: 1.0.0
 
 description: Test core with invalid references to verify validation
+
+# Location of the reusable bus library
+useBusLibrary: common/bus_definitions.yml
 
 clocks:
   - name: sys_clk
@@ -19,14 +22,16 @@ resets:
 
 busInterfaces:
   - name: ctrl
-    type: axi4lite
+    type: AXI4L
     mode: slave
+    physicalPrefix: s_axi_
     associatedClock: nonexistent_clock  # ERROR: This clock doesn't exist
     associatedReset: nonexistent_reset  # ERROR: This reset doesn't exist
   
   - name: data_port
-    type: axis
+    type: AXIS
     mode: master
+    physicalPrefix: m_axis_
     associatedClock: sys_clk
     associatedReset: sys_rst
     memoryMapRef: nonexistent_map  # ERROR: This memory map doesn't exist
