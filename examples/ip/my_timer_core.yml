@@ -5,70 +5,70 @@
 apiVersion: 1.0
 
 vlnv:
-  vendor: "my-company.com"
-  library: "processing"
-  name: "my_timer_core"
-  version: "1.2.0"
+  vendor: my-company.com
+  library: processing
+  name: my_timer_core
+  version: 1.2.0
 
-description: "A 4-channel, 32-bit configurable timer IP with a separate register clock domain and local RAM."
+description: A 4-channel, 32-bit configurable timer IP with a separate register clock domain and local RAM.
 
 # Top-level clock definitions
 clocks:
-  - name: "SYS_CLK" # Logical name for association
-    physicalPort: "i_clk_sys" # Verilog port name
-    direction: "in"
-    frequency: "100MHz"
-    description: "Main system clock for timer logic"
+  - name: SYS_CLK # Logical name for association
+    physicalPort: i_clk_sys # Verilog port name
+    direction: in
+    frequency: 100MHz
+    description: Main system clock for timer logic
 
-  - name: "REG_CLK"
-    physicalPort: "i_clk_reg"
-    direction: "in"
-    frequency: "50MHz"
-    description: "Slower clock for the AXI-Lite register interface"
+  - name: REG_CLK
+    physicalPort: i_clk_reg
+    direction: in
+    frequency: 50MHz
+    description: Slower clock for the AXI-Lite register interface
 
 # Top-level reset definitions
 resets:
-  - name: "SYS_RST"
-    physicalPort: "i_rst_n_sys"
-    direction: "in"
-    polarity: "activeLow" # Polarity is explicitly defined
-    description: "Main system reset, active low"
+  - name: SYS_RST
+    physicalPort: i_rst_n_sys
+    direction: in
+    polarity: activeLow # Polarity is explicitly defined
+    description: Main system reset, active low
 
-  - name: "REG_RST"
-    physicalPort: "i_rst_p_reg"
-    direction: "in"
-    polarity: "activeHigh" # Can be active high
-    description: "Register interface reset, active high"
+  - name: REG_RST
+    physicalPort: i_rst_p_reg
+    direction: in
+    polarity: activeHigh # Can be active high
+    description: Register interface reset, active high
 
 # Top-level 'data' or 'control' ports
 ports:
-  - name: "o_irq"
-    physicalPort: "o_global_irq" # Names can be different
-    direction: "out"
-    description: "Global interrupt request output (OR of all channels)"
+  - name: o_irq
+    physicalPort: o_global_irq # Names can be different
+    direction: out
+    description: Global interrupt request output (OR of all channels)
 
 # Location of the reusable bus library
-useBusLibrary: "common/bus_definitions.yml"
+useBusLibrary: common/bus_definitions.yml
 
 busInterfaces:
-  - name: "S_AXI_LITE" # Logical name of this interface
-    type: "AXI4L" # Type from the bus library
-    mode: "slave" # Interface mode: master or slave (directions auto-inverted for slave)
+  - name: S_AXI_LITE # Logical name of this interface
+    type: AXI4L # Type from the bus library
+    mode: slave # Interface mode: master or slave (directions auto-inverted for slave)
 
     # --- Port Mapping ---
-    physicalPrefix: "s_axi_" # Generator creates "s_axi_awaddr", "s_axi_wdata", etc.
+    physicalPrefix: s_axi_ # Generator creates "s_axi_awaddr", "s_axi_wdata", etc.
 
     # --- Clock/Reset Association ---
-    associatedClock: "REG_CLK" # Links to the 'REG_CLK' defined above
-    associatedReset: "REG_RST"
+    associatedClock: REG_CLK # Links to the 'REG_CLK' defined above
+    associatedReset: REG_RST
 
     # --- Memory Map Link ---
-    memoryMapRef: "CSR_MAP" # Links to the memory map name
+    memoryMapRef: CSR_MAP # Links to the memory map name
 
     # --- Optional Port Usage ---
     useOptionalPorts:
-      - "AWPROT" # We choose to use this optional signal
-      - "ARPROT" # We choose to use this optional signal
+      - AWPROT # We choose to use this optional signal
+      - ARPROT # We choose to use this optional signal
 
     # --- Width Overrides ---
     # Override default widths from bus library to match component needs
@@ -79,29 +79,29 @@ busInterfaces:
       RDATA: 32 # Keep 32-bit data (explicit for clarity)
       WSTRB: 4 # Byte enables match WDATA/8
 
-  - name: "M_AXIS_EVENTS" # Master AXI Stream for timer event output
-    type: "AXIS" # AXI Stream from the bus library
-    mode: "master" # This core generates stream data
+  - name: M_AXIS_EVENTS # Master AXI Stream for timer event output
+    type: AXIS # AXI Stream from the bus library
+    mode: master # This core generates stream data
 
     # --- Array Configuration ---
     # Create multiple instances of this interface, one per timer channel
     array:
       count: 4 # Number of instances (matches NUM_CHANNELS parameter)
       indexStart: 0 # Start index (0, 1, 2, 3)
-      namingPattern: "M_AXIS_CH{index}_EVENTS" # Logical names: M_AXIS_CH0_EVENTS, M_AXIS_CH1_EVENTS, etc.
-      physicalPrefixPattern: "m_axis_ch{index}_evt_" # Physical prefixes: m_axis_ch0_evt_, m_axis_ch1_evt_, etc.
+      namingPattern: M_AXIS_CH{index}_EVENTS # Logical names: M_AXIS_CH0_EVENTS, M_AXIS_CH1_EVENTS, etc.
+      physicalPrefixPattern: m_axis_ch{index}_evt_ # Physical prefixes: m_axis_ch0_evt_, m_axis_ch1_evt_, etc.
 
     # --- Port Mapping ---
-    physicalPrefix: "m_axis_evt_" # Base prefix (overridden by array pattern)
+    physicalPrefix: m_axis_evt_ # Base prefix (overridden by array pattern)
 
     # --- Clock/Reset Association ---
-    associatedClock: "SYS_CLK" # Uses system clock, not register clock
-    associatedReset: "SYS_RST"
+    associatedClock: SYS_CLK # Uses system clock, not register clock
+    associatedReset: SYS_RST
 
     # --- Optional Port Usage ---
     useOptionalPorts:
-      - "TLAST" # Mark end of event burst
-      - "TUSER" # Event type/priority information (not TID since each channel has own interface)
+      - TLAST # Mark end of event burst
+      - TUSER # Event type/priority information (not TID since each channel has own interface)
 
     # --- Width Overrides ---
     portWidthOverrides:
@@ -112,50 +112,50 @@ busInterfaces:
 
 # Import the memory map from its separate file
 memoryMaps:
-  import: "my_timer_core.memmap.yml"
+  import: my_timer_core.memmap.yml
 
 # Component-level generics/parameters
 parameters:
-  - name: "NUM_CHANNELS"
+  - name: NUM_CHANNELS
     value: 4
-    dataType: "integer"
-    description: "Number of timer channels (default 4)"
+    dataType: integer
+    description: Number of timer channels (default 4)
 
-  - name: "AXI_ADDR_WIDTH"
+  - name: AXI_ADDR_WIDTH
     value: 32
-    dataType: "integer"
+    dataType: integer
 
-  - name: "EVENT_FIFO_DEPTH"
+  - name: EVENT_FIFO_DEPTH
     value: 16
-    dataType: "integer"
-    description: "Depth of event FIFO for each AXI Stream channel"
+    dataType: integer
+    description: Depth of event FIFO for each AXI Stream channel
 
-  - name: "TIMESTAMP_WIDTH"
+  - name: TIMESTAMP_WIDTH
     value: 48
-    dataType: "integer"
-    description: "Width of timestamp counter in bits"
+    dataType: integer
+    description: Width of timestamp counter in bits
 
 fileSets:
   # Option 1: Inline definition ("direct reference")
   # This fileSet is defined right here.
-  - name: "RTL_Sources"
-    description: "All Verilog source files for synthesis."
+  - name: RTL_Sources
+    description: All Verilog source files for synthesis.
     # List of files in this set
     files:
-      - path: "rtl/my_timer_core_top.v"
-        type: "verilog" # Generator maps this to 'verilogSource'
-      - path: "rtl/my_timer_channel.v"
-        type: "verilog"
-      - path: "rtl/my_timer_axi_if.v"
-        type: "verilog"
+      - path: rtl/my_timer_core_top.v
+        type: verilog # Generator maps this to 'verilogSource'
+      - path: rtl/my_timer_channel.v
+        type: verilog
+      - path: rtl/my_timer_axi_if.v
+        type: verilog
 
   # Option 2: Importing a common fileSet
   # The generator will load the file and insert the fileSet here.
-  - import: "common/c_api.fileset.yml"
+  - import: common/c_api.fileset.yml
 
   # You can have as many as you need
-  - name: "Documentation"
-    description: "Datasheet and register map"
+  - name: Documentation
+    description: Datasheet and register map
     files:
-      - path: "doc/my_timer_core_datasheet.pdf"
-        type: "pdf" # Generator maps this to 'document' or similar
+      - path: doc/my_timer_core_datasheet.pdf
+        type: pdf # Generator maps this to 'document' or similar
