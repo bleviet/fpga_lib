@@ -180,6 +180,12 @@ export const MetadataEditor: React.FC<MetadataEditorProps> = ({ ipCore, onUpdate
         const validationError = row.validator ? row.validator(draft) : null;
         const canSave = !validationError || !row.required;
 
+        // Common props for all fields
+        const commonProps = {
+            onSave: canSave ? handleSave : undefined,
+            onCancel: handleCancel,
+        };
+
         if (row.type === 'select') {
             return (
                 <div className="flex items-center gap-2">
@@ -189,6 +195,7 @@ export const MetadataEditor: React.FC<MetadataEditorProps> = ({ ipCore, onUpdate
                         options={row.options || []}
                         onChange={setDraft}
                         data-edit-key={row.key}
+                        {...commonProps}
                     />
                     <button onClick={handleSave} className="px-3 py-1 rounded text-xs" style={{ background: 'var(--vscode-button-background)', color: 'var(--vscode-button-foreground)' }}>Save</button>
                     <button onClick={handleCancel} className="px-3 py-1 rounded text-xs" style={{ background: 'var(--vscode-button-secondaryBackground)', color: 'var(--vscode-button-foreground)' }}>Cancel</button>
@@ -206,6 +213,7 @@ export const MetadataEditor: React.FC<MetadataEditorProps> = ({ ipCore, onUpdate
                         placeholder={row.placeholder}
                         rows={3}
                         data-edit-key={row.key}
+                        {...commonProps}
                     />
                     <div className="flex items-center gap-2">
                         <button onClick={handleSave} className="px-3 py-1 rounded text-xs" style={{ background: 'var(--vscode-button-background)', color: 'var(--vscode-button-foreground)' }}>Save</button>
@@ -225,6 +233,7 @@ export const MetadataEditor: React.FC<MetadataEditorProps> = ({ ipCore, onUpdate
                     error={validationError || undefined}
                     required={row.required}
                     data-edit-key={row.key}
+                    {...commonProps}
                 />
                 <button onClick={handleSave} disabled={!canSave} className="px-3 py-1 rounded text-xs" style={{ background: canSave ? 'var(--vscode-button-background)' : 'var(--vscode-button-secondaryBackground)', color: 'var(--vscode-button-foreground)', opacity: canSave ? 1 : 0.5 }}>Save</button>
                 <button onClick={handleCancel} className="px-3 py-1 rounded text-xs" style={{ background: 'var(--vscode-button-secondaryBackground)', color: 'var(--vscode-button-foreground)' }}>Cancel</button>

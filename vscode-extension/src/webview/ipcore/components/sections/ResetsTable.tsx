@@ -104,16 +104,16 @@ export const ResetsTable: React.FC<ResetsTableProps> = ({ resets, busInterfaces 
     const renderEditRow = (isNew: boolean) => (
         <tr style={{ background: 'var(--vscode-list-activeSelectionBackground)', borderBottom: '1px solid var(--vscode-panel-border)' }} data-row-idx={editingIndex ?? resets.length}>
             <td className="px-4 py-3">
-                <FormField label="" value={draft.name} onChange={(v: string) => setDraft({ ...draft, name: v })} error={nameError || undefined} placeholder="rst_name" required data-edit-key="name" />
+                <FormField label="" value={draft.name} onChange={(v: string) => setDraft({ ...draft, name: v })} error={nameError || undefined} placeholder="rst_name" required data-edit-key="name" onSave={canSave ? handleSave : undefined} onCancel={handleCancel} />
             </td>
             <td className="px-4 py-3">
-                <FormField label="" value={draft.physicalPort} onChange={(v: string) => setDraft({ ...draft, physicalPort: v })} error={physicalPortError || undefined} placeholder="RST_PORT" required data-edit-key="physicalPort" />
+                <FormField label="" value={draft.physicalPort} onChange={(v: string) => setDraft({ ...draft, physicalPort: v })} error={physicalPortError || undefined} placeholder="RST_PORT" required data-edit-key="physicalPort" onSave={canSave ? handleSave : undefined} onCancel={handleCancel} />
             </td>
             <td className="px-4 py-3">
-                <SelectField label="" value={draft.polarity} options={[{ value: 'activeLow', label: 'activeLow' }, { value: 'activeHigh', label: 'activeHigh' }]} onChange={(v: string) => setDraft({ ...draft, polarity: v })} data-edit-key="polarity" />
+                <SelectField label="" value={draft.polarity} options={[{ value: 'activeLow', label: 'activeLow' }, { value: 'activeHigh', label: 'activeHigh' }]} onChange={(v: string) => setDraft({ ...draft, polarity: v })} data-edit-key="polarity" onSave={canSave ? handleSave : undefined} onCancel={handleCancel} />
             </td>
             <td className="px-4 py-3">
-                <SelectField label="" value={draft.direction || 'input'} options={[{ value: 'input', label: 'input' }, { value: 'output', label: 'output' }]} onChange={(v: string) => setDraft({ ...draft, direction: v })} data-edit-key="direction" />
+                <SelectField label="" value={draft.direction || 'input'} options={[{ value: 'input', label: 'input' }, { value: 'output', label: 'output' }]} onChange={(v: string) => setDraft({ ...draft, direction: v })} data-edit-key="direction" onSave={canSave ? handleSave : undefined} onCancel={handleCancel} />
             </td>
             <td className="px-4 py-3 text-right">
                 <button onClick={handleSave} disabled={!canSave} className="px-3 py-1 rounded text-xs mr-2" style={{ background: canSave ? 'var(--vscode-button-background)' : 'var(--vscode-button-secondaryBackground)', color: 'var(--vscode-button-foreground)', opacity: canSave ? 1 : 0.5 }}>{isNew ? 'Add' : 'Save'}</button>

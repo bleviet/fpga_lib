@@ -103,16 +103,16 @@ export const ClocksTable: React.FC<ClocksTableProps> = ({ clocks, busInterfaces 
     const renderEditRow = (isNew: boolean) => (
         <tr style={{ background: 'var(--vscode-list-activeSelectionBackground)', borderBottom: '1px solid var(--vscode-panel-border)' }} data-row-idx={editingIndex ?? clocks.length}>
             <td className="px-4 py-3">
-                <FormField label="" value={draft.name} onChange={(v: string) => setDraft({ ...draft, name: v })} error={nameError || undefined} placeholder="clk_name" required data-edit-key="name" />
+                <FormField label="" value={draft.name} onChange={(v: string) => setDraft({ ...draft, name: v })} error={nameError || undefined} placeholder="clk_name" required data-edit-key="name" onSave={canSave ? handleSave : undefined} onCancel={handleCancel} />
             </td>
             <td className="px-4 py-3">
-                <FormField label="" value={draft.physicalPort} onChange={(v: string) => setDraft({ ...draft, physicalPort: v })} error={physicalPortError || undefined} placeholder="CLK_PORT" required data-edit-key="physicalPort" />
+                <FormField label="" value={draft.physicalPort} onChange={(v: string) => setDraft({ ...draft, physicalPort: v })} error={physicalPortError || undefined} placeholder="CLK_PORT" required data-edit-key="physicalPort" onSave={canSave ? handleSave : undefined} onCancel={handleCancel} />
             </td>
             <td className="px-4 py-3">
-                <FormField label="" value={draft.frequency || ''} onChange={(v: string) => setDraft({ ...draft, frequency: v })} error={frequencyError || undefined} placeholder="100 MHz" data-edit-key="frequency" />
+                <FormField label="" value={draft.frequency || ''} onChange={(v: string) => setDraft({ ...draft, frequency: v })} error={frequencyError || undefined} placeholder="100 MHz" data-edit-key="frequency" onSave={canSave ? handleSave : undefined} onCancel={handleCancel} />
             </td>
             <td className="px-4 py-3">
-                <SelectField label="" value={draft.direction || 'input'} options={[{ value: 'input', label: 'input' }, { value: 'output', label: 'output' }]} onChange={(v: string) => setDraft({ ...draft, direction: v })} data-edit-key="direction" />
+                <SelectField label="" value={draft.direction || 'input'} options={[{ value: 'input', label: 'input' }, { value: 'output', label: 'output' }]} onChange={(v: string) => setDraft({ ...draft, direction: v })} data-edit-key="direction" onSave={canSave ? handleSave : undefined} onCancel={handleCancel} />
             </td>
             <td className="px-4 py-3 text-right">
                 <div className="flex items-center justify-end gap-2">

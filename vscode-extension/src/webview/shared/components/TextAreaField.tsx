@@ -14,6 +14,8 @@ export interface TextAreaFieldProps {
     'data-edit-key'?: string;
     /** Additional className for the text area */
     className?: string;
+    onSave?: () => void;
+    onCancel?: () => void;
 }
 
 /**
@@ -31,7 +33,17 @@ export const TextAreaField: React.FC<TextAreaFieldProps> = ({
     disabled = false,
     'data-edit-key': dataEditKey,
     className,
+    onSave,
+    onCancel,
 }) => {
+    const handleKeyDown = (e: any) => {
+        if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+            onSave?.();
+        } else if (e.key === 'Escape') {
+            onCancel?.();
+        }
+    };
+
     return (
         <div className="flex flex-col gap-1">
             {label && (
@@ -48,6 +60,7 @@ export const TextAreaField: React.FC<TextAreaFieldProps> = ({
                 placeholder={placeholder}
                 disabled={disabled}
                 onInput={(e: any) => onChange(e.target.value ?? '')}
+                onKeyDown={handleKeyDown}
                 style={{
                     '--input-border-color': error ? 'var(--vscode-inputValidation-errorBorder)' : undefined
                 } as React.CSSProperties}

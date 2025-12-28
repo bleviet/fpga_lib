@@ -13,6 +13,8 @@ export interface SelectFieldProps {
     'data-edit-key'?: string;
     /** Additional className for the dropdown */
     className?: string;
+    onSave?: () => void;
+    onCancel?: () => void;
 }
 
 /**
@@ -29,7 +31,17 @@ export const SelectField: React.FC<SelectFieldProps> = ({
     disabled = false,
     'data-edit-key': dataEditKey,
     className,
+    onSave,
+    onCancel,
 }) => {
+    const handleKeyDown = (e: any) => {
+        if (e.key === 'Enter') {
+            onSave?.();
+        } else if (e.key === 'Escape') {
+            onCancel?.();
+        }
+    };
+
     return (
         <div className="flex flex-col gap-1">
             {label && (
@@ -44,6 +56,7 @@ export const SelectField: React.FC<SelectFieldProps> = ({
                 value={value}
                 disabled={disabled}
                 onChange={(e: any) => onChange(e.target.value)}
+                onKeyDown={handleKeyDown}
                 style={{
                     '--dropdown-border': error ? '1px solid var(--vscode-inputValidation-errorBorder)' : undefined
                 } as React.CSSProperties}

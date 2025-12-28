@@ -235,8 +235,23 @@ export const FileSetsEditor: React.FC<FileSetsEditorProps> = ({ fileSets, onUpda
                                         if (isEditing) {
                                             return (
                                                 <div key={fileIdx} className="flex items-center gap-2 p-2 rounded" style={{ background: 'var(--vscode-list-activeSelectionBackground)' }}>
-                                                    <FormField label="" value={fileDraft.path} onChange={(v: string) => setFileDraft({ ...fileDraft, path: v })} placeholder="path/to/file.v" required />
-                                                    <SelectField label="" value={fileDraft.type} options={fileTypeOptions} onChange={(v: string) => setFileDraft({ ...fileDraft, type: v })} />
+                                                    <FormField
+                                                        label=""
+                                                        value={fileDraft.path}
+                                                        onChange={(v: string) => setFileDraft({ ...fileDraft, path: v })}
+                                                        placeholder="path/to/file.v"
+                                                        required
+                                                        onSave={() => handleSaveFile(setIdx)}
+                                                        onCancel={() => setEditingFile(null)}
+                                                    />
+                                                    <SelectField
+                                                        label=""
+                                                        value={fileDraft.type}
+                                                        options={fileTypeOptions}
+                                                        onChange={(v: string) => setFileDraft({ ...fileDraft, type: v })}
+                                                        onSave={() => handleSaveFile(setIdx)}
+                                                        onCancel={() => setEditingFile(null)}
+                                                    />
                                                     <button onClick={() => handleSaveFile(setIdx)} className="px-3 py-1 rounded text-xs" style={{ background: 'var(--vscode-button-background)', color: 'var(--vscode-button-foreground)' }}>Save</button>
                                                     <button onClick={() => setEditingFile(null)} className="px-3 py-1 rounded text-xs" style={{ background: 'var(--vscode-button-secondaryBackground)', color: 'var(--vscode-button-foreground)' }}>Cancel</button>
                                                 </div>
@@ -298,8 +313,25 @@ export const FileSetsEditor: React.FC<FileSetsEditorProps> = ({ fileSets, onUpda
                 {/* Add New File Set */}
                 {isAddingSet && (
                     <div className="p-4 rounded space-y-3" style={{ border: '1px solid var(--vscode-panel-border)', background: 'var(--vscode-list-activeSelectionBackground)' }}>
-                        <FormField label="Name" value={setDraft.name} onChange={(v: string) => setSetDraft({ ...setDraft, name: v })} placeholder="RTL_Sources" required validator={validateRequired} />
-                        <TextAreaField label="Description" value={setDraft.description || ''} onChange={(v: string) => setSetDraft({ ...setDraft, description: v })} placeholder="Optional description" rows={2} />
+                        <FormField
+                            label="Name"
+                            value={setDraft.name}
+                            onChange={(v: string) => setSetDraft({ ...setDraft, name: v })}
+                            placeholder="RTL_Sources"
+                            required
+                            validator={validateRequired}
+                            onSave={setDraft.name ? handleSaveSet : undefined}
+                            onCancel={() => setIsAddingSet(false)}
+                        />
+                        <TextAreaField
+                            label="Description"
+                            value={setDraft.description || ''}
+                            onChange={(v: string) => setSetDraft({ ...setDraft, description: v })}
+                            placeholder="Optional description"
+                            rows={2}
+                            onSave={setDraft.name ? handleSaveSet : undefined}
+                            onCancel={() => setIsAddingSet(false)}
+                        />
                         <div className="flex items-center gap-2">
                             <button onClick={handleSaveSet} disabled={!setDraft.name} className="px-4 py-2 rounded text-sm" style={{ background: setDraft.name ? 'var(--vscode-button-background)' : 'var(--vscode-button-secondaryBackground)', color: 'var(--vscode-button-foreground)', opacity: setDraft.name ? 1 : 0.5 }}>Create File Set</button>
                             <button onClick={() => setIsAddingSet(false)} className="px-4 py-2 rounded text-sm" style={{ background: 'var(--vscode-button-secondaryBackground)', color: 'var(--vscode-button-foreground)' }}>Cancel</button>
@@ -311,8 +343,25 @@ export const FileSetsEditor: React.FC<FileSetsEditorProps> = ({ fileSets, onUpda
                 {editingSet !== null && !isAddingSet && (
                     <div className="p-4 rounded space-y-3" style={{ border: '1px solid var(--vscode-panel-border)', background: 'var(--vscode-list-activeSelectionBackground)' }}>
                         <h3 className="font-semibold">Edit File Set</h3>
-                        <FormField label="Name" value={setDraft.name} onChange={(v: string) => setSetDraft({ ...setDraft, name: v })} placeholder="RTL_Sources" required validator={validateRequired} />
-                        <TextAreaField label="Description" value={setDraft.description || ''} onChange={(v: string) => setSetDraft({ ...setDraft, description: v })} placeholder="Optional description" rows={2} />
+                        <FormField
+                            label="Name"
+                            value={setDraft.name}
+                            onChange={(v: string) => setSetDraft({ ...setDraft, name: v })}
+                            placeholder="RTL_Sources"
+                            required
+                            validator={validateRequired}
+                            onSave={setDraft.name ? handleSaveSet : undefined}
+                            onCancel={() => setEditingSet(null)}
+                        />
+                        <TextAreaField
+                            label="Description"
+                            value={setDraft.description || ''}
+                            onChange={(v: string) => setSetDraft({ ...setDraft, description: v })}
+                            placeholder="Optional description"
+                            rows={2}
+                            onSave={setDraft.name ? handleSaveSet : undefined}
+                            onCancel={() => setEditingSet(null)}
+                        />
                         <div className="flex items-center gap-2">
                             <button onClick={handleSaveSet} disabled={!setDraft.name} className="px-4 py-2 rounded text-sm" style={{ background: setDraft.name ? 'var(--vscode-button-background)' : 'var(--vscode-button-secondaryBackground)', color: 'var(--vscode-button-foreground)', opacity: setDraft.name ? 1 : 0.5 }}>Save Changes</button>
                             <button onClick={() => setEditingSet(null)} className="px-4 py-2 rounded text-sm" style={{ background: 'var(--vscode-button-secondaryBackground)', color: 'var(--vscode-button-foreground)' }}>Cancel</button>

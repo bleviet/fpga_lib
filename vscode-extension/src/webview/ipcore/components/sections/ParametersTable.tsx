@@ -67,11 +67,11 @@ export const ParametersTable: React.FC<ParametersTableProps> = ({ parameters, on
     const renderDefaultValueField = () => {
         switch (draft.dataType) {
             case 'integer':
-                return <NumberField label="" value={typeof draft.defaultValue === 'number' ? draft.defaultValue : 0} onChange={(v: number) => setDraft({ ...draft, defaultValue: v })} data-edit-key="defaultValue" />;
+                return <NumberField label="" value={typeof draft.defaultValue === 'number' ? draft.defaultValue : 0} onChange={(v: number) => setDraft({ ...draft, defaultValue: v })} data-edit-key="defaultValue" onSave={canSave ? handleSave : undefined} onCancel={handleCancel} />;
             case 'boolean':
                 return <CheckboxField label="True" checked={!!draft.defaultValue} onChange={(v: boolean) => setDraft({ ...draft, defaultValue: v })} data-edit-key="defaultValue" />;
             default:
-                return <FormField label="" value={String(draft.defaultValue || '')} onChange={(v: string) => setDraft({ ...draft, defaultValue: v })} placeholder="default value" data-edit-key="defaultValue" />;
+                return <FormField label="" value={String(draft.defaultValue || '')} onChange={(v: string) => setDraft({ ...draft, defaultValue: v })} placeholder="default value" data-edit-key="defaultValue" onSave={canSave ? handleSave : undefined} onCancel={handleCancel} />;
         }
     };
 
@@ -84,10 +84,10 @@ export const ParametersTable: React.FC<ParametersTableProps> = ({ parameters, on
 
     const renderEditRow = (isNew: boolean) => (
         <tr style={{ background: 'var(--vscode-list-activeSelectionBackground)', borderBottom: '1px solid var(--vscode-panel-border)' }} data-row-idx={editingIndex ?? parameters.length}>
-            <td className="px-4 py-3"><FormField label="" value={draft.name} onChange={(v: string) => setDraft({ ...draft, name: v })} error={nameError || undefined} placeholder="PARAM_NAME" required data-edit-key="name" /></td>
-            <td className="px-4 py-3"><SelectField label="" value={draft.dataType} options={[{ value: 'integer', label: 'integer' }, { value: 'boolean', label: 'boolean' }, { value: 'string', label: 'string' }]} onChange={handleDataTypeChange} data-edit-key="dataType" /></td>
+            <td className="px-4 py-3"><FormField label="" value={draft.name} onChange={(v: string) => setDraft({ ...draft, name: v })} error={nameError || undefined} placeholder="PARAM_NAME" required data-edit-key="name" onSave={canSave ? handleSave : undefined} onCancel={handleCancel} /></td>
+            <td className="px-4 py-3"><SelectField label="" value={draft.dataType} options={[{ value: 'integer', label: 'integer' }, { value: 'boolean', label: 'boolean' }, { value: 'string', label: 'string' }]} onChange={handleDataTypeChange} data-edit-key="dataType" onSave={canSave ? handleSave : undefined} onCancel={handleCancel} /></td>
             <td className="px-4 py-3">{renderDefaultValueField()}</td>
-            <td className="px-4 py-3"><FormField label="" value={draft.description || ''} onChange={(v: string) => setDraft({ ...draft, description: v })} placeholder="Optional description" data-edit-key="description" /></td>
+            <td className="px-4 py-3"><FormField label="" value={draft.description || ''} onChange={(v: string) => setDraft({ ...draft, description: v })} placeholder="Optional description" data-edit-key="description" onSave={canSave ? handleSave : undefined} onCancel={handleCancel} /></td>
             <td className="px-4 py-3 text-right">
                 <button onClick={handleSave} disabled={!canSave} className="px-3 py-1 rounded text-xs mr-2" style={{ background: canSave ? 'var(--vscode-button-background)' : 'var(--vscode-button-secondaryBackground)', color: 'var(--vscode-button-foreground)', opacity: canSave ? 1 : 0.5 }}>{isNew ? 'Add' : 'Save'}</button>
                 <button onClick={handleCancel} className="px-3 py-1 rounded text-xs" style={{ background: 'var(--vscode-button-secondaryBackground)', color: 'var(--vscode-button-foreground)' }}>Cancel</button>

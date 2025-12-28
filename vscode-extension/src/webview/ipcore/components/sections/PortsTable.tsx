@@ -81,9 +81,9 @@ export const PortsTable: React.FC<PortsTableProps> = ({ ports, onUpdate }) => {
 
     const renderEditRow = (isNew: boolean) => (
         <tr style={{ background: 'var(--vscode-list-activeSelectionBackground)', borderBottom: '1px solid var(--vscode-panel-border)' }} data-row-idx={editingIndex ?? ports.length}>
-            <td className="px-4 py-3"><FormField label="" value={draft.name} onChange={(v: string) => setDraft({ ...draft, name: v })} error={nameError || undefined} placeholder="port_name" required data-edit-key="name" /></td>
-            <td className="px-4 py-3"><SelectField label="" value={draft.direction} options={[{ value: 'input', label: 'input' }, { value: 'output', label: 'output' }, { value: 'inout', label: 'inout' }]} onChange={(v: string) => setDraft({ ...draft, direction: v })} data-edit-key="direction" /></td>
-            <td className="px-4 py-3"><NumberField label="" value={draft.width || 1} onChange={(v: number) => setDraft({ ...draft, width: v })} min={1} data-edit-key="width" /></td>
+            <td className="px-4 py-3"><FormField label="" value={draft.name} onChange={(v: string) => setDraft({ ...draft, name: v })} error={nameError || undefined} placeholder="port_name" required data-edit-key="name" onSave={canSave ? handleSave : undefined} onCancel={handleCancel} /></td>
+            <td className="px-4 py-3"><SelectField label="" value={draft.direction} options={[{ value: 'input', label: 'input' }, { value: 'output', label: 'output' }, { value: 'inout', label: 'inout' }]} onChange={(v: string) => setDraft({ ...draft, direction: v })} data-edit-key="direction" onSave={canSave ? handleSave : undefined} onCancel={handleCancel} /></td>
+            <td className="px-4 py-3"><NumberField label="" value={draft.width || 1} onChange={(v: number) => setDraft({ ...draft, width: v })} min={1} data-edit-key="width" onSave={canSave ? handleSave : undefined} onCancel={handleCancel} /></td>
             <td className="px-4 py-3 text-right">
                 <button onClick={handleSave} disabled={!canSave} className="px-3 py-1 rounded text-xs mr-2" style={{ background: canSave ? 'var(--vscode-button-background)' : 'var(--vscode-button-secondaryBackground)', color: 'var(--vscode-button-foreground)', opacity: canSave ? 1 : 0.5 }}>{isNew ? 'Add' : 'Save'}</button>
                 <button onClick={handleCancel} className="px-3 py-1 rounded text-xs" style={{ background: 'var(--vscode-button-secondaryBackground)', color: 'var(--vscode-button-foreground)' }}>Cancel</button>

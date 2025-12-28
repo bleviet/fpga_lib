@@ -15,6 +15,8 @@ export interface NumberFieldProps {
     'data-edit-key'?: string;
     /** Additional className for the text field */
     className?: string;
+    onSave?: () => void;
+    onCancel?: () => void;
 }
 
 /**
@@ -33,6 +35,8 @@ export const NumberField: React.FC<NumberFieldProps> = ({
     disabled = false,
     'data-edit-key': dataEditKey,
     className,
+    onSave,
+    onCancel,
 }) => {
     const handleChange = (newValue: string) => {
         const num = parseInt(newValue, 10);
@@ -40,6 +44,14 @@ export const NumberField: React.FC<NumberFieldProps> = ({
             onChange(num);
         } else if (newValue === '') {
             onChange(0);
+        }
+    };
+
+    const handleKeyDown = (e: any) => {
+        if (e.key === 'Enter') {
+            onSave?.();
+        } else if (e.key === 'Escape') {
+            onCancel?.();
         }
     };
 
@@ -57,6 +69,7 @@ export const NumberField: React.FC<NumberFieldProps> = ({
                 value={String(value)}
                 disabled={disabled}
                 onInput={(e: any) => handleChange(e.target.value ?? '')}
+                onKeyDown={handleKeyDown}
                 style={{
                     '--input-border-color': error ? 'var(--vscode-inputValidation-errorBorder)' : undefined
                 } as React.CSSProperties}
