@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { Logger, LogLevel } from './utils/Logger';
 import { MemoryMapEditorProvider } from './providers/MemoryMapEditorProvider';
 import { IpCoreEditorProvider } from './providers/IpCoreEditorProvider';
+import { createIpCoreCommand, createMemoryMapCommand } from './commands/FileCreationCommands';
 
 /**
  * Extension activation entry point
@@ -41,6 +42,14 @@ export function activate(context: vscode.ExtensionContext): void {
         )
     );
     logger.info('IP Core editor registered');
+
+    // Register File Creation Commands
+    context.subscriptions.push(
+        vscode.commands.registerCommand('fpga-ip-core.createIpCore', createIpCoreCommand)
+    );
+    context.subscriptions.push(
+        vscode.commands.registerCommand('fpga-ip-core.createMemoryMap', createMemoryMapCommand)
+    );
 
     logger.info('Extension activated successfully');
 }

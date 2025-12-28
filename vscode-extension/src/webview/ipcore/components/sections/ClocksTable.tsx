@@ -106,7 +106,7 @@ export const ClocksTable: React.FC<ClocksTableProps> = ({ clocks, busInterfaces 
                 <FormField label="" value={draft.name} onChange={(v: string) => setDraft({ ...draft, name: v })} error={nameError || undefined} placeholder="clk_name" required data-edit-key="name" onSave={canSave ? handleSave : undefined} onCancel={handleCancel} />
             </td>
             <td className="px-4 py-3">
-                <FormField label="" value={draft.physicalPort} onChange={(v: string) => setDraft({ ...draft, physicalPort: v })} error={physicalPortError || undefined} placeholder="CLK_PORT" required data-edit-key="physicalPort" onSave={canSave ? handleSave : undefined} onCancel={handleCancel} />
+                <FormField label="" value={draft.physicalPort} onChange={(v: string) => setDraft({ ...draft, physicalPort: v })} error={physicalPortError || undefined} placeholder="CLK_PIN" required data-edit-key="physicalPort" onSave={canSave ? handleSave : undefined} onCancel={handleCancel} />
             </td>
             <td className="px-4 py-3">
                 <FormField label="" value={draft.frequency || ''} onChange={(v: string) => setDraft({ ...draft, frequency: v })} error={frequencyError || undefined} placeholder="100 MHz" data-edit-key="frequency" onSave={canSave ? handleSave : undefined} onCancel={handleCancel} />
@@ -156,8 +156,8 @@ export const ClocksTable: React.FC<ClocksTableProps> = ({ clocks, busInterfaces 
                 <table className="w-full">
                     <thead>
                         <tr style={{ background: 'var(--vscode-editor-background)', borderBottom: '1px solid var(--vscode-panel-border)' }}>
-                            <th className="px-4 py-3 text-left text-sm font-semibold">Name</th>
-                            <th className="px-4 py-3 text-left text-sm font-semibold">Physical Port</th>
+                            <th className="px-4 py-3 text-left text-sm font-semibold">Logical Name</th>
+                            <th className="px-4 py-3 text-left text-sm font-semibold">Physical Name</th>
                             <th className="px-4 py-3 text-left text-sm font-semibold">Frequency</th>
                             <th className="px-4 py-3 text-left text-sm font-semibold">Direction</th>
                             <th className="px-4 py-3 text-left text-sm font-semibold">Used By</th>

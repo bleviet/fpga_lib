@@ -886,7 +886,7 @@ export const BusInterfacesEditor: React.FC<BusInterfacesEditorProps> = ({ busInt
                                             <table className="w-full text-sm" style={{ borderTop: '1px solid var(--vscode-panel-border)' }}>
                                                 <thead>
                                                     <tr style={{ background: 'var(--vscode-editor-background)' }}>
-                                                        <th className="px-4 py-2 text-left font-medium" style={TEXT_STYLES.label}>Signal</th>
+                                                        <th className="px-4 py-2 text-left font-medium" style={TEXT_STYLES.label}>Logical Name</th>
                                                         <th className="px-4 py-2 text-left font-medium" style={TEXT_STYLES.label}>Physical Name</th>
                                                         <th className="px-4 py-2 text-left font-medium" style={TEXT_STYLES.label}>Width</th>
                                                         <th className="px-4 py-2 text-left font-medium" style={TEXT_STYLES.label}>Dir</th>

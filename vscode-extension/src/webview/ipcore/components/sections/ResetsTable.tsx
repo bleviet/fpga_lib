@@ -107,7 +107,7 @@ export const ResetsTable: React.FC<ResetsTableProps> = ({ resets, busInterfaces 
                 <FormField label="" value={draft.name} onChange={(v: string) => setDraft({ ...draft, name: v })} error={nameError || undefined} placeholder="rst_name" required data-edit-key="name" onSave={canSave ? handleSave : undefined} onCancel={handleCancel} />
             </td>
             <td className="px-4 py-3">
-                <FormField label="" value={draft.physicalPort} onChange={(v: string) => setDraft({ ...draft, physicalPort: v })} error={physicalPortError || undefined} placeholder="RST_PORT" required data-edit-key="physicalPort" onSave={canSave ? handleSave : undefined} onCancel={handleCancel} />
+                <FormField label="" value={draft.physicalPort} onChange={(v: string) => setDraft({ ...draft, physicalPort: v })} error={physicalPortError || undefined} placeholder="RST_PIN" required data-edit-key="physicalPort" onSave={canSave ? handleSave : undefined} onCancel={handleCancel} />
             </td>
             <td className="px-4 py-3">
                 <SelectField label="" value={draft.polarity} options={[{ value: 'activeLow', label: 'activeLow' }, { value: 'activeHigh', label: 'activeHigh' }]} onChange={(v: string) => setDraft({ ...draft, polarity: v })} data-edit-key="polarity" onSave={canSave ? handleSave : undefined} onCancel={handleCancel} />
@@ -141,8 +141,8 @@ export const ResetsTable: React.FC<ResetsTableProps> = ({ resets, busInterfaces 
                 <table className="w-full">
                     <thead>
                         <tr style={{ background: 'var(--vscode-editor-background)', borderBottom: '1px solid var(--vscode-panel-border)' }}>
-                            <th className="px-4 py-3 text-left text-sm font-semibold">Name</th>
-                            <th className="px-4 py-3 text-left text-sm font-semibold">Physical Port</th>
+                            <th className="px-4 py-3 text-left text-sm font-semibold">Logical Name</th>
+                            <th className="px-4 py-3 text-left text-sm font-semibold">Physical Name</th>
                             <th className="px-4 py-3 text-left text-sm font-semibold">Polarity</th>
                             <th className="px-4 py-3 text-left text-sm font-semibold">Direction</th>
                             <th className="px-4 py-3 text-left text-sm font-semibold">Used By</th>

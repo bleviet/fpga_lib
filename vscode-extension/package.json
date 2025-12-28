@@ -12,6 +12,18 @@
     "activationEvents": [],
     "main": "./dist/extension.js",
     "contributes": {
+        "commands": [
+            {
+                "command": "fpga-ip-core.createIpCore",
+                "title": "Create New IP Core",
+                "category": "FPGA IP Core"
+            },
+            {
+                "command": "fpga-ip-core.createMemoryMap",
+                "title": "Create New Memory Map",
+                "category": "FPGA IP Core"
+            }
+        ],
         "customEditors": [
             {
                 "viewType": "fpgaMemoryMap.editor",
