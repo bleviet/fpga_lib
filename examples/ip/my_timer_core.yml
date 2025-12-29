@@ -2,7 +2,7 @@
 #
 # Main component definition for the timer core.
 # This is the "root" file your generator script should parse.
-apiVersion: 1.0
+apiVersion: "1.0"
 
 vlnv:
   vendor: my-company.com
@@ -14,36 +14,36 @@ description: A 4-channel, 32-bit configurable timer IP with a separate register 
 
 # Top-level clock definitions
 clocks:
-  - name: SYS_CLK # Logical name for association
-    physicalPort: i_clk_sys # Verilog port name
+  - name: i_clk_sys # Port name
+    logicalName: CLK # Logical name for association
     direction: in
     frequency: 100MHz
     description: Main system clock for timer logic
 
-  - name: REG_CLK
-    physicalPort: i_clk_reg
+  - name: i_clk_reg # Port name
+    logicalName: CLK # Logical name for association
     direction: in
     frequency: 50MHz
     description: Slower clock for the AXI-Lite register interface
 
 # Top-level reset definitions
 resets:
-  - name: SYS_RST
-    physicalPort: i_rst_n_sys
+  - name: i_rst_n_sys # Port name
+    logicalName: RESET_N # Logical name for association (active low)
     direction: in
     polarity: activeLow # Polarity is explicitly defined
     description: Main system reset, active low
 
-  - name: REG_RST
-    physicalPort: i_rst_p_reg
+  - name: i_rst_p_reg # Port name
+    logicalName: RESET # Logical name for association (active high)
     direction: in
     polarity: activeHigh # Can be active high
     description: Register interface reset, active high
 
 # Top-level 'data' or 'control' ports
 ports:
-  - name: o_irq
-    physicalPort: o_global_irq # Names can be different
+  - name: o_global_irq # Port name
+    logicalName: o_irq # Logical name
     direction: out
     description: Global interrupt request output (OR of all channels)
 
@@ -59,8 +59,8 @@ busInterfaces:
     physicalPrefix: s_axi_ # Generator creates "s_axi_awaddr", "s_axi_wdata", etc.
 
     # --- Clock/Reset Association ---
-    associatedClock: REG_CLK # Links to the 'REG_CLK' defined above
-    associatedReset: REG_RST
+    associatedClock: i_clk_reg # Links to the clock port defined above
+    associatedReset: i_rst_p_reg
 
     # --- Memory Map Link ---
     memoryMapRef: CSR_MAP # Links to the memory map name
@@ -95,8 +95,8 @@ busInterfaces:
     physicalPrefix: m_axis_evt_ # Base prefix (overridden by array pattern)
 
     # --- Clock/Reset Association ---
-    associatedClock: SYS_CLK # Uses system clock, not register clock
-    associatedReset: SYS_RST
+    associatedClock: i_clk_sys # Uses system clock port
+    associatedReset: i_rst_n_sys
 
     # --- Optional Port Usage ---
     useOptionalPorts:

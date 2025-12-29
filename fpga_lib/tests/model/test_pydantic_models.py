@@ -50,27 +50,27 @@ def test_basic_ip_core_creation():
 def test_clocks_and_resets():
     """Test clock and reset definitions."""
     clock = Clock(
-        name="SYS_CLK",
-        physical_port="i_clk_sys",
+        name="i_clk_sys",
+        logical_name="CLK",
         direction="in",
         frequency="100MHz",
         description="Main system clock",
     )
 
-    assert clock.name == "SYS_CLK"
-    assert clock.physical_port == "i_clk_sys"
+    assert clock.name == "i_clk_sys"
+    assert clock.logical_name == "CLK"
     assert clock.frequency == "100MHz"
 
     reset = Reset(
-        name="SYS_RST",
-        physical_port="i_rst_n_sys",
+        name="i_rst_n_sys",
+        logical_name="RESET_N",
         direction="in",
         polarity=Polarity.ACTIVE_LOW,
         description="System reset, active low",
     )
 
-    assert reset.name == "SYS_RST"
-    assert reset.physical_port == "i_rst_n_sys"
+    assert reset.name == "i_rst_n_sys"
+    assert reset.logical_name == "RESET_N"
     assert reset.is_active_low is True
     assert reset.polarity == Polarity.ACTIVE_LOW
 
@@ -223,36 +223,36 @@ def test_complete_ip_core():
         description="A 4-channel, 32-bit configurable timer IP",
         clocks=[
             Clock(
-                name="SYS_CLK",
-                physical_port="i_clk_sys",
+                name="i_clk_sys",
+                logical_name="CLK",
                 frequency="100MHz",
                 description="Main system clock",
             ),
             Clock(
-                name="REG_CLK",
-                physical_port="i_clk_reg",
+                name="i_clk_reg",
+                logical_name="CLK",
                 frequency="50MHz",
                 description="Register interface clock",
             ),
         ],
         resets=[
             Reset(
-                name="SYS_RST",
-                physical_port="i_rst_n_sys",
+                name="i_rst_n_sys",
+                logical_name="RESET_N",
                 polarity=Polarity.ACTIVE_LOW,
                 description="System reset, active low",
             ),
             Reset(
-                name="REG_RST",
-                physical_port="i_rst_p_reg",
+                name="i_rst_p_reg",
+                logical_name="RESET",
                 polarity=Polarity.ACTIVE_HIGH,
                 description="Register reset, active high",
             ),
         ],
         ports=[
             Port(
-                name="o_irq",
-                physical_port="o_global_irq",
+                name="o_global_irq",
+                logical_name="o_irq",
                 direction=PortDirection.OUT,
                 width=1,
                 description="Global interrupt request",
@@ -264,8 +264,8 @@ def test_complete_ip_core():
                 type="AXI4L",
                 mode="slave",
                 physical_prefix="s_axi_",
-                associated_clock="REG_CLK",
-                associated_reset="REG_RST",
+                associated_clock="i_clk_reg",
+                associated_reset="i_rst_p_reg",
                 memory_map_ref="CSR_MAP",
                 use_optional_ports=["AWPROT", "ARPROT"],
                 port_width_overrides={
@@ -281,8 +281,8 @@ def test_complete_ip_core():
                 type="AXIS",
                 mode="master",
                 physical_prefix="m_axis_evt_",
-                associated_clock="SYS_CLK",
-                associated_reset="SYS_RST",
+                associated_clock="i_clk_sys",
+                associated_reset="i_rst_n_sys",
                 use_optional_ports=["TLAST", "TUSER"],
                 port_width_overrides={"TDATA": 64, "TSTRB": 8, "TKEEP": 8, "TUSER": 4},
                 array=ArrayConfig(
@@ -325,7 +325,7 @@ def test_complete_ip_core():
     # Assertions
     assert ip_core.vlnv.full_name == "my-company.com:processing:my_timer_core:1.2.0"
     assert len(ip_core.clocks) == 2
-    assert ip_core.clocks[0].name == "SYS_CLK"
+    assert ip_core.clocks[0].name == "i_clk_sys"
     assert ip_core.clocks[0].frequency == "100MHz"
 
     assert len(ip_core.resets) == 2
@@ -333,7 +333,7 @@ def test_complete_ip_core():
     assert ip_core.resets[1].polarity == Polarity.ACTIVE_HIGH
 
     assert len(ip_core.ports) == 1
-    assert ip_core.ports[0].name == "o_irq"
+    assert ip_core.ports[0].name == "o_global_irq"
     assert ip_core.ports[0].direction == PortDirection.OUT
 
     assert len(ip_core.bus_interfaces) == 2

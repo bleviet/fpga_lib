@@ -11,13 +11,13 @@ description: Test core with invalid references to verify validation
 useBusLibrary: common/bus_definitions.yml
 
 clocks:
-  - name: sys_clk
-    physicalPort: SYS_CLK
+  - name: SYS_CLK
+    logicalName: CLK
     frequency: "100 MHz"
 
 resets:
-  - name: sys_rst
-    physicalPort: SYS_RST
+  - name: SYS_RST
+    logicalName: RESET_N
     polarity: active_low
 
 busInterfaces:
@@ -32,6 +32,6 @@ busInterfaces:
     type: AXIS
     mode: master
     physicalPrefix: m_axis_
-    associatedClock: sys_clk
-    associatedReset: sys_rst
+    associatedClock: SYS_CLK
+    associatedReset: SYS_RST
     memoryMapRef: nonexistent_map  # ERROR: This memory map doesn't exist

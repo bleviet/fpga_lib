@@ -3,13 +3,12 @@ import { FormField, SelectField } from '../../../shared/components';
 import {
   validateVhdlIdentifier,
   validateUniqueName,
-  validateFrequency,
 } from '../../../shared/utils/validation';
 import { useVimTableNavigation } from '../../hooks/useVimTableNavigation';
 
 interface Clock {
-  name: string;
-  physicalPort: string;
+  name: string;          // Physical port name
+  logicalName?: string;  // Standard logical name (CLK)
   frequency?: string;
   direction?: string;
 }
@@ -27,7 +26,7 @@ interface ClocksTableProps {
 
 const createEmptyClock = (): Clock => ({
   name: '',
-  physicalPort: '',
+  logicalName: 'CLK',
   frequency: '',
   direction: 'input',
 });
@@ -54,7 +53,7 @@ const displayDirection = (dir?: string): string => {
   return dirMap[dir || 'input'] || 'input';
 };
 
-const COLUMN_KEYS = ['name', 'physicalPort', 'frequency', 'direction', 'usedBy'];
+const COLUMN_KEYS = ['name', 'logicalName', 'frequency', 'direction', 'usedBy'];
 
 // Helper to find which interfaces use a clock
 const getUsedByInterfaces = (clockName: string, busInterfaces: BusInterface[]): string[] => {
@@ -103,9 +102,7 @@ export const ClocksTable: React.FC<ClocksTableProps> = ({
   const existingNames = clocks.map((c) => c.name).filter((_, i) => i !== editingIndex);
   const nameError =
     validateVhdlIdentifier(draft.name) || validateUniqueName(draft.name, existingNames);
-  const physicalPortError = validateVhdlIdentifier(draft.physicalPort);
-  const frequencyError = validateFrequency(draft.frequency || '');
-  const canSave = !nameError && !physicalPortError && !frequencyError;
+  const canSave = !nameError;
 
   const renderEditRow = (isNew: boolean) => (
     <tr
@@ -121,7 +118,7 @@ export const ClocksTable: React.FC<ClocksTableProps> = ({
           value={draft.name}
           onChange={(v: string) => setDraft({ ...draft, name: v })}
           error={nameError || undefined}
-          placeholder="clk_name"
+          placeholder="i_clk_sys"
           required
           data-edit-key="name"
           onSave={canSave ? handleSave : undefined}
@@ -131,12 +128,10 @@ export const ClocksTable: React.FC<ClocksTableProps> = ({
       <td className="px-4 py-3">
         <FormField
           label=""
-          value={draft.physicalPort}
-          onChange={(v: string) => setDraft({ ...draft, physicalPort: v })}
-          error={physicalPortError || undefined}
-          placeholder="CLK_PIN"
-          required
-          data-edit-key="physicalPort"
+          value={draft.logicalName || 'CLK'}
+          onChange={(v: string) => setDraft({ ...draft, logicalName: v })}
+          placeholder="CLK"
+          data-edit-key="logicalName"
           onSave={canSave ? handleSave : undefined}
           onCancel={handleCancel}
         />
@@ -146,7 +141,6 @@ export const ClocksTable: React.FC<ClocksTableProps> = ({
           label=""
           value={draft.frequency || ''}
           onChange={(v: string) => setDraft({ ...draft, frequency: v })}
-          error={frequencyError || undefined}
           placeholder="100 MHz"
           data-edit-key="frequency"
           onSave={canSave ? handleSave : undefined}
@@ -240,8 +234,8 @@ export const ClocksTable: React.FC<ClocksTableProps> = ({
                 borderBottom: '1px solid var(--vscode-panel-border)',
               }}
             >
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase opacity-70">Logical Name</th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase opacity-70">Physical Name</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase opacity-70">Logical Name</th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase opacity-70">Frequency</th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase opacity-70">Direction</th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase opacity-70">Used By</th>
@@ -263,9 +257,9 @@ export const ClocksTable: React.FC<ClocksTableProps> = ({
                   </td>
                   <td
                     className="px-4 py-3 text-sm font-mono"
-                    {...getCellProps(index, 'physicalPort')}
+                    {...getCellProps(index, 'logicalName')}
                   >
-                    {clock.physicalPort}
+                    {clock.logicalName || 'CLK'}
                   </td>
                   <td className="px-4 py-3 text-sm" {...getCellProps(index, 'frequency')}>
                     {clock.frequency || '—'}

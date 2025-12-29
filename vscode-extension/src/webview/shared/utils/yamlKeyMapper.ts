@@ -89,7 +89,7 @@ export const KNOWN_MAPPINGS = {
   fileSets: 'file_sets',
 
   // Clock/Reset/Port
-  physicalPort: 'physical_port',
+  logicalName: 'logical_name',
 
   // Bus Interface
   physicalPrefix: 'physical_prefix',

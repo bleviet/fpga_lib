@@ -48,21 +48,21 @@ vlnv:
     version: "1.0.0"
 
 clocks:
-    - name: "SYS_CLK"
-      physicalPort: "i_clk"
+    - name: "i_clk"
+      logicalName: "CLK"
       direction: "in"
       frequency: "100MHz"
       description: "System clock"
 
 resets:
-    - name: "SYS_RST"
-      physicalPort: "i_rst_n"
+    - name: "i_rst_n"
+      logicalName: "RESET_N"
       direction: "in"
       polarity: "activeLow"
       description: "Active low reset"
 
-    - name: "RST_HIGH"
-      physicalPort: "i_rst_p"
+    - name: "i_rst_p"
+      logicalName: "RESET"
       polarity: "activeHigh"
 """
     yaml_file = tmp_path / "clocked.yml"
@@ -72,12 +72,13 @@ resets:
     ip_core = parser.parse_file(yaml_file)
 
     assert len(ip_core.clocks) == 1
-    assert ip_core.clocks[0].name == "SYS_CLK"
-    assert ip_core.clocks[0].physical_port == "i_clk"
+    assert ip_core.clocks[0].name == "i_clk"
+    assert ip_core.clocks[0].logical_name == "CLK"
     assert ip_core.clocks[0].frequency == "100MHz"
 
     assert len(ip_core.resets) == 2
-    assert ip_core.resets[0].name == "SYS_RST"
+    assert ip_core.resets[0].name == "i_rst_n"
+    assert ip_core.resets[0].logical_name == "RESET_N"
     assert ip_core.resets[0].polarity == Polarity.ACTIVE_LOW
     assert ip_core.resets[0].is_active_low is True
     assert ip_core.resets[1].polarity == Polarity.ACTIVE_HIGH
@@ -94,13 +95,13 @@ vlnv:
     version: "1.0.0"
 
 ports:
-    - name: "irq"
-      physicalPort: "o_irq"
+    - name: "o_irq"
+      logicalName: "irq"
       direction: "out"
       description: "Interrupt output"
 
-    - name: "data_bus"
-      physicalPort: "io_data"
+    - name: "io_data"
+      logicalName: "data_bus"
       direction: "inout"
       width: 32
 """
@@ -111,7 +112,8 @@ ports:
     ip_core = parser.parse_file(yaml_file)
 
     assert len(ip_core.ports) == 2
-    assert ip_core.ports[0].name == "irq"
+    assert ip_core.ports[0].name == "o_irq"
+    assert ip_core.ports[0].logical_name == "irq"
     assert ip_core.ports[0].direction == PortDirection.OUT
     assert ip_core.ports[1].width == 32
     assert ip_core.ports[1].direction == PortDirection.INOUT
@@ -396,7 +398,7 @@ def test_parse_real_timer_core():
 
     # Verify clocks
     assert len(ip_core.clocks) == 2
-    assert ip_core.clocks[0].name == "SYS_CLK"
+    assert ip_core.clocks[0].name == "i_clk_sys"
     assert ip_core.clocks[0].frequency == "100MHz"
 
     # Verify resets
@@ -405,7 +407,7 @@ def test_parse_real_timer_core():
 
     # Verify ports
     assert len(ip_core.ports) == 1
-    assert ip_core.ports[0].name == "o_irq"
+    assert ip_core.ports[0].name == "o_global_irq"
 
     # Verify bus interfaces
     assert len(ip_core.bus_interfaces) == 2

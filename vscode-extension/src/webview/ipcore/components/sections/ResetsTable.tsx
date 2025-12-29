@@ -4,8 +4,8 @@ import { validateVhdlIdentifier, validateUniqueName } from '../../../shared/util
 import { useVimTableNavigation } from '../../hooks/useVimTableNavigation';
 
 interface Reset {
-  name: string;
-  physicalPort: string;
+  name: string;          // Physical port name
+  logicalName?: string;  // Standard logical name (RESET/RESET_N)
   polarity: string;
   direction?: string;
 }
@@ -23,7 +23,7 @@ interface ResetsTableProps {
 
 const createEmptyReset = (): Reset => ({
   name: '',
-  physicalPort: '',
+  logicalName: 'RESET_N',
   polarity: 'activeLow',
   direction: 'input',
 });
@@ -58,7 +58,7 @@ const displayDirection = (dir?: string): string => {
   return dirMap[dir || 'input'] || 'input';
 };
 
-const COLUMN_KEYS = ['name', 'physicalPort', 'polarity', 'direction', 'usedBy'];
+const COLUMN_KEYS = ['name', 'logicalName', 'polarity', 'direction', 'usedBy'];
 
 // Helper to find which interfaces use a reset
 const getUsedByInterfaces = (resetName: string, busInterfaces: BusInterface[]): string[] => {
@@ -101,8 +101,7 @@ export const ResetsTable: React.FC<ResetsTableProps> = ({
   const existingNames = resets.map((r) => r.name).filter((_, i) => i !== editingIndex);
   const nameError =
     validateVhdlIdentifier(draft.name) || validateUniqueName(draft.name, existingNames);
-  const physicalPortError = validateVhdlIdentifier(draft.physicalPort);
-  const canSave = !nameError && !physicalPortError;
+  const canSave = !nameError;
 
   const renderEditRow = (isNew: boolean) => (
     <tr
@@ -118,7 +117,7 @@ export const ResetsTable: React.FC<ResetsTableProps> = ({
           value={draft.name}
           onChange={(v: string) => setDraft({ ...draft, name: v })}
           error={nameError || undefined}
-          placeholder="rst_name"
+          placeholder="i_rst_n_sys"
           required
           data-edit-key="name"
           onSave={canSave ? handleSave : undefined}
@@ -126,14 +125,19 @@ export const ResetsTable: React.FC<ResetsTableProps> = ({
         />
       </td>
       <td className="px-4 py-3">
-        <FormField
+        <SelectField
           label=""
-          value={draft.physicalPort}
-          onChange={(v: string) => setDraft({ ...draft, physicalPort: v })}
-          error={physicalPortError || undefined}
-          placeholder="RST_PIN"
-          required
-          data-edit-key="physicalPort"
+          value={draft.logicalName || (draft.polarity === 'activeLow' ? 'RESET_N' : 'RESET')}
+          options={[
+            { value: 'RESET_N', label: 'RESET_N' },
+            { value: 'RESET', label: 'RESET' },
+          ]}
+          onChange={(v: string) => setDraft({
+            ...draft,
+            logicalName: v,
+            polarity: v === 'RESET_N' ? 'activeLow' : 'activeHigh'
+          })}
+          data-edit-key="logicalName"
           onSave={canSave ? handleSave : undefined}
           onCancel={handleCancel}
         />
@@ -146,7 +150,11 @@ export const ResetsTable: React.FC<ResetsTableProps> = ({
             { value: 'activeLow', label: 'activeLow' },
             { value: 'activeHigh', label: 'activeHigh' },
           ]}
-          onChange={(v: string) => setDraft({ ...draft, polarity: v })}
+          onChange={(v: string) => setDraft({
+            ...draft,
+            polarity: v,
+            logicalName: v === 'activeLow' ? 'RESET_N' : 'RESET'
+          })}
           data-edit-key="polarity"
           onSave={canSave ? handleSave : undefined}
           onCancel={handleCancel}
@@ -236,8 +244,8 @@ export const ResetsTable: React.FC<ResetsTableProps> = ({
                 borderBottom: '1px solid var(--vscode-panel-border)',
               }}
             >
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase opacity-70">Logical Name</th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase opacity-70">Physical Name</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase opacity-70">Logical Name</th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase opacity-70">Polarity</th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase opacity-70">Direction</th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase opacity-70">Used By</th>
@@ -258,9 +266,9 @@ export const ResetsTable: React.FC<ResetsTableProps> = ({
                   </td>
                   <td
                     className="px-4 py-3 text-sm font-mono"
-                    {...getCellProps(index, 'physicalPort')}
+                    {...getCellProps(index, 'logicalName')}
                   >
-                    {reset.physicalPort}
+                    {reset.logicalName || (reset.polarity === 'activeLow' ? 'RESET_N' : 'RESET')}
                   </td>
                   <td className="px-4 py-3 text-sm" {...getCellProps(index, 'polarity')}>
                     {reset.polarity}

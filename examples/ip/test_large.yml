@@ -9,51 +9,51 @@ description: Large IP core for stress testing with many clocks, resets, and bus 
 
 # Top-level clock definitions
 clocks:
-  - name: clk_sys
-    physicalPort: CLK_SYS
+  - name: CLK_SYS
+    logicalName: CLK
     frequency: "100 MHz"
-  - name: clk_axi
-    physicalPort: CLK_AXI
+  - name: CLK_AXI
+    logicalName: CLK
     frequency: "200 MHz"
-  - name: clk_ddr
-    physicalPort: CLK_DDR
+  - name: CLK_DDR
+    logicalName: CLK
     frequency: "400 MHz"
-  - name: clk_eth
-    physicalPort: CLK_ETH
+  - name: CLK_ETH
+    logicalName: CLK
     frequency: "125 MHz"
-  - name: clk_pcie
-    physicalPort: CLK_PCIE
+  - name: CLK_PCIE
+    logicalName: CLK
     frequency: "250 MHz"
-  - name: clk_usb
-    physicalPort: CLK_USB
+  - name: CLK_USB
+    logicalName: CLK
     frequency: "60 MHz"
-  - name: clk_aux
-    physicalPort: CLK_AUX
+  - name: CLK_AUX
+    logicalName: CLK
     frequency: "50 MHz"
 
 # Top-level reset definitions
 resets:
-  - name: rst_sys
-    physicalPort: RST_SYS
+  - name: RST_SYS
+    logicalName: RESET_N
     polarity: active_low
-  - name: rst_axi
-    physicalPort: RST_AXI
+  - name: RST_AXI
+    logicalName: RESET_N
     polarity: active_low
-  - name: rst_ddr
-    physicalPort: RST_DDR
+  - name: RST_DDR
+    logicalName: RESET
     polarity: active_high
-  - name: rst_eth
-    physicalPort: RST_ETH
+  - name: RST_ETH
+    logicalName: RESET_N
     polarity: active_low
-  - name: rst_pcie
-    physicalPort: RST_PCIE
+  - name: RST_PCIE
+    logicalName: RESET
     polarity: active_high
 
 # Top-level 'data' or 'control' ports
 ports:
-  - name: irq_out
+  - name: IRQ_OUT
+    logicalName: irq_out
     direction: out
-    physicalPort: IRQ_OUT
     description: Global interrupt request output
 
 # Location of the reusable bus library
@@ -64,57 +64,57 @@ busInterfaces:
     type: AXI4L
     mode: slave
     physicalPrefix: s_axi_ctrl_
-    associatedClock: clk_sys
-    associatedReset: rst_sys
+    associatedClock: CLK_SYS
+    associatedReset: RST_SYS
   
   - name: dma_control
     type: AXI4L
     mode: slave
     physicalPrefix: s_axi_dma_
-    associatedClock: clk_axi
-    associatedReset: rst_axi
+    associatedClock: CLK_AXI
+    associatedReset: RST_AXI
   
   - name: memory_port
     type: AXI4L # Changed from AXI4 as it is not in library
     mode: master
     physicalPrefix: m_axi_mem_
-    associatedClock: clk_ddr
-    associatedReset: rst_ddr
+    associatedClock: CLK_DDR
+    associatedReset: RST_DDR
   
   - name: data_stream_in
     type: AXIS
     mode: slave
     physicalPrefix: s_axis_data_
-    associatedClock: clk_eth
-    associatedReset: rst_eth
+    associatedClock: CLK_ETH
+    associatedReset: RST_ETH
   
   - name: data_stream_out
     type: AXIS
     mode: master
     physicalPrefix: m_axis_data_
-    associatedClock: clk_eth
-    associatedReset: rst_eth
+    associatedClock: CLK_ETH
+    associatedReset: RST_ETH
   
   - name: pcie_interface
     type: AXI4L # Changed from AXI4
     mode: master
     physicalPrefix: m_axi_pcie_
-    associatedClock: clk_pcie
-    associatedReset: rst_pcie
+    associatedClock: CLK_PCIE
+    associatedReset: RST_PCIE
   
   - name: usb_data_in
     type: AXIS
     mode: slave
     physicalPrefix: s_axis_usb_
-    associatedClock: clk_usb
-    associatedReset: rst_sys
+    associatedClock: CLK_USB
+    associatedReset: RST_SYS
   
   - name: usb_data_out
     type: AXIS
     mode: master
     physicalPrefix: m_axis_usb_
-    associatedClock: clk_usb
-    associatedReset: rst_sys
+    associatedClock: CLK_USB
+    associatedReset: RST_SYS
 
 parameters:
   - name: DATA_WIDTH

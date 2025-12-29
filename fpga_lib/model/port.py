@@ -22,8 +22,8 @@ class Port(BaseModel):
     Used for data and control ports that are not part of clock, reset, or bus interfaces.
     """
 
-    name: str = Field(..., description="Logical port name")
-    physical_port: str = Field(..., description="Physical port name in HDL")
+    name: str = Field(..., description="Physical port name (HDL)")
+    logical_name: str = Field(default="", description="Standard logical name for association")
     direction: PortDirection = Field(..., description="Port direction")
     width: int = Field(default=1, description="Port width in bits")
     description: str = Field(default="", description="Port description")

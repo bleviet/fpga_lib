@@ -221,7 +221,7 @@ class YamlIpCoreParser:
                     Clock(
                         **self._filter_none({
                             "name": clock_data.get("name"),
-                            "physical_port": clock_data.get("physicalPort"),
+                            "logical_name": clock_data.get("logicalName", "CLK"),
                             "direction": clock_data.get("direction", "in"),
                             "frequency": clock_data.get("frequency"),
                             "description": clock_data.get("description"),
@@ -240,12 +240,14 @@ class YamlIpCoreParser:
                 # Map polarity string to enum
                 polarity_str = reset_data.get("polarity", "activeLow")
                 polarity = Polarity.ACTIVE_LOW if polarity_str == "activeLow" else Polarity.ACTIVE_HIGH
+                # Default logical name based on polarity
+                default_logical = "RESET_N" if polarity_str == "activeLow" or polarity_str == "active_low" else "RESET"
 
                 resets.append(
                     Reset(
                         **self._filter_none({
                             "name": reset_data.get("name"),
-                            "physical_port": reset_data.get("physicalPort"),
+                            "logical_name": reset_data.get("logicalName", default_logical),
                             "direction": reset_data.get("direction", "in"),
                             "polarity": polarity,
                             "description": reset_data.get("description"),
@@ -265,7 +267,7 @@ class YamlIpCoreParser:
                     Port(
                         **self._filter_none({
                             "name": port_data.get("name"),
-                            "physical_port": port_data.get("physicalPort"),
+                            "logical_name": port_data.get("logicalName", ""),
                             "direction": port_data.get("direction"),
                             "width": port_data.get("width", 1),
                             "description": port_data.get("description"),
