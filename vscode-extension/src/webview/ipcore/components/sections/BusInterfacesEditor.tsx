@@ -609,6 +609,28 @@ export const BusInterfacesEditor: React.FC<BusInterfacesEditorProps> = ({
 
   const isExpanded = (index: number) => expandedIndexes.has(index);
 
+  // Scroll Bus Interface into view
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    requestAnimationFrame(() => {
+      const el = container.querySelector(`[data-bus-index="${selectedIndex}"]`);
+      el?.scrollIntoView({ block: 'nearest' });
+    });
+  }, [selectedIndex]);
+
+  // Scroll Port into view
+  useEffect(() => {
+    if (!expandedIndexes.has(selectedIndex)) return;
+    const container = containerRef.current;
+    if (!container) return;
+    requestAnimationFrame(() => {
+      const busEl = container.querySelector(`[data-bus-index="${selectedIndex}"]`);
+      const portEl = busEl?.querySelector(`[data-port-index="${selectedPortIndex}"]`);
+      portEl?.scrollIntoView({ block: 'nearest' });
+    });
+  }, [selectedPortIndex, selectedIndex, expandedIndexes]);
+
   const getClockInfo = (clockName: string) => clocks.find((c) => c.name === clockName);
   const getResetInfo = (resetName: string) => resets.find((r) => r.name === resetName);
 
@@ -675,12 +697,16 @@ export const BusInterfacesEditor: React.FC<BusInterfacesEditorProps> = ({
             return (
               <div
                 key={index}
+                data-bus-index={index}
                 className="rounded overflow-hidden"
                 style={{ border: '1px solid var(--vscode-panel-border)' }}
               >
                 {/* Header row */}
                 <div
-                  onClick={() => setSelectedIndex(index)}
+                  onClick={() => {
+                    setSelectedIndex(index);
+                    containerRef.current?.focus();
+                  }}
                   onDoubleClick={() => toggleExpand(index)}
                   className="flex items-center gap-3 px-4 py-3 cursor-pointer group"
                   style={{
@@ -1613,6 +1639,13 @@ export const BusInterfacesEditor: React.FC<BusInterfacesEditorProps> = ({
                             return (
                               <tr
                                 key={pIdx}
+                                data-port-index={pIdx}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedIndex(index);
+                                  setSelectedPortIndex(pIdx);
+                                  containerRef.current?.focus();
+                                }}
                                 style={{
                                   borderTop: '1px solid var(--vscode-panel-border)',
                                   background: isSelectedRow

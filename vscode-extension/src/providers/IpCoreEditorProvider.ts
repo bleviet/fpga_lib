@@ -220,6 +220,30 @@ export class IpCoreEditorProvider implements vscode.CustomTextEditorProvider {
           });
           this.logger.info(`Selected ${relativePaths.length} file(s)`);
         }
+      } else if (message.type === 'checkFilesExist') {
+        // Check which files exist on disk
+        const baseDir = path.dirname(document.uri.fsPath);
+        const filePaths: string[] = message.paths || [];
+        const results: { [key: string]: boolean } = {};
+
+        for (const filePath of filePaths) {
+          try {
+            const fullPath = path.isAbsolute(filePath)
+              ? filePath
+              : path.join(baseDir, filePath);
+            const uri = vscode.Uri.file(fullPath);
+            await vscode.workspace.fs.stat(uri);
+            results[filePath] = true;
+          } catch {
+            results[filePath] = false;
+          }
+        }
+
+        webviewPanel.webview.postMessage({
+          type: 'filesExistResult',
+          results: results,
+        });
+        this.logger.debug(`Checked ${filePaths.length} file(s) for existence`);
       } else {
         void this.messageHandler.handleMessage(message, document);
       }
