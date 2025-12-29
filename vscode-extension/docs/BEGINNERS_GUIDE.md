@@ -71,17 +71,57 @@ Since "The Screen" (Webview) can't save files, and "The Manager" (Extension Host
 
 ---
 
-## 4. Project Structure (Where things live)
+---
+
+## 4. The Building Blocks (Extensions Vocabulary)
+
+You will see these terms used a lot in the code. Here is what they mean:
+
+### Providers ("The Specialists")
+A "Provider" is a piece of code that tells VS Code: "Hey, I know how to handle this specific thing."
+*   **EditorProvider:** "I know how to display `.yml` files nicely."
+*   **CompletionItemProvider:** "I know how to autocomplete words when the user types."
+*   *In this project:* We use an `EditorProvider` to replace the boring text editor with our cool visual editor.
+
+### Services ("The Workers")
+"Services" are where the actual logic lives. If the "Provider" is the Store Manager, the "Service" is the person stocking the shelves.
+*   **HtmlGenerator:** A service that builds the HTML string for the webview.
+*   **DocumentManager:** A service that handles saving files to the disk.
+*   *Why separation?* It keeps code specific to one task in one place.
+
+### Commands ("The Menu Items")
+A "Command" is an action the user can trigger, usually by pressing `Ctrl+Shift+P` (The Command Palette).
+*   Examples: "Create New File", "Format Document", "Run Tests".
+*   In code, we register a command ID (like `myExtension.doSomething`) and link it to a function.
+
+### Utils ("The Toolbox")
+"Utils" (Utilities) are helper functions that do boring, repetitive tasks so the main code stays clean.
+*   *Example:* A function that calculates `1 + 1` isn't exciting, but a `CalculatorUtil` is used by everyone.
+*   *In this project:* We have utils for parsing YAML, logging messages, and handling errors.
+
+### Tests ("The Inspectors")
+"Tests" are code that checks other code.
+*   **Unit Tests:** Check small parts in isolation (e.g., "Does the add function really return 4 when I giv it 2+2?").
+*   **Integration Tests:** Check if the parts work together (e.g., "Does the extension actually open when I click the file?").
+*   We use **Jest** (a popular testing tool) to run these inspections automatically.
+
+---
+
+## 5. Project Structure (Where things live)
 
 *   `src/extension.ts`: **The Entry Point**. This is where everything starts.
 *   `src/providers/`: **The Manager's Code**. Logic for opening files and handling messages.
+*   `src/services/`: **The Backend Workers**. Specific logic like HTML generation.
+*   `src/commands/`: **The Menu Items**. Code for "Create New..." commands.
+*   `src/utils/`: **The Toolbox**. Helpers for logging and errors.
 *   `src/webview/`: **The Screen's Code**. All the React components live here.
     *   `src/webview/components/`: Reusable UI bricks (Tables, Buttons).
+    *   `src/webview/services/`: **The Frontend Workers**. Logic for the UI (like data normalization).
     *   `src/webview/ipcore/IpCoreApp.tsx`: The main "page" for the editor.
 
 ---
 
-## 5. How to Start Hacking
+## 6. How to Start Hacking
 
 1.  **Open the project** in VS Code.
 2.  Press **F5**. This launches a special "Debug Window" of VS Code with your extension loaded.
