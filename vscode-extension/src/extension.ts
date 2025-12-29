@@ -3,6 +3,7 @@ import { Logger, LogLevel } from './utils/Logger';
 import { MemoryMapEditorProvider } from './providers/MemoryMapEditorProvider';
 import { IpCoreEditorProvider } from './providers/IpCoreEditorProvider';
 import { createIpCoreCommand, createMemoryMapCommand } from './commands/FileCreationCommands';
+import { registerGeneratorCommands } from './commands/GenerateCommands';
 
 /**
  * Extension activation entry point
@@ -50,6 +51,10 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     vscode.commands.registerCommand('fpga-ip-core.createMemoryMap', createMemoryMapCommand)
   );
+
+  // Register VHDL Generator Commands
+  registerGeneratorCommands(context);
+  logger.info('Generator commands registered');
 
   logger.info('Extension activated successfully');
 }

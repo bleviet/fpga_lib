@@ -244,6 +244,176 @@ export class IpCoreEditorProvider implements vscode.CustomTextEditorProvider {
           results: results,
         });
         this.logger.debug(`Checked ${filePaths.length} file(s) for existence`);
+      } else if (message.type === 'generate') {
+        // Handle VHDL generation request
+        this.logger.info('Generate request received', message.options);
+
+        try {
+          // Import the generator
+          const { VHDLGenerator } = await import('../generator');
+
+          // Parse the current document as an IP core
+          const text = document.getText();
+          let rawData = yaml.load(text) as any;
+          const baseDir = path.dirname(document.uri.fsPath);
+
+          // Helper to resolve imports (memoryMaps, fileSets)
+          const resolveImports = async (data: any, dir: string) => {
+            // Resolve memoryMaps import
+            if (data.memoryMaps && data.memoryMaps.import) {
+              try {
+                const importPath = path.join(dir, data.memoryMaps.import);
+                const content = await vscode.workspace.fs.readFile(vscode.Uri.file(importPath));
+                const importedMap = yaml.load(new TextDecoder().decode(content));
+                data.memoryMaps = Array.isArray(importedMap) ? importedMap : [importedMap];
+              } catch (e: any) {
+                this.logger.error(`Failed to resolve memory map import: ${data.memoryMaps.import}`, e instanceof Error ? e : new Error(String(e)));
+              }
+            }
+
+            // Resolve fileSets imports
+            if (data.fileSets && Array.isArray(data.fileSets)) {
+              const resolvedSets = [];
+              for (const set of data.fileSets) {
+                if (set.import) {
+                  try {
+                    const importPath = path.join(dir, set.import);
+                    const content = await vscode.workspace.fs.readFile(vscode.Uri.file(importPath));
+                    const importedSet = yaml.load(new TextDecoder().decode(content));
+                    if (Array.isArray(importedSet)) resolvedSets.push(...importedSet);
+                    else resolvedSets.push(importedSet);
+                  } catch (e: any) {
+                    this.logger.error(`Failed to resolve fileset import: ${set.import}`, e instanceof Error ? e : new Error(String(e)));
+                  }
+                } else {
+                  resolvedSets.push(set);
+                }
+              }
+              data.fileSets = resolvedSets;
+            }
+            return data;
+          };
+
+          // Helper to recursively convert camelCase keys to snake_case
+          const toSnakeCase = (str: string) => str.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
+          const normalizeKeys = (obj: any): any => {
+            if (Array.isArray(obj)) {
+              return obj.map(v => normalizeKeys(v));
+            } else if (obj !== null && typeof obj === 'object') {
+              return Object.keys(obj).reduce((acc, key) => {
+                const snakeKey = toSnakeCase(key);
+                acc[snakeKey] = normalizeKeys(obj[key]);
+                return acc;
+              }, {} as any);
+            }
+            return obj;
+          };
+
+          // Resolve and normalize data
+          rawData = await resolveImports(rawData, baseDir);
+          const ipCoreData = normalizeKeys(rawData);
+
+          const ipName = ipCoreData.vlnv?.name?.toLowerCase() || 'ip_core';
+
+          // Ask user for output directory using folder picker
+          const folderUris = await vscode.window.showOpenDialog({
+            canSelectFiles: false,
+            canSelectFolders: true,
+            canSelectMany: false,
+            openLabel: 'Select Output Folder',
+            title: 'Select Output Directory for Generated Files',
+            defaultUri: vscode.Uri.file(path.dirname(document.uri.fsPath)),
+          });
+
+          if (!folderUris || folderUris.length === 0) {
+            webviewPanel.webview.postMessage({
+              type: 'generateResult',
+              success: false,
+              error: 'No output directory selected'
+            });
+            return;
+          }
+
+          // Create output directory structure: <selected>/<ip_name>/
+          const outputBaseDir = path.join(folderUris[0].fsPath, ipName);
+
+          // Create generator and generate files
+          const generator = new VHDLGenerator(this.context.extensionPath);
+          const busType = message.options?.busType || 'axil';
+          const files = generator.generateAll(ipCoreData, busType, {
+            includeVhdl: message.options?.includeVhdl !== false,
+            includeRegfile: message.options?.includeRegfile || false,
+            vendorFiles: message.options?.vendorFiles || 'none',
+            includeTestbench: message.options?.includeTestbench || false,
+          });
+
+          // Create subdirectories
+          const rtlDir = path.join(outputBaseDir, 'rtl');
+          const tbDir = path.join(outputBaseDir, 'tb');
+          const intelDir = path.join(outputBaseDir, 'intel');
+          const xilinxDir = path.join(outputBaseDir, 'xilinx');
+
+          await vscode.workspace.fs.createDirectory(vscode.Uri.file(outputBaseDir));
+          await vscode.workspace.fs.createDirectory(vscode.Uri.file(rtlDir));
+
+          // Determine subdirectory for each file
+          const getSubdir = (filename: string): string => {
+            if (filename.endsWith('.vhd')) return rtlDir;
+            if (filename.endsWith('.py') || filename === 'Makefile') return tbDir;
+            if (filename.endsWith('_hw.tcl')) return intelDir;
+            if (filename === 'component.xml') return xilinxDir;
+            return outputBaseDir;
+          };
+
+          // Write files with organized structure
+          const writtenFiles: string[] = [];
+          const encoder = new TextEncoder();
+
+          for (const [filename, content] of files.entries()) {
+            const targetDir = getSubdir(filename);
+
+            // Create directory if needed
+            if (targetDir !== rtlDir) {
+              await vscode.workspace.fs.createDirectory(vscode.Uri.file(targetDir));
+            }
+
+            const filePath = path.join(targetDir, filename);
+            await vscode.workspace.fs.writeFile(
+              vscode.Uri.file(filePath),
+              encoder.encode(content)
+            );
+
+            // Show relative path from baseDir
+            const relativePath = path.relative(outputBaseDir, filePath);
+            writtenFiles.push(relativePath);
+          }
+
+          this.logger.info(`Generated ${writtenFiles.length} files to ${outputBaseDir}`);
+
+          webviewPanel.webview.postMessage({
+            type: 'generateResult',
+            success: true,
+            files: writtenFiles
+          });
+
+          // Show success message with option to open folder
+          const action = await vscode.window.showInformationMessage(
+            `Generated ${writtenFiles.length} files to ${outputBaseDir}`,
+            'Open Folder'
+          );
+
+          if (action === 'Open Folder') {
+            await vscode.commands.executeCommand('revealFileInOS', vscode.Uri.file(outputBaseDir));
+          }
+
+        } catch (error: any) {
+          this.logger.error('Generation failed', error);
+          webviewPanel.webview.postMessage({
+            type: 'generateResult',
+            success: false,
+            error: error.message || 'Unknown error'
+          });
+        }
       } else {
         void this.messageHandler.handleMessage(message, document);
       }

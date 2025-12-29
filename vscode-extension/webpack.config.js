@@ -1,4 +1,5 @@
 const path = require('path');
+const CopyWebpackPlugin = require('copy-webpack-plugin');
 
 const commonResolve = {
     extensions: ['.ts', '.tsx', '.js', '.jsx', '.json']
@@ -36,7 +37,17 @@ const extensionConfig = {
         vscode: 'commonjs vscode'
     },
     resolve: commonResolve,
-    module: commonModuleRules
+    module: commonModuleRules,
+    plugins: [
+        new CopyWebpackPlugin({
+            patterns: [
+                {
+                    from: 'src/generator/templates',
+                    to: 'templates'
+                }
+            ]
+        })
+    ]
 };
 
 /** @type {import('webpack').Configuration} */

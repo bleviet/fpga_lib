@@ -8,6 +8,7 @@ import { ParametersTable } from '../sections/ParametersTable';
 import { FileSetsEditor } from '../sections/FileSetsEditor';
 import { BusInterfacesEditor } from '../sections/BusInterfacesEditor';
 import { MemoryMapsEditor } from '../sections/MemoryMapsEditor';
+import { GeneratorPanel } from '../sections/GeneratorPanel';
 import { Section } from '../../hooks/useNavigation';
 
 interface EditorPanelProps {
@@ -97,6 +98,8 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
         return <ParametersTable parameters={ipCore.parameters || []} onUpdate={onUpdate} />;
       case 'fileSets':
         return <FileSetsEditor fileSets={ipCore.fileSets || []} onUpdate={onUpdate} />;
+      case 'generate':
+        return <GeneratorPanel ipCore={ipCore} />;
       default:
         return <div>Unknown section</div>;
     }

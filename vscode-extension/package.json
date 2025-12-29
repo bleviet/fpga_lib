@@ -27,6 +27,16 @@
                 "command": "fpga-ip-core.createMemoryMap",
                 "title": "Create New Memory Map",
                 "category": "FPGA IP Core"
+            },
+            {
+                "command": "fpga-ip-core.generateVHDL",
+                "title": "Generate VHDL (AXI-Lite)",
+                "category": "FPGA IP Core"
+            },
+            {
+                "command": "fpga-ip-core.generateVHDLWithBus",
+                "title": "Generate VHDL (Select Bus Type)",
+                "category": "FPGA IP Core"
             }
         ],
         "customEditors": [
@@ -54,6 +64,8 @@
     },
     "scripts": {
         "vscode:prepublish": "npm run package",
+        "sync-templates": "mkdir -p src/generator/templates && cp -r ../fpga_lib/generator/hdl/templates/* src/generator/templates/",
+        "precompile": "npm run sync-templates",
         "compile": "webpack",
         "watch": "webpack --watch",
         "package": "webpack --mode production --devtool hidden-source-map",
@@ -84,6 +96,7 @@
         "@typescript-eslint/eslint-plugin": "^5.59.8",
         "@typescript-eslint/parser": "^5.59.8",
         "@vscode/test-electron": "^2.3.2",
+        "copy-webpack-plugin": "^13.0.1",
         "eslint": "^8.41.0",
         "glob": "^8.1.0",
         "husky": "^8.0.3",
@@ -102,12 +115,14 @@
     },
     "dependencies": {
         "@types/js-yaml": "^4.0.5",
+        "@types/nunjucks": "^3.2.6",
         "@types/react": "^18.2.0",
         "@types/react-dom": "^18.2.0",
         "@vscode/codicons": "^0.0.33",
         "@vscode/webview-ui-toolkit": "^1.2.2",
         "css-loader": "^6.8.1",
         "js-yaml": "^4.1.0",
+        "nunjucks": "^3.2.4",
         "react": "^18.2.0",
         "react-dom": "^18.2.0",
         "style-loader": "^3.3.3",

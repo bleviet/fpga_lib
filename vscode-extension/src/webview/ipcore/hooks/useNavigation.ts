@@ -8,7 +8,8 @@ export type Section =
   | 'busInterfaces'
   | 'memoryMaps'
   | 'parameters'
-  | 'fileSets';
+  | 'fileSets'
+  | 'generate';
 
 export interface SectionMeta {
   selectedIndex?: number;
@@ -30,6 +31,7 @@ export function useNavigation() {
     memoryMaps: {},
     parameters: {},
     fileSets: {},
+    generate: {},
   });
 
   /**

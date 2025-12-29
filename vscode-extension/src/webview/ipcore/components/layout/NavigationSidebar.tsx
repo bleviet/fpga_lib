@@ -66,6 +66,8 @@ const SECTIONS: SectionItem[] = [
     count: (ip) => ip?.parameters?.length || 0,
   },
   { id: 'fileSets', label: 'File Sets', icon: 'files', count: (ip) => ip?.fileSets?.length || 0 },
+  // Separator - Generate is an action, not a data section
+  { id: 'generate', label: 'Generate HDL', icon: 'tools' },
 ];
 
 /**
