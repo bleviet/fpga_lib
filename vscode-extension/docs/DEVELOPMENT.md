@@ -333,8 +333,11 @@ npm run test -- -u
 
 3. **Package extension:**
    ```bash
-   vsce package
+   # Ensure 'publisher' and 'repository' fields are set in package.json
+   npx vsce package
    ```
+   
+   This will generate a `.vsix` file (e.g., `fpga-memory-map-editor-0.0.1.vsix`) in the root directory.
 
 4. **Test .vsix file:**
    - Install in VSCode: `Extensions → ... → Install from VSIX`

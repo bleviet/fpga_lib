@@ -1,5 +1,10 @@
 {
     "name": "fpga-memory-map-editor",
+    "publisher": "bleviet",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/bleviet/fpga_lib"
+    },
     "displayName": "FPGA Memory Map Visual Editor",
     "description": "Visual editor for FPGA memory map YAML files",
     "version": "0.0.1",
