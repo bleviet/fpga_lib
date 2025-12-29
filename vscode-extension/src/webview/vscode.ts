@@ -5,12 +5,12 @@ const globalWindow = globalThis as any;
 
 // Check if API is already acquired (cached on window object)
 if (!globalWindow.__vscodeApi && globalWindow.acquireVsCodeApi) {
-    try {
-        globalWindow.__vscodeApi = globalWindow.acquireVsCodeApi();
-    } catch (e) {
-        // API already acquired by another bundle, use the existing instance
-        console.warn('VS Code API already acquired, using existing instance');
-    }
+  try {
+    globalWindow.__vscodeApi = globalWindow.acquireVsCodeApi();
+  } catch (e) {
+    // API already acquired by another bundle, use the existing instance
+    console.warn('VS Code API already acquired, using existing instance');
+  }
 }
 
 export const vscode = globalWindow.__vscodeApi;

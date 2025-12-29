@@ -7,7 +7,7 @@ import { Logger } from '../utils/Logger';
 export class HtmlGenerator {
   private readonly logger = new Logger('HtmlGenerator');
 
-  constructor(private readonly context: vscode.ExtensionContext) { }
+  constructor(private readonly context: vscode.ExtensionContext) {}
 
   /**
    * Generate the complete HTML document for the webview

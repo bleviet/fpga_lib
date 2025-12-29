@@ -40,7 +40,7 @@ export type PhysicalPort = string;
 /**
  * Port direction (typically 'in')
  */
-export type PortDirection = "in" | "out" | "inout";
+export type PortDirection = 'in' | 'out' | 'inout';
 /**
  * Port width in bits
  */
@@ -68,7 +68,7 @@ export type PhysicalPort1 = string;
 /**
  * Port direction (typically 'in')
  */
-export type PortDirection1 = "in" | "out" | "inout";
+export type PortDirection1 = 'in' | 'out' | 'inout';
 /**
  * Port width in bits
  */
@@ -80,7 +80,7 @@ export type Description2 = string;
 /**
  * Reset polarity (activeHigh or activeLow)
  */
-export type Polarity = "activeHigh" | "activeLow";
+export type Polarity = 'activeHigh' | 'activeLow';
 /**
  * Reset definitions
  */
@@ -96,7 +96,7 @@ export type PhysicalPort2 = string;
 /**
  * Port direction
  */
-export type PortDirection2 = "in" | "out" | "inout";
+export type PortDirection2 = 'in' | 'out' | 'inout';
 /**
  * Port width in bits
  */
@@ -120,7 +120,7 @@ export type Type = string;
 /**
  * Interface mode: 'master' or 'slave'
  */
-export type BusInterfaceMode = "master" | "slave" | "source" | "sink";
+export type BusInterfaceMode = 'master' | 'slave' | 'source' | 'sink';
 /**
  * Prefix for physical port names (e.g., 's_axi_')
  */
@@ -188,20 +188,20 @@ export type Range = number | string;
 /**
  * Block usage type
  */
-export type BlockUsage = "register" | "memory" | "reserved";
+export type BlockUsage = 'register' | 'memory' | 'reserved';
 /**
  * Default access
  */
 export type AccessType =
-  | "read-only"
-  | "write-only"
-  | "read-write"
-  | "write-1-to-clear"
-  | "read-write-1-to-clear"
-  | "read-only"
-  | "write-only"
-  | "read-write"
-  | "write-1-to-clear";
+  | 'read-only'
+  | 'write-only'
+  | 'read-write'
+  | 'write-1-to-clear'
+  | 'read-write-1-to-clear'
+  | 'read-only'
+  | 'write-only'
+  | 'read-write'
+  | 'write-1-to-clear';
 /**
  * Block description
  */
@@ -222,15 +222,15 @@ export type Size = number;
  * Default access type
  */
 export type AccessType1 =
-  | "read-only"
-  | "write-only"
-  | "read-write"
-  | "write-1-to-clear"
-  | "read-write-1-to-clear"
-  | "read-only"
-  | "write-only"
-  | "read-write"
-  | "write-1-to-clear";
+  | 'read-only'
+  | 'write-only'
+  | 'read-write'
+  | 'write-1-to-clear'
+  | 'read-write-1-to-clear'
+  | 'read-only'
+  | 'write-only'
+  | 'read-write'
+  | 'write-1-to-clear';
 /**
  * Reset value for entire register
  */
@@ -255,15 +255,15 @@ export type BitWidth = number;
  * Access type
  */
 export type AccessType2 =
-  | "read-only"
-  | "write-only"
-  | "read-write"
-  | "write-1-to-clear"
-  | "read-write-1-to-clear"
-  | "read-only"
-  | "write-only"
-  | "read-write"
-  | "write-1-to-clear";
+  | 'read-only'
+  | 'write-only'
+  | 'read-write'
+  | 'write-1-to-clear'
+  | 'read-write-1-to-clear'
+  | 'read-only'
+  | 'write-only'
+  | 'read-write'
+  | 'write-1-to-clear';
 /**
  * Reset/default value
  */
@@ -334,23 +334,23 @@ export type Path = string;
  * File type
  */
 export type FileType =
-  | "vhdl"
-  | "verilog"
-  | "systemverilog"
-  | "xdc"
-  | "sdc"
-  | "ucf"
-  | "cHeader"
-  | "cSource"
-  | "cppHeader"
-  | "cppSource"
-  | "pdf"
-  | "markdown"
-  | "text"
-  | "tcl"
-  | "yaml"
-  | "json"
-  | "unknown";
+  | 'vhdl'
+  | 'verilog'
+  | 'systemverilog'
+  | 'xdc'
+  | 'sdc'
+  | 'ucf'
+  | 'cHeader'
+  | 'cSource'
+  | 'cppHeader'
+  | 'cppSource'
+  | 'pdf'
+  | 'markdown'
+  | 'text'
+  | 'tcl'
+  | 'yaml'
+  | 'json'
+  | 'unknown';
 /**
  * File description
  */
@@ -378,7 +378,7 @@ export type Name11 = string;
 /**
  * Data type
  */
-export type ParameterType = "integer" | "natural" | "positive" | "real" | "boolean" | "string";
+export type ParameterType = 'integer' | 'natural' | 'positive' | 'real' | 'boolean' | 'string';
 /**
  * Parameter description
  */

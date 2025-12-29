@@ -10,20 +10,20 @@
  * @returns New array with repacked registers
  */
 export function repackRegistersForward(registers: any[], fromIndex: number): any[] {
-    const newRegs = [...registers];
+  const newRegs = [...registers];
 
-    // Start from the register just before fromIndex to determine the starting position
-    let nextOffset = fromIndex > 0 ? newRegs[fromIndex - 1].offset + 4 : 0;
+  // Start from the register just before fromIndex to determine the starting position
+  let nextOffset = fromIndex > 0 ? newRegs[fromIndex - 1].offset + 4 : 0;
 
-    for (let i = fromIndex; i < newRegs.length; i++) {
-        newRegs[i] = {
-            ...newRegs[i],
-            offset: nextOffset,
-        };
-        nextOffset += 4;
-    }
+  for (let i = fromIndex; i < newRegs.length; i++) {
+    newRegs[i] = {
+      ...newRegs[i],
+      offset: nextOffset,
+    };
+    nextOffset += 4;
+  }
 
-    return newRegs;
+  return newRegs;
 }
 
 /**
@@ -34,19 +34,19 @@ export function repackRegistersForward(registers: any[], fromIndex: number): any
  * @returns New array with repacked registers
  */
 export function repackRegistersBackward(registers: any[], fromIndex: number): any[] {
-    const newRegs = [...registers];
+  const newRegs = [...registers];
 
-    // Start from the register just after fromIndex to determine the starting position
-    let nextOffset = fromIndex < newRegs.length - 1 ? newRegs[fromIndex + 1].offset - 4 : Infinity;
+  // Start from the register just after fromIndex to determine the starting position
+  let nextOffset = fromIndex < newRegs.length - 1 ? newRegs[fromIndex + 1].offset - 4 : Infinity;
 
-    for (let i = fromIndex; i >= 0; i--) {
-        const offset = nextOffset === Infinity ? newRegs[i].offset : nextOffset;
-        newRegs[i] = {
-            ...newRegs[i],
-            offset: Math.max(0, offset),
-        };
-        nextOffset = offset - 4;
-    }
+  for (let i = fromIndex; i >= 0; i--) {
+    const offset = nextOffset === Infinity ? newRegs[i].offset : nextOffset;
+    newRegs[i] = {
+      ...newRegs[i],
+      offset: Math.max(0, offset),
+    };
+    nextOffset = offset - 4;
+  }
 
-    return newRegs;
+  return newRegs;
 }

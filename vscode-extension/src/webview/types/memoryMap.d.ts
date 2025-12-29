@@ -28,20 +28,20 @@ export type Range = number | string;
 /**
  * Block usage type
  */
-export type BlockUsage = "register" | "memory" | "reserved";
+export type BlockUsage = 'register' | 'memory' | 'reserved';
 /**
  * Default access
  */
 export type AccessType =
-  | "read-only"
-  | "write-only"
-  | "read-write"
-  | "write-1-to-clear"
-  | "read-write-1-to-clear"
-  | "read-only"
-  | "write-only"
-  | "read-write"
-  | "write-1-to-clear";
+  | 'read-only'
+  | 'write-only'
+  | 'read-write'
+  | 'write-1-to-clear'
+  | 'read-write-1-to-clear'
+  | 'read-only'
+  | 'write-only'
+  | 'read-write'
+  | 'write-1-to-clear';
 /**
  * Block description
  */
@@ -62,15 +62,15 @@ export type Size = number;
  * Default access type
  */
 export type AccessType1 =
-  | "read-only"
-  | "write-only"
-  | "read-write"
-  | "write-1-to-clear"
-  | "read-write-1-to-clear"
-  | "read-only"
-  | "write-only"
-  | "read-write"
-  | "write-1-to-clear";
+  | 'read-only'
+  | 'write-only'
+  | 'read-write'
+  | 'write-1-to-clear'
+  | 'read-write-1-to-clear'
+  | 'read-only'
+  | 'write-only'
+  | 'read-write'
+  | 'write-1-to-clear';
 /**
  * Reset value for entire register
  */
@@ -95,15 +95,15 @@ export type BitWidth = number;
  * Access type
  */
 export type AccessType2 =
-  | "read-only"
-  | "write-only"
-  | "read-write"
-  | "write-1-to-clear"
-  | "read-write-1-to-clear"
-  | "read-only"
-  | "write-only"
-  | "read-write"
-  | "write-1-to-clear";
+  | 'read-only'
+  | 'write-only'
+  | 'read-write'
+  | 'write-1-to-clear'
+  | 'read-write-1-to-clear'
+  | 'read-only'
+  | 'write-only'
+  | 'read-write'
+  | 'write-1-to-clear';
 /**
  * Reset/default value
  */

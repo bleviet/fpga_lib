@@ -66,8 +66,8 @@ async function createFileWithTemplate(defaultFileName: string, template: string)
     saveLabel: 'Create File',
     title: `Create ${defaultFileName}`,
     filters: {
-      'YAML Files': ['yml', 'yaml']
-    }
+      'YAML Files': ['yml', 'yaml'],
+    },
   });
 
   if (uri) {
@@ -76,7 +76,9 @@ async function createFileWithTemplate(defaultFileName: string, template: string)
       const document = await vscode.workspace.openTextDocument(uri);
       await vscode.window.showTextDocument(document);
     } catch (error) {
-      vscode.window.showErrorMessage(`Failed to create file: ${error instanceof Error ? error.message : String(error)}`);
+      vscode.window.showErrorMessage(
+        `Failed to create file: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   }
 }
