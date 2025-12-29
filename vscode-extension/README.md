@@ -177,6 +177,14 @@ npm install
 npm run compile
 ```
 
+## Documentation
+
+For developers interested in learning how this extension works or contributing to it:
+
+*   **[Beginner's Guide](docs/BEGINNERS_GUIDE.md)**: A high-level introduction to VS Code extension architecture and patterns (Start Here!).
+*   **[Development Guide](docs/DEVELOPMENT.md)**: Setup instructions, build commands, and testing workflows.
+*   **[Architecture](docs/ARCHITECTURE.md)**: Detailed system design and component diagrams.
+
 ## License
 
 [Add your license here]
