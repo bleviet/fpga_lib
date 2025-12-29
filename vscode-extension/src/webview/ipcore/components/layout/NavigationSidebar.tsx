@@ -140,14 +140,7 @@ export const NavigationSidebar: React.FC<NavigationSidebarProps> = ({
         color: 'var(--vscode-sideBar-foreground)',
       }}
     >
-      <div className="p-4" style={{ borderBottom: '1px solid var(--vscode-panel-border)' }}>
-        <h2 className="text-lg font-semibold">IP Core</h2>
-        {ipCore?.vlnv && (
-          <p className="text-sm mt-1" style={{ opacity: 0.7 }}>
-            {ipCore.vlnv.vendor} / {ipCore.vlnv.name}
-          </p>
-        )}
-      </div>
+
 
       <nav className="flex-1 overflow-y-auto py-2">
         {SECTIONS.map((section) => {

@@ -160,7 +160,7 @@ export const PortsTable: React.FC<PortsTableProps> = ({ ports, onUpdate }) => {
     <div ref={containerRef} className="p-6 space-y-4 outline-none" tabIndex={0}>
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-semibold">Ports</h2>
+          <h2 className="text-xl font-medium">Ports</h2>
           <p className="text-sm mt-1" style={{ opacity: 0.7 }}>
             {ports.length} port{ports.length !== 1 ? 's' : ''} •
             <span className="ml-2 text-xs font-mono" style={{ opacity: 0.5 }}>
@@ -197,10 +197,10 @@ export const PortsTable: React.FC<PortsTableProps> = ({ ports, onUpdate }) => {
                 borderBottom: '1px solid var(--vscode-panel-border)',
               }}
             >
-              <th className="px-4 py-3 text-left text-sm font-semibold">Name</th>
-              <th className="px-4 py-3 text-left text-sm font-semibold">Direction</th>
-              <th className="px-4 py-3 text-left text-sm font-semibold">Width</th>
-              <th className="px-4 py-3 text-right text-sm font-semibold">Actions</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase opacity-70">Name</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase opacity-70">Direction</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase opacity-70">Width</th>
+              <th className="px-4 py-3 text-right text-xs font-semibold uppercase opacity-70">Actions</th>
             </tr>
           </thead>
           <tbody>

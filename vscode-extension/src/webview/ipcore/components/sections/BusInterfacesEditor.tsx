@@ -617,7 +617,7 @@ export const BusInterfacesEditor: React.FC<BusInterfacesEditorProps> = ({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-semibold">Bus Interfaces</h2>
+          <h2 className="text-xl font-medium">Bus Interfaces</h2>
           <p className="text-sm mt-1" style={TEXT_STYLES.muted}>
             {busInterfaces.length} interface(s) ·{' '}
             <span style={{ fontFamily: 'monospace', fontSize: '11px' }}>
@@ -1009,7 +1009,7 @@ export const BusInterfacesEditor: React.FC<BusInterfacesEditorProps> = ({
                             background: 'var(--vscode-input-background)',
                             border:
                               highlight?.entityName === bus.name &&
-                              highlight?.field === 'associatedClock'
+                                highlight?.field === 'associatedClock'
                                 ? '1px solid var(--vscode-inputValidation-errorBorder)'
                                 : '1px solid var(--vscode-input-border)',
                             color: 'var(--vscode-input-foreground)',
@@ -1017,7 +1017,7 @@ export const BusInterfacesEditor: React.FC<BusInterfacesEditorProps> = ({
                             fontSize: 'inherit',
                             boxShadow:
                               highlight?.entityName === bus.name &&
-                              highlight?.field === 'associatedClock'
+                                highlight?.field === 'associatedClock'
                                 ? '0 0 0 1px var(--vscode-inputValidation-errorBorder)'
                                 : 'none',
                           }}
@@ -1044,7 +1044,7 @@ export const BusInterfacesEditor: React.FC<BusInterfacesEditorProps> = ({
                             background: 'var(--vscode-input-background)',
                             border:
                               highlight?.entityName === bus.name &&
-                              highlight?.field === 'associatedReset'
+                                highlight?.field === 'associatedReset'
                                 ? '1px solid var(--vscode-inputValidation-errorBorder)'
                                 : '1px solid var(--vscode-input-border)',
                             color: 'var(--vscode-input-foreground)',
@@ -1052,7 +1052,7 @@ export const BusInterfacesEditor: React.FC<BusInterfacesEditorProps> = ({
                             fontSize: 'inherit',
                             boxShadow:
                               highlight?.entityName === bus.name &&
-                              highlight?.field === 'associatedReset'
+                                highlight?.field === 'associatedReset'
                                 ? '0 0 0 1px var(--vscode-inputValidation-errorBorder)'
                                 : 'none',
                           }}
@@ -1160,7 +1160,7 @@ export const BusInterfacesEditor: React.FC<BusInterfacesEditorProps> = ({
                                     fontSize: 'inherit',
                                     boxShadow:
                                       highlight?.entityName === bus.name &&
-                                      highlight?.field === 'memoryMapRef'
+                                        highlight?.field === 'memoryMapRef'
                                         ? '0 0 0 1px var(--vscode-inputValidation-errorBorder)'
                                         : 'none',
                                   }}
@@ -1229,7 +1229,7 @@ export const BusInterfacesEditor: React.FC<BusInterfacesEditorProps> = ({
                           <div className="flex items-center gap-2">
                             <span style={TEXT_STYLES.label}>Count:</span>
                             {editingArrayField?.busIndex === index &&
-                            editingArrayField?.field === 'count' ? (
+                              editingArrayField?.field === 'count' ? (
                               <div className="flex items-center gap-1">
                                 <input
                                   type="number"
@@ -1306,7 +1306,7 @@ export const BusInterfacesEditor: React.FC<BusInterfacesEditorProps> = ({
                           <div className="flex items-center gap-2">
                             <span style={TEXT_STYLES.label}>Index Start:</span>
                             {editingArrayField?.busIndex === index &&
-                            editingArrayField?.field === 'indexStart' ? (
+                              editingArrayField?.field === 'indexStart' ? (
                               <div className="flex items-center gap-1">
                                 <input
                                   type="number"
@@ -1387,7 +1387,7 @@ export const BusInterfacesEditor: React.FC<BusInterfacesEditorProps> = ({
                           <div className="col-span-2 flex items-center gap-2">
                             <span style={TEXT_STYLES.label}>Naming Pattern:</span>
                             {editingArrayField?.busIndex === index &&
-                            editingArrayField?.field === 'namingPattern' ? (
+                              editingArrayField?.field === 'namingPattern' ? (
                               <div className="flex items-center gap-1 flex-1">
                                 <input
                                   type="text"
@@ -1470,7 +1470,7 @@ export const BusInterfacesEditor: React.FC<BusInterfacesEditorProps> = ({
                           <div className="col-span-2 flex items-center gap-2">
                             <span style={TEXT_STYLES.label}>Prefix Pattern:</span>
                             {editingArrayField?.busIndex === index &&
-                            editingArrayField?.field === 'physicalPrefixPattern' ? (
+                              editingArrayField?.field === 'physicalPrefixPattern' ? (
                               <div className="flex items-center gap-1 flex-1">
                                 <input
                                   type="text"
@@ -1630,8 +1630,8 @@ export const BusInterfacesEditor: React.FC<BusInterfacesEditorProps> = ({
                                   style={{
                                     outline:
                                       isSelectedRow &&
-                                      selectedColumn === 'name' &&
-                                      !isEditingThisPortName
+                                        selectedColumn === 'name' &&
+                                        !isEditingThisPortName
                                         ? '1px solid var(--vscode-focusBorder)'
                                         : undefined,
                                     outlineOffset: '-1px',
@@ -1726,8 +1726,8 @@ export const BusInterfacesEditor: React.FC<BusInterfacesEditorProps> = ({
                                   style={{
                                     outline:
                                       isSelectedRow &&
-                                      selectedColumn === 'width' &&
-                                      !isEditingThisPortWidth
+                                        selectedColumn === 'width' &&
+                                        !isEditingThisPortWidth
                                         ? '1px solid var(--vscode-focusBorder)'
                                         : undefined,
                                     outlineOffset: '-1px',

@@ -50,7 +50,7 @@ export const MemoryMapsEditor: React.FC<MemoryMapsEditorProps> = ({
 
   return (
     <div className="p-6 space-y-4">
-      <h2 className="text-2xl font-semibold">Memory Maps</h2>
+      <h2 className="text-xl font-medium">Memory Maps</h2>
 
       {importFile ? (
         <div className="space-y-4">
@@ -110,7 +110,7 @@ export const MemoryMapsEditor: React.FC<MemoryMapsEditorProps> = ({
 
           {/* Detected Memory Maps List */}
           <div>
-            <h3 className="text-lg font-semibold mb-3">Detected Memory Maps</h3>
+            <h3 className="text-sm font-semibold mb-3">Detected Memory Maps</h3>
             {detectedMaps.length > 0 ? (
               <div className="space-y-3">
                 {detectedMaps.map((map: any, idx: number) => (
@@ -125,7 +125,7 @@ export const MemoryMapsEditor: React.FC<MemoryMapsEditorProps> = ({
                     <div className="flex items-start justify-between">
                       <div>
                         <div className="flex items-center gap-2">
-                          <span className="font-bold text-lg">{map.name}</span>
+                          <span className="font-medium text-sm">{map.name}</span>
                           <span
                             className="text-xs px-2 py-0.5 rounded"
                             style={{

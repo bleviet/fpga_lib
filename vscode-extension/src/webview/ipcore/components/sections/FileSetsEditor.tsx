@@ -173,7 +173,7 @@ export const FileSetsEditor: React.FC<FileSetsEditorProps> = ({ fileSets, onUpda
     <div className="p-6 space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-semibold">File Sets</h2>
+          <h2 className="text-xl font-medium">File Sets</h2>
           <p className="text-sm mt-1" style={{ opacity: 0.7 }}>
             {fileSets.length} file set{fileSets.length !== 1 ? 's' : ''}
           </p>
@@ -222,7 +222,7 @@ export const FileSetsEditor: React.FC<FileSetsEditorProps> = ({ fileSets, onUpda
                   className={`codicon codicon-chevron-${expandedSets.has(setIdx) ? 'down' : 'right'}`}
                 ></span>
                 <div>
-                  <p className="font-semibold">{fileSet.name || '(imported)'}</p>
+                  <p className="font-medium text-sm">{fileSet.name || '(imported)'}</p>
                   {fileSet.description && (
                     <p className="text-xs mt-1" style={{ opacity: 0.7 }}>
                       {fileSet.description}

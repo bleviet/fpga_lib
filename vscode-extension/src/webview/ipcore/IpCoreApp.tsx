@@ -115,12 +115,12 @@ const IpCoreApp: React.FC = () => {
         }}
       >
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-lg font-semibold">IP Core Editor</h1>
-            {fileName && (
-              <p className="text-sm" style={{ opacity: 0.7 }}>
-                {fileName}
-              </p>
+          <div className="flex items-center gap-4">
+            <h1 className="text-sm font-semibold">{fileName || 'IP Core Editor'}</h1>
+            {ipCore?.vlnv && (
+              <span className="text-xs" style={{ opacity: 0.7 }}>
+                {ipCore.vlnv.vendor} / {ipCore.vlnv.library} / {ipCore.vlnv.name}
+              </span>
             )}
           </div>
           {validationErrors.length > 0 && (

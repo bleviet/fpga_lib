@@ -199,7 +199,7 @@ export const ResetsTable: React.FC<ResetsTableProps> = ({
     <div ref={containerRef} className="p-6 space-y-4 outline-none" tabIndex={0}>
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-semibold">Resets</h2>
+          <h2 className="text-xl font-medium">Resets</h2>
           <p className="text-sm mt-1" style={{ opacity: 0.7 }}>
             {resets.length} reset{resets.length !== 1 ? 's' : ''} •
             <span className="ml-2 text-xs font-mono" style={{ opacity: 0.5 }}>
@@ -236,12 +236,12 @@ export const ResetsTable: React.FC<ResetsTableProps> = ({
                 borderBottom: '1px solid var(--vscode-panel-border)',
               }}
             >
-              <th className="px-4 py-3 text-left text-sm font-semibold">Logical Name</th>
-              <th className="px-4 py-3 text-left text-sm font-semibold">Physical Name</th>
-              <th className="px-4 py-3 text-left text-sm font-semibold">Polarity</th>
-              <th className="px-4 py-3 text-left text-sm font-semibold">Direction</th>
-              <th className="px-4 py-3 text-left text-sm font-semibold">Used By</th>
-              <th className="px-4 py-3 text-right text-sm font-semibold">Actions</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase opacity-70">Logical Name</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase opacity-70">Physical Name</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase opacity-70">Polarity</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase opacity-70">Direction</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase opacity-70">Used By</th>
+              <th className="px-4 py-3 text-right text-xs font-semibold uppercase opacity-70">Actions</th>
             </tr>
           </thead>
           <tbody>

@@ -316,7 +316,7 @@ export const MetadataEditor: React.FC<MetadataEditorProps> = ({ ipCore, onUpdate
     <div ref={containerRef} className="p-6 space-y-4 outline-none" tabIndex={0}>
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-semibold">Metadata</h2>
+          <h2 className="text-xl font-medium">Metadata</h2>
           <p className="text-sm mt-1" style={{ opacity: 0.7 }}>
             {METADATA_ROWS.length} fields •
             <span className="ml-2 text-xs font-mono" style={{ opacity: 0.5 }}>
@@ -338,11 +338,11 @@ export const MetadataEditor: React.FC<MetadataEditorProps> = ({ ipCore, onUpdate
                 borderBottom: '1px solid var(--vscode-panel-border)',
               }}
             >
-              <th className="px-4 py-3 text-left text-sm font-semibold" style={{ width: '150px' }}>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase opacity-70" style={{ width: '150px' }}>
                 Field
               </th>
-              <th className="px-4 py-3 text-left text-sm font-semibold">Value</th>
-              <th className="px-4 py-3 text-right text-sm font-semibold" style={{ width: '80px' }}>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase opacity-70">Value</th>
+              <th className="px-4 py-3 text-right text-xs font-semibold uppercase opacity-70" style={{ width: '80px' }}>
                 Actions
               </th>
             </tr>
@@ -369,7 +369,7 @@ export const MetadataEditor: React.FC<MetadataEditorProps> = ({ ipCore, onUpdate
                     cursor: 'pointer',
                   }}
                 >
-                  <td className="px-4 py-3 text-sm font-semibold" style={{ opacity: 0.8 }}>
+                  <td className="px-4 py-3 text-sm font-medium" style={{ opacity: 0.8 }}>
                     {row.label}
                     {row.required && (
                       <span style={{ color: 'var(--vscode-errorForeground)' }}> *</span>
