@@ -13,13 +13,13 @@ use ieee.numeric_std.all;
 use work.{{ entity_name }}_pkg.all;
 
 entity {{ entity_name }}_core is
-{% if generics %}
+{%- if generics %}
   generic (
-{% for generic in generics %}
+{%- for generic in generics %}
     {{ generic.name }} : {{ generic.type }}{{ " := " ~ generic.default_value if generic.default_value is not none else "" }}{{ ";" if not loop.last else "" }}
-{% endfor %}
+{%- endfor %}
   );
-{% endif %}
+{%- endif %}
   port (
     -- Clock and reset
     clk      : in  std_logic;
@@ -28,13 +28,13 @@ entity {{ entity_name }}_core is
     -- Register interface (record-based)
     regs_in  : in  t_regs_sw2hw;   -- SW-writable registers (from bus wrapper)
     regs_out : out t_regs_hw2sw{{ ";" if user_ports else "" }}    -- HW-writable registers (to bus wrapper)
-{% if user_ports %}
+{%- if user_ports %}
     
     -- User ports
-{% for port in user_ports %}
+{%- for port in user_ports %}
     {{ port.name }} : {{ port.direction }} {{ port.type }}{{ ";" if not loop.last else "" }}
-{% endfor %}
-{% endif %}
+{%- endfor %}
+{%- endif %}
   );
 end entity {{ entity_name }}_core;
 

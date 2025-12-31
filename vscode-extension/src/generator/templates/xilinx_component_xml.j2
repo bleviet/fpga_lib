@@ -166,23 +166,23 @@
         <spirit:range spirit:format="long">{{ registers | length * reg_width }}</spirit:range>
         <spirit:width>{{ data_width }}</spirit:width>
         <spirit:usage>register</spirit:usage>
-{% for reg in registers %}
+{%- for reg in registers %}
         <spirit:register>
           <spirit:name>{{ reg.name | upper }}</spirit:name>
           <spirit:addressOffset spirit:format="long">{{ "0x%X" | format(loop.index0 * reg_width) }}</spirit:addressOffset>
           <spirit:size>{{ data_width }}</spirit:size>
           <spirit:access>{{ 'read-write' if reg.access in ['read-write', 'rw'] else ('read-only' if reg.access in ['read-only', 'ro'] else 'write-only') }}</spirit:access>
           <spirit:description>{{ reg.description }}</spirit:description>
-{% for field in reg.fields %}
+{%- for field in reg.fields %}
           <spirit:field>
             <spirit:name>{{ field.name }}</spirit:name>
             <spirit:bitOffset>{{ field.offset }}</spirit:bitOffset>
             <spirit:bitWidth>{{ field.width }}</spirit:bitWidth>
             <spirit:access>{{ 'read-write' if field.access in ['read-write', 'rw'] else ('read-only' if field.access in ['read-only', 'ro'] else 'write-only') }}</spirit:access>
           </spirit:field>
-{% endfor %}
+{%- endfor %}
         </spirit:register>
-{% endfor %}
+{%- endfor %}
       </spirit:addressBlock>
     </spirit:memoryMap>
   </spirit:memoryMaps>
@@ -239,17 +239,17 @@
         </spirit:wire>
       </spirit:port>
       <!-- AXI-Lite ports are defined in bus interface portMaps -->
-{% for port in user_ports %}
+{%- for port in user_ports %}
       <spirit:port>
         <spirit:name>{{ port.name }}</spirit:name>
         <spirit:wire>
           <spirit:direction>{{ port.direction }}</spirit:direction>
-{% if port.type != 'std_logic' %}
+{%- if port.type != 'std_logic' %}
           <spirit:vector>
             <spirit:left spirit:format="long">{{ port.width | default(1) - 1 }}</spirit:left>
             <spirit:right spirit:format="long">0</spirit:right>
           </spirit:vector>
-{% endif %}
+{%- endif %}
           <spirit:wireTypeDefs>
             <spirit:wireTypeDef>
               <spirit:typeName>{{ port.type }}</spirit:typeName>
@@ -259,7 +259,7 @@
           </spirit:wireTypeDefs>
         </spirit:wire>
       </spirit:port>
-{% endfor %}
+{%- endfor %}
     </spirit:ports>
   </spirit:model>
 
@@ -269,13 +269,13 @@
       <spirit:name>Component_Name</spirit:name>
       <spirit:value spirit:format="string" spirit:id="PARAM_VALUE.Component_Name">{{ entity_name }}</spirit:value>
     </spirit:parameter>
-{% for generic in generics %}
+{%- for generic in generics %}
     <spirit:parameter>
       <spirit:name>{{ generic.name | upper }}</spirit:name>
       <spirit:displayName>{{ generic.name | replace('_', ' ') | title }}</spirit:displayName>
       <spirit:value spirit:format="{{ 'long' if generic.type == 'integer' else 'string' }}" spirit:id="PARAM_VALUE.{{ generic.name | upper }}">{{ generic.default_value }}</spirit:value>
     </spirit:parameter>
-{% endfor %}
+{%- endfor %}
   </spirit:parameters>
 
   <!-- File Sets -->

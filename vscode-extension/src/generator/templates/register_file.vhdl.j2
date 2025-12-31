@@ -92,11 +92,11 @@ begin
         v_addr_index := to_integer(unsigned(wr_addr(C_ADDR_WIDTH-1 downto 2)));
         
         case v_addr_index is
-{% for reg in registers if reg.access in ['read-write', 'write-only', 'rw', 'wo'] %}
+{%- for reg in registers if reg.access in ['read-write', 'write-only', 'rw', 'wo'] %}
           when t_reg_id'pos(REG_{{ reg.name | upper }}) =>
             v_wdata := apply_wstrb(to_slv(regs.{{ reg.name | lower }}), wr_data, wr_strb);
             regs.{{ reg.name | lower }} <= to_{{ reg.name | lower }}(v_wdata);
-{% endfor %}
+{%- endfor %}
           when others =>
             null;
         end case;
@@ -120,15 +120,15 @@ begin
         v_addr_index := to_integer(unsigned(rd_addr(C_ADDR_WIDTH-1 downto 2)));
         
         case v_addr_index is
-{% for reg in registers %}
-{% if reg.access in ['read-only', 'ro'] %}
+{%- for reg in registers %}
+{%- if reg.access in ['read-only', 'ro'] %}
           when t_reg_id'pos(REG_{{ reg.name | upper }}) =>
             rd_data_int <= to_slv(regs_in.{{ reg.name | lower }});
-{% elif reg.access in ['read-write', 'rw'] %}
+{%- elif reg.access in ['read-write', 'rw'] %}
           when t_reg_id'pos(REG_{{ reg.name | upper }}) =>
             rd_data_int <= to_slv(regs.{{ reg.name | lower }});
-{% endif %}
-{% endfor %}
+{%- endif %}
+{%- endfor %}
           when others =>
             rd_data_int <= (others => '0');
         end case;
