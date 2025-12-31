@@ -38,44 +38,97 @@ class VHDLGenerator(BaseGenerator):
             template_dir = os.path.join(os.path.dirname(__file__), "templates")
         super().__init__(template_dir)
     
+    def _parse_bits(self, bits: str) -> dict:
+        """Parse bit string [M:N] or [N] into offset and width."""
+        import re
+        if not bits:
+            return {'offset': 0, 'width': 1}
+        
+        # Handle [M:N]
+        match_range = re.search(r'\[(\d+):(\d+)\]', bits)
+        if match_range:
+            high = int(match_range.group(1))
+            low = int(match_range.group(2))
+            return {'offset': low, 'width': abs(high - low) + 1}
+            
+        # Handle [N]
+        match_single = re.search(r'\[(\d+)\]', bits)
+        if match_single:
+            bit = int(match_single.group(1))
+            return {'offset': bit, 'width': 1}
+            
+        return {'offset': 0, 'width': 1}
+
     def _prepare_registers(self, ip_core: IpCore) -> List[Dict[str, Any]]:
         """
-        Extract and prepare register information from memory maps.
-        
-        Args:
-            ip_core: IP core with memory maps
-            
-        Returns:
-            List of register dictionaries for templates
+        Extract and prepare register information from memory maps (recursively).
         """
         registers = []
         
+        def process_register(reg, base_offset, prefix):
+            current_offset = base_offset + (getattr(reg, 'address_offset', None) or getattr(reg, 'offset', None) or 0)
+            reg_name = reg.name if hasattr(reg, 'name') else 'REG'
+            
+            # Check for nested registers (array/group)
+            nested_regs = getattr(reg, 'registers', [])
+            if nested_regs:
+                count = getattr(reg, 'count', 1) or 1
+                stride = getattr(reg, 'stride', 0) or 0
+                
+                for i in range(count):
+                    instance_offset = current_offset + (i * stride)
+                    instance_prefix = f"{prefix}{reg_name}_{i}_" if count > 1 else f"{prefix}{reg_name}_"
+                    
+                    for child in nested_regs:
+                        process_register(child, instance_offset, instance_prefix)
+                return
+
+            # Leaf register processing
+            fields = []
+            for field in getattr(reg, 'fields', []):
+                # Handle bit parsing
+                bit_offset = getattr(field, 'bit_offset', None)
+                bit_width = getattr(field, 'bit_width', None)
+                
+                if bit_offset is None or bit_width is None:
+                    bits_str = getattr(field, 'bits', '') 
+                    parsed = self._parse_bits(bits_str)
+                    if bit_offset is None: bit_offset = parsed['offset']
+                    if bit_width is None: bit_width = parsed['width']
+                
+                # Access normalization
+                acc = getattr(field, 'access', 'read-write')
+                acc_str = acc.value if hasattr(acc, 'value') else str(acc)
+                reg_acc = getattr(reg, 'access', 'read-write')
+                reg_acc_str = reg_acc.value if hasattr(reg_acc, 'value') else str(reg_acc)
+                
+                fields.append({
+                    'name': field.name,
+                    'offset': bit_offset,
+                    'width': bit_width,
+                    'access': acc_str.lower() if acc_str else reg_acc_str.lower(),
+                    'reset_value': field.reset_value if getattr(field, 'reset_value', None) is not None else 0,
+                    'description': getattr(field, 'description', '')
+                })
+
+            reg_acc = getattr(reg, 'access', 'read-write')
+            reg_acc_str = reg_acc.value if hasattr(reg_acc, 'value') else str(reg_acc)
+
+            registers.append({
+                'name': prefix + reg_name,
+                'offset': current_offset,
+                'access': reg_acc_str.lower(),
+                'description': getattr(reg, 'description', ''),
+                'fields': fields
+            })
+
         for mm in ip_core.memory_maps:
-            # Registers are inside address_blocks
             for block in mm.address_blocks:
+                block_offset = getattr(block, 'base_address', 0) or getattr(block, 'offset', 0) or 0
                 for reg in block.registers:
-                    reg_dict = {
-                        'name': reg.name,
-                        'offset': reg.address_offset,
-                        'access': reg.access.value if hasattr(reg.access, 'value') else str(reg.access),
-                        'description': reg.description or '',
-                        'fields': []
-                    }
-                    
-                    for field in reg.fields:
-                        field_dict = {
-                            'name': field.name,
-                            'offset': field.bit_offset,
-                            'width': field.bit_width,
-                            'access': field.access.value if hasattr(field.access, 'value') else str(field.access),
-                            'reset_value': field.reset_value if field.reset_value else 0,
-                            'description': field.description or ''
-                        }
-                        reg_dict['fields'].append(field_dict)
-                    
-                    registers.append(reg_dict)
+                    process_register(reg, block_offset, "")
         
-        return registers
+        return sorted(registers, key=lambda x: x['offset'])
     
     def _prepare_generics(self, ip_core: IpCore) -> List[Dict[str, Any]]:
         """Prepare generics/parameters for templates."""
@@ -113,9 +166,19 @@ class VHDLGenerator(BaseGenerator):
         bus_type: str = 'axil'
     ) -> Dict[str, Any]:
         """Build common template context."""
+        registers = self._prepare_registers(ip_core)
+        
+        sw_access = ['read-write', 'write-only', 'rw', 'wo']
+        hw_access = ['read-only', 'ro']
+        
+        sw_registers = [r for r in registers if r['access'] in sw_access]
+        hw_registers = [r for r in registers if r['access'] in hw_access]
+
         return {
             'entity_name': ip_core.vlnv.name.lower(),
-            'registers': self._prepare_registers(ip_core),
+            'registers': registers,
+            'sw_registers': sw_registers,
+            'hw_registers': hw_registers,
             'generics': self._prepare_generics(ip_core),
             'user_ports': self._prepare_user_ports(ip_core),
             'bus_type': bus_type,
@@ -191,10 +254,10 @@ class VHDLGenerator(BaseGenerator):
         
         return files
     
-    def generate_intel_hw_tcl(self, ip_core: IpCore) -> str:
+    def generate_intel_hw_tcl(self, ip_core: IpCore, bus_type: str = 'axil') -> str:
         """Generate Intel Platform Designer _hw.tcl component file."""
         template = self.env.get_template('intel_hw_tcl.j2')
-        context = self._get_template_context(ip_core, 'avmm')
+        context = self._get_template_context(ip_core, bus_type)
         # Add VLNV info
         context['vendor'] = ip_core.vlnv.vendor
         context['library'] = ip_core.vlnv.library
@@ -219,7 +282,8 @@ class VHDLGenerator(BaseGenerator):
     def generate_vendor_files(
         self, 
         ip_core: IpCore, 
-        vendor: str = 'both'
+        vendor: str = 'both',
+        bus_type: str = 'axil'
     ) -> Dict[str, str]:
         """
         Generate vendor-specific integration files.
@@ -227,6 +291,7 @@ class VHDLGenerator(BaseGenerator):
         Args:
             ip_core: IP core definition
             vendor: 'intel', 'xilinx', or 'both'
+            bus_type: Bus interface type
             
         Returns:
             Dictionary mapping filename to content
@@ -235,7 +300,7 @@ class VHDLGenerator(BaseGenerator):
         files = {}
         
         if vendor in ['intel', 'both']:
-            files[f"{name}_hw.tcl"] = self.generate_intel_hw_tcl(ip_core)
+            files[f"{name}_hw.tcl"] = self.generate_intel_hw_tcl(ip_core, bus_type)
         
         if vendor in ['xilinx', 'both']:
             files["component.xml"] = self.generate_xilinx_component_xml(ip_core)

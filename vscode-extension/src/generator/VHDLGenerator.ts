@@ -35,19 +35,7 @@ export class VHDLGenerator {
     private env: nunjucks.Environment;
     private readonly SUPPORTED_BUS_TYPES: BusType[] = ['axil', 'avmm'];
 
-    constructor(extensionPath?: string) {
-        // Templates are copied to dist/templates by webpack
-        // __dirname in bundled code points to dist/
-        let templatesPath: string;
-
-        if (extensionPath) {
-            // When called from extension with extensionPath, use dist/templates
-            templatesPath = path.join(extensionPath, 'dist', 'templates');
-        } else {
-            // Fallback: relative to bundled file (__dirname = dist/)
-            templatesPath = path.join(__dirname, 'templates');
-        }
-
+    constructor(templatesPath: string) {
         this.env = nunjucks.configure(templatesPath, {
             autoescape: false,
             trimBlocks: false,
@@ -281,8 +269,8 @@ export class VHDLGenerator {
     /**
      * Generate Intel Platform Designer _hw.tcl
      */
-    generateIntelHwTcl(ipCore: IpCore): string {
-        const context = this.getTemplateContext(ipCore, 'avmm');
+    generateIntelHwTcl(ipCore: IpCore, busType: BusType = 'axil'): string {
+        const context = this.getTemplateContext(ipCore, busType);
         return this.env.render('intel_hw_tcl.j2', context);
     }
 
@@ -344,7 +332,7 @@ export class VHDLGenerator {
 
         // Vendor integration files
         if (opts.vendorFiles === 'intel' || opts.vendorFiles === 'both') {
-            files.set(`${name}_hw.tcl`, this.generateIntelHwTcl(ipCore));
+            files.set(`${name}_hw.tcl`, this.generateIntelHwTcl(ipCore, busType));
         }
         if (opts.vendorFiles === 'xilinx' || opts.vendorFiles === 'both') {
             files.set('component.xml', this.generateXilinxComponentXml(ipCore));
@@ -394,7 +382,7 @@ let generatorInstance: VHDLGenerator | null = null;
 /**
  * Get or create the VHDL generator instance
  */
-export function getVHDLGenerator(templateDir?: string): VHDLGenerator {
+export function getVHDLGenerator(templateDir: string): VHDLGenerator {
     if (!generatorInstance) {
         generatorInstance = new VHDLGenerator(templateDir);
     }

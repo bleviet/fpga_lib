@@ -97,7 +97,8 @@ async function generateVHDL(
     const outputDir = outputUri?.[0] || vscode.Uri.file(defaultOutputDir);
 
     // Get template directory from extension
-    const templateDir = path.join(context.extensionPath, 'src', 'generator', 'templates');
+    // Webpack copies templates to dist/templates
+    const templateDir = path.join(context.extensionPath, 'dist', 'templates');
 
     try {
         // Show progress

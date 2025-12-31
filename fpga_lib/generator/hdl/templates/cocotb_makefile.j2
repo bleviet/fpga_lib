@@ -17,7 +17,7 @@ SIM ?= ghdl
 TOPLEVEL_LANG ?= vhdl
 
 # VHDL source files (relative to tb/ directory)
-RTL_DIR = $(PWD)/../rtl
+RTL_DIR = $(CURDIR)/../rtl
 VHDL_SOURCES += $(RTL_DIR)/{{ entity_name }}_pkg.vhd
 VHDL_SOURCES += $(RTL_DIR)/{{ entity_name }}_core.vhd
 {% if bus_type == 'axil' %}
@@ -48,6 +48,9 @@ ifeq ($(SIM),ghdl)
     
     # Additional elaboration options
     SIM_BUILD = sim_build
+    
+    # Pass compile args to GHDL executable (before unit name)
+    GHDL_ARGS += $(COMPILE_ARGS)
 endif
 
 # Cocotb settings

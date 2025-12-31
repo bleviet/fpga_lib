@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import * as yaml from 'js-yaml';
+import * as jsyaml from 'js-yaml';
+import * as YAML from 'yaml';
 import { Logger } from '../utils/Logger';
 import { HtmlGenerator } from '../services/HtmlGenerator';
 import { MessageHandler } from '../services/MessageHandler';
@@ -39,7 +40,7 @@ export class IpCoreEditorProvider implements vscode.CustomTextEditorProvider {
   private async isIpCoreDocument(document: vscode.TextDocument): Promise<boolean> {
     try {
       const text = document.getText();
-      const parsed = yaml.load(text);
+      const parsed = jsyaml.load(text);
 
       if (!parsed || typeof parsed !== 'object') {
         return false;
@@ -139,7 +140,7 @@ export class IpCoreEditorProvider implements vscode.CustomTextEditorProvider {
         this.logger.debug('updateWebview called');
         const text = document.getText();
         this.logger.debug(`Document text length: ${text.length}`);
-        const parsed = yaml.load(text);
+        const parsed = jsyaml.load(text);
         this.logger.debug('YAML parsed successfully');
 
         // Resolve imports
@@ -254,7 +255,7 @@ export class IpCoreEditorProvider implements vscode.CustomTextEditorProvider {
 
           // Parse the current document as an IP core
           const text = document.getText();
-          let rawData = yaml.load(text) as any;
+          let rawData = jsyaml.load(text) as any;
           const baseDir = path.dirname(document.uri.fsPath);
 
           // Helper to resolve imports (memoryMaps, fileSets)
@@ -264,7 +265,7 @@ export class IpCoreEditorProvider implements vscode.CustomTextEditorProvider {
               try {
                 const importPath = path.join(dir, data.memoryMaps.import);
                 const content = await vscode.workspace.fs.readFile(vscode.Uri.file(importPath));
-                const importedMap = yaml.load(new TextDecoder().decode(content));
+                const importedMap = jsyaml.load(new TextDecoder().decode(content));
                 data.memoryMaps = Array.isArray(importedMap) ? importedMap : [importedMap];
               } catch (e: any) {
                 this.logger.error(`Failed to resolve memory map import: ${data.memoryMaps.import}`, e instanceof Error ? e : new Error(String(e)));
@@ -279,7 +280,7 @@ export class IpCoreEditorProvider implements vscode.CustomTextEditorProvider {
                   try {
                     const importPath = path.join(dir, set.import);
                     const content = await vscode.workspace.fs.readFile(vscode.Uri.file(importPath));
-                    const importedSet = yaml.load(new TextDecoder().decode(content));
+                    const importedSet = jsyaml.load(new TextDecoder().decode(content));
                     if (Array.isArray(importedSet)) resolvedSets.push(...importedSet);
                     else resolvedSets.push(importedSet);
                   } catch (e: any) {
@@ -338,7 +339,9 @@ export class IpCoreEditorProvider implements vscode.CustomTextEditorProvider {
           const outputBaseDir = path.join(folderUris[0].fsPath, ipName);
 
           // Create generator and generate files
-          const generator = new VHDLGenerator(this.context.extensionPath);
+          // Fix: Pass correct template path (dist/templates)
+          const templatePath = path.join(this.context.extensionPath, 'dist', 'templates');
+          const generator = new VHDLGenerator(templatePath);
           const busType = message.options?.busType || 'axil';
           const files = generator.generateAll(ipCoreData, busType, {
             includeVhdl: message.options?.includeVhdl !== false,
@@ -404,6 +407,142 @@ export class IpCoreEditorProvider implements vscode.CustomTextEditorProvider {
 
           if (action === 'Open Folder') {
             await vscode.commands.executeCommand('revealFileInOS', vscode.Uri.file(outputBaseDir));
+          }
+
+          // Update file sets in the YAML document
+          try {
+            const doc = YAML.parseDocument(document.getText());
+            let fileSets = doc.get('fileSets') as any; // Using any for YAML AST manipulation
+
+            // categories
+            // writtenFiles are relative paths like 'rtl/file.vhd'
+            const rtlFiles = writtenFiles.filter(f => f.endsWith('.vhd') && !f.endsWith('_regfile.vhd') && !f.endsWith('_tb.vhd'));
+            const simFiles = writtenFiles.filter(f => f.endsWith('.py') || f.endsWith('Makefile') || f.endsWith('_tb.vhd'));
+            const integrationFiles = writtenFiles.filter(f => f.endsWith('.tcl') || f.endsWith('.xml') || f.endsWith('_regfile.vhd'));
+
+            this.logger.info(`Categorized files - RTL: ${rtlFiles.length}, Sim: ${simFiles.length}, Integration: ${integrationFiles.length}`);
+
+
+            const updateFileSet = (doc: any, setNames: string[], setDescription: string, newFiles: string[], fileTypeMap: (f: string) => string) => {
+              if (newFiles.length === 0) return;
+
+              let sets = doc.get('fileSets', true);
+              if (!sets && doc.get('file_sets', true)) sets = doc.get('file_sets', true);
+
+              if (!sets) {
+                doc.set('fileSets', []);
+                sets = doc.get('fileSets', true);
+              }
+
+              if (!sets || !sets.items) {
+                const msg = `Could not access fileSets sequence.`;
+                this.logger.warn(msg);
+                return;
+              }
+
+              // Find existing set matching any of the names
+              let targetSet: any;
+              let usedName = setNames[0]; // Default to first if creating new
+
+              if (sets.items) {
+                const pair = sets.items.find((item: any) => {
+                  const nameNode = item.get ? item.get('name') : item.name;
+                  const name = nameNode ? String(nameNode) : '';
+                  return setNames.includes(name);
+                });
+                if (pair) {
+                  targetSet = pair;
+                  usedName = String(targetSet.get('name'));
+                }
+              }
+
+              if (!targetSet) {
+                // Create new set using the first name
+                const newSet = new YAML.YAMLMap();
+                newSet.set('name', usedName);
+                newSet.set('description', setDescription);
+                newSet.set('files', []);
+                sets.add(newSet);
+                targetSet = sets.items[sets.items.length - 1];
+              }
+
+              // Handle 'files' sequence
+              let filesSeq: any;
+              if (targetSet && targetSet.items) {
+                const pair = targetSet.items.find((p: any) => (p.key && (p.key.value === 'files' || p.key === 'files')));
+                if (pair) {
+                  if (Array.isArray(pair.value)) {
+                    const newSeq = new YAML.YAMLSeq();
+                    if (pair.value.forEach) {
+                      pair.value.forEach((item: any) => newSeq.add(item));
+                    }
+                    pair.value = newSeq;
+                    filesSeq = newSeq;
+                  } else {
+                    filesSeq = pair.value;
+                  }
+                }
+              }
+
+              if (!filesSeq) {
+                const newSeq = new YAML.YAMLSeq();
+                targetSet.set('files', newSeq);
+                filesSeq = newSeq;
+              }
+
+              // Add new files if not exist
+              let addedCount = 0;
+              for (const filePath of newFiles) {
+                const items = filesSeq.items || [];
+                const existing = items.find((f: any) => {
+                  const p = f.get ? f.get('path') : f.path;
+                  return p === filePath;
+                });
+
+                if (!existing) {
+                  const newFile = new YAML.YAMLMap();
+                  newFile.set('path', filePath);
+                  newFile.set('type', fileTypeMap(filePath));
+                  filesSeq.add(newFile);
+                  addedCount++;
+                }
+              }
+
+              if (addedCount > 0) {
+                vscode.window.showInformationMessage(`Added ${addedCount} files to '${usedName}' set.`);
+              }
+            };
+
+            // Targeted update with aliases from common conventions
+            updateFileSet(doc, ['RTL_Sources', 'rtl_sources', 'rtl', 'RTL'], 'RTL Sources', rtlFiles, (f) => 'vhdl');
+
+            updateFileSet(doc, ['Simulation_Resources', 'simulation', 'tb'], 'Simulation Files', simFiles, (f) => {
+              if (f.endsWith('Makefile')) return 'unknown';
+              if (f.endsWith('.py')) return 'unknown';
+              return 'vhdl';
+            });
+
+            updateFileSet(doc, ['Integration', 'integration'], 'Integration Files', integrationFiles, (f) => {
+              if (f.endsWith('.tcl')) return 'tcl';
+              if (f.endsWith('.xml')) return 'unknown';
+              return 'vhdl';
+            });
+
+            // Update document
+            const newText = doc.toString();
+            const updateSuccess = await this.documentManager.updateDocument(document, newText);
+            if (updateSuccess) {
+              this.logger.info('Updated file sets with generated files');
+              vscode.window.showInformationMessage('Updated File Sets with generated files.');
+            } else {
+              this.logger.error('Failed to apply document edit for file sets');
+              vscode.window.showErrorMessage('Failed to update File Sets in YAML.');
+            }
+
+          } catch (e: any) {
+            const errorMsg = e instanceof Error ? e.message : String(e);
+            this.logger.error('Error updating file sets', e);
+            vscode.window.showErrorMessage(`Error adding files to File Sets: ${errorMsg}`);
           }
 
         } catch (error: any) {
