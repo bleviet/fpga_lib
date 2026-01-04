@@ -412,128 +412,112 @@ export class IpCoreEditorProvider implements vscode.CustomTextEditorProvider {
           // Update file sets in the YAML document
           try {
             const doc = YAML.parseDocument(document.getText());
-            let fileSets = doc.get('fileSets') as any; // Using any for YAML AST manipulation
+
+            // Convert writtenFiles paths to be relative to YAML document location
+            // writtenFiles are relative to outputBaseDir (e.g., 'rtl/file.vhd')
+            // We need paths relative to baseDir (YAML document's directory)
+            const yamlRelativeFiles = writtenFiles.map(f => {
+              const absolutePath = path.join(outputBaseDir, f);
+              return path.relative(baseDir, absolutePath);
+            });
 
             // categories
-            // writtenFiles are relative paths like 'rtl/file.vhd'
-            const rtlFiles = writtenFiles.filter(f => f.endsWith('.vhd') && !f.endsWith('_regfile.vhd') && !f.endsWith('_tb.vhd'));
-            const simFiles = writtenFiles.filter(f => f.endsWith('.py') || f.endsWith('Makefile') || f.endsWith('_tb.vhd'));
-            const integrationFiles = writtenFiles.filter(f => f.endsWith('.tcl') || f.endsWith('.xml') || f.endsWith('_regfile.vhd'));
+            const rtlFiles = yamlRelativeFiles.filter(f => f.endsWith('.vhd') && !f.endsWith('_regfile.vhd') && !f.endsWith('_tb.vhd'));
+            const simFiles = yamlRelativeFiles.filter(f => f.endsWith('.py') || f.endsWith('Makefile') || f.endsWith('_tb.vhd'));
+            const integrationFiles = yamlRelativeFiles.filter(f => f.endsWith('.tcl') || f.endsWith('.xml') || f.endsWith('_regfile.vhd'));
 
             this.logger.info(`Categorized files - RTL: ${rtlFiles.length}, Sim: ${simFiles.length}, Integration: ${integrationFiles.length}`);
+            this.logger.info(`RTL files: ${JSON.stringify(rtlFiles)}`);
 
+            // Get current fileSets once
+            const currentData = doc.toJSON();
+            let fileSets = currentData.fileSets || currentData.file_sets || [];
+            const key = currentData.fileSets ? 'fileSets' : (currentData.file_sets ? 'file_sets' : 'fileSets');
 
-            const updateFileSet = (doc: any, setNames: string[], setDescription: string, newFiles: string[], fileTypeMap: (f: string) => string) => {
-              if (newFiles.length === 0) return;
+            // Ensure fileSets is an array
+            if (!Array.isArray(fileSets)) {
+              fileSets = [];
+            }
 
-              let sets = doc.get('fileSets', true);
-              if (!sets && doc.get('file_sets', true)) sets = doc.get('file_sets', true);
+            this.logger.info(`Current fileSets: ${JSON.stringify(fileSets.map((fs: any) => ({ name: fs.name, filesCount: fs.files?.length || 0 })))}`);
 
-              if (!sets) {
-                doc.set('fileSets', []);
-                sets = doc.get('fileSets', true);
-              }
-
-              if (!sets || !sets.items) {
-                const msg = `Could not access fileSets sequence.`;
-                this.logger.warn(msg);
+            const updateFileSet = (setNames: string[], setDescription: string, newFiles: string[], fileTypeMap: (f: string) => string) => {
+              if (newFiles.length === 0) {
+                this.logger.info(`No files to add for set names: ${setNames.join(', ')}`);
                 return;
               }
 
               // Find existing set matching any of the names
-              let targetSet: any;
-              let usedName = setNames[0]; // Default to first if creating new
+              let targetSetIndex = fileSets.findIndex((fs: any) =>
+                fs && fs.name && setNames.includes(fs.name)
+              );
 
-              if (sets.items) {
-                const pair = sets.items.find((item: any) => {
-                  const nameNode = item.get ? item.get('name') : item.name;
-                  const name = nameNode ? String(nameNode) : '';
-                  return setNames.includes(name);
+              let usedName = setNames[0];
+
+              if (targetSetIndex === -1) {
+                // Create new file set
+                this.logger.info(`Creating new file set: ${usedName}`);
+                fileSets.push({
+                  name: usedName,
+                  description: setDescription,
+                  files: []
                 });
-                if (pair) {
-                  targetSet = pair;
-                  usedName = String(targetSet.get('name'));
-                }
+                targetSetIndex = fileSets.length - 1;
+              } else {
+                usedName = fileSets[targetSetIndex].name;
+                this.logger.info(`Found existing file set: ${usedName} at index ${targetSetIndex}`);
               }
 
-              if (!targetSet) {
-                // Create new set using the first name
-                const newSet = new YAML.YAMLMap();
-                newSet.set('name', usedName);
-                newSet.set('description', setDescription);
-                newSet.set('files', []);
-                sets.add(newSet);
-                targetSet = sets.items[sets.items.length - 1];
+              // Get or initialize files array
+              if (!fileSets[targetSetIndex].files) {
+                fileSets[targetSetIndex].files = [];
               }
+              const existingFiles = fileSets[targetSetIndex].files;
 
-              // Handle 'files' sequence
-              let filesSeq: any;
-              if (targetSet && targetSet.items) {
-                const pair = targetSet.items.find((p: any) => (p.key && (p.key.value === 'files' || p.key === 'files')));
-                if (pair) {
-                  if (Array.isArray(pair.value)) {
-                    const newSeq = new YAML.YAMLSeq();
-                    if (pair.value.forEach) {
-                      pair.value.forEach((item: any) => newSeq.add(item));
-                    }
-                    pair.value = newSeq;
-                    filesSeq = newSeq;
-                  } else {
-                    filesSeq = pair.value;
-                  }
-                }
-              }
-
-              if (!filesSeq) {
-                const newSeq = new YAML.YAMLSeq();
-                targetSet.set('files', newSeq);
-                filesSeq = newSeq;
-              }
-
-              // Add new files if not exist
+              // Add new files if not already present
               let addedCount = 0;
               for (const filePath of newFiles) {
-                const items = filesSeq.items || [];
-                const existing = items.find((f: any) => {
-                  const p = f.get ? f.get('path') : f.path;
-                  return p === filePath;
-                });
-
-                if (!existing) {
-                  const newFile = new YAML.YAMLMap();
-                  newFile.set('path', filePath);
-                  newFile.set('type', fileTypeMap(filePath));
-                  filesSeq.add(newFile);
+                const exists = existingFiles.some((f: any) => f.path === filePath);
+                if (!exists) {
+                  existingFiles.push({
+                    path: filePath,
+                    type: fileTypeMap(filePath)
+                  });
                   addedCount++;
                 }
               }
 
               if (addedCount > 0) {
-                vscode.window.showInformationMessage(`Added ${addedCount} files to '${usedName}' set.`);
+                this.logger.info(`Added ${addedCount} files to '${usedName}' set.`);
               }
             };
 
             // Targeted update with aliases from common conventions
-            updateFileSet(doc, ['RTL_Sources', 'rtl_sources', 'rtl', 'RTL'], 'RTL Sources', rtlFiles, (f) => 'vhdl');
+            updateFileSet(['RTL_Sources', 'rtl_sources', 'rtl', 'RTL'], 'RTL Sources', rtlFiles, (f) => 'vhdl');
 
-            updateFileSet(doc, ['Simulation_Resources', 'simulation', 'tb'], 'Simulation Files', simFiles, (f) => {
+            updateFileSet(['Simulation_Resources', 'simulation', 'tb'], 'Simulation Files', simFiles, (f) => {
               if (f.endsWith('Makefile')) return 'unknown';
-              if (f.endsWith('.py')) return 'unknown';
+              if (f.endsWith('.py')) return 'python';
               return 'vhdl';
             });
 
-            updateFileSet(doc, ['Integration', 'integration'], 'Integration Files', integrationFiles, (f) => {
+            updateFileSet(['Integration', 'integration'], 'Integration Files', integrationFiles, (f) => {
               if (f.endsWith('.tcl')) return 'tcl';
               if (f.endsWith('.xml')) return 'unknown';
               return 'vhdl';
             });
+
+            // Write back the updated fileSets once at the end
+            this.logger.info(`Final fileSets: ${JSON.stringify(fileSets.map((fs: any) => ({ name: fs.name, filesCount: fs.files?.length || 0 })))}`);
+            doc.setIn([key], fileSets);
 
             // Update document
             const newText = doc.toString();
             const updateSuccess = await this.documentManager.updateDocument(document, newText);
             if (updateSuccess) {
               this.logger.info('Updated file sets with generated files');
-              vscode.window.showInformationMessage('Updated File Sets with generated files.');
+              // Explicitly refresh the webview to show updated file sets
+              await updateWebview();
             } else {
               this.logger.error('Failed to apply document edit for file sets');
               vscode.window.showErrorMessage('Failed to update File Sets in YAML.');
