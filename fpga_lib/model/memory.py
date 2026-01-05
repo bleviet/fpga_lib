@@ -1,19 +1,28 @@
 """
 Memory map definitions for IP cores.
 
-Integrates with existing register.py for backward compatibility.
+These are Pydantic models for YAML parsing and validation.
+For runtime register access, use fpga_lib.core.register classes.
+
+Naming convention:
+- Classes here use *Def suffix (e.g., RegisterDef, BitFieldDef) to indicate
+  they are definitions/schemas, not runtime objects.
+- Use to_runtime_*() methods to convert to runtime objects.
 """
 
-from typing import List, Optional, Union, Dict, Any, ForwardRef
+from typing import List, Optional, Union, Dict, Any, ForwardRef, TYPE_CHECKING
 from pydantic import BaseModel, Field, field_validator, computed_field
 from enum import Enum
 
+if TYPE_CHECKING:
+    from fpga_lib.runtime.register import AbstractBusInterface, Register as RuntimeRegister
+
 # Forward reference for recursive register definition
-Register = ForwardRef('Register')
+RegisterDef = ForwardRef('RegisterDef')
+
 
 class AccessType(str, Enum):
-    # ... (Keep existing AccessType class unchanged) ...
-    """Register/field access types."""
+    """Register/field access types for YAML parsing."""
 
     READ_ONLY = "read-only"
     WRITE_ONLY = "write-only"
@@ -46,10 +55,21 @@ class AccessType(str, Enum):
         }
         return normalized_map.get(value.lower(), cls.READ_WRITE)
 
+    def to_runtime_access(self) -> str:
+        """Convert to runtime AccessType string value (ro, wo, rw, rw1c)."""
+        mapping = {
+            self.READ_ONLY: 'ro',
+            self.WRITE_ONLY: 'wo',
+            self.READ_WRITE: 'rw',
+            self.WRITE_1_TO_CLEAR: 'rw1c',
+            self.READ_WRITE_1_TO_CLEAR: 'rw1c',
+        }
+        return mapping.get(self, 'rw')
 
-class BitField(BaseModel):
+
+class BitFieldDef(BaseModel):
     """
-    Bit field within a register.
+    Bit field definition within a register (Pydantic model for YAML parsing).
 
     Represents a named range of bits with specific access semantics.
     """
@@ -72,17 +92,47 @@ class BitField(BaseModel):
         if isinstance(v, str):
             return AccessType.normalize(v)
         return v
-    
-    # ... (Keep existing validators, but make them optional aware if needed) ...
-    # Or rely on generator logic to resolve bits/offset conflicts, validation can be laxer here
-    # Since we added bits: Optional[str], validation model should be permissive
+
+    def to_runtime_bitfield(self):
+        """Convert to a runtime BitField object from core.register."""
+        from fpga_lib.runtime.register import BitField as RuntimeBitField
+        
+        # Resolve bit_offset and bit_width from bits string if needed
+        offset = self.bit_offset
+        width = self.bit_width
+        
+        if offset is None and self.bits:
+            # Parse bits string like "[7:4]" or "7:4"
+            bits_str = self.bits.strip('[]')
+            if ':' in bits_str:
+                high, low = bits_str.split(':')
+                offset = int(low)
+                width = int(high) - int(low) + 1
+            else:
+                offset = int(bits_str)
+                width = 1
+        
+        # Default values if still None
+        if offset is None:
+            offset = 0
+        if width is None:
+            width = 1
+        
+        return RuntimeBitField(
+            name=self.name,
+            offset=offset,
+            width=width,
+            access=self.access.to_runtime_access(),
+            description=self.description,
+            reset_value=self.reset_value
+        )
     
     model_config = {"extra": "ignore", "validate_assignment": True}
 
 
-class Register(BaseModel):
+class RegisterDef(BaseModel):
     """
-    Register definition within a memory map.
+    Register definition within a memory map (Pydantic model for YAML parsing).
 
     Represents a memory-mapped register with bit fields.
     """
@@ -93,10 +143,10 @@ class Register(BaseModel):
     access: AccessType = Field(default=AccessType.READ_WRITE, description="Default access type")
     reset_value: Optional[int] = Field(default=0, description="Reset value for entire register")
     description: str = Field(default="", description="Register description")
-    fields: List[BitField] = Field(default_factory=list, description="Bit fields")
+    fields: List[BitFieldDef] = Field(default_factory=list, description="Bit fields")
     
     # Recursion support for register groups/arrays
-    registers: List['Register'] = Field(default_factory=list, description="Child registers (for groups)")
+    registers: List['RegisterDef'] = Field(default_factory=list, description="Child registers (for groups)")
     count: Optional[int] = Field(default=1, description="Array replication count")
     stride: Optional[int] = Field(default=None, description="Array replication stride")
 
@@ -108,12 +158,36 @@ class Register(BaseModel):
             return AccessType.normalize(v)
         return v
 
-    model_config = {"extra": "ignore", "validate_assignment": True}
+    def to_runtime_register(self, bus: "AbstractBusInterface", base_offset: int = 0):
+        """
+        Convert to a runtime Register object from core.register.
+        
+        Args:
+            bus: Bus interface for hardware communication
+            base_offset: Base address offset to add to register offset
+            
+        Returns:
+            Runtime Register object
+        """
+        from fpga_lib.runtime.register import Register as RuntimeRegister
+        
+        offset = (self.address_offset or 0) + base_offset
+        runtime_fields = [f.to_runtime_bitfield() for f in self.fields]
+        
+        return RuntimeRegister(
+            name=self.name,
+            offset=offset,
+            bus=bus,
+            fields=runtime_fields,
+            description=self.description
+        )
+
+    model_config = {"extra": "ignore", "validate_assignment": True, "populate_by_name": True}
 
 
-class RegisterArray(BaseModel):
+class RegisterArrayDef(BaseModel):
     """
-    Array of registers with automatic address calculation.
+    Array of registers definition with automatic address calculation (Pydantic model).
 
     Used for repeated register structures (e.g., per-channel registers).
     """
@@ -122,7 +196,7 @@ class RegisterArray(BaseModel):
     base_address: int = Field(..., description="Starting address", ge=0)
     count: int = Field(..., description="Number of instances", ge=1)
     stride: int = Field(..., description="Address increment between instances", ge=4)
-    template: Register = Field(..., description="Register template for each instance")
+    template: RegisterDef = Field(..., description="Register template for each instance")
     description: str = Field(default="", description="Array description")
 
     @field_validator("stride")
@@ -143,6 +217,21 @@ class RegisterArray(BaseModel):
         """Get name for specific array instance."""
         return f"{self.name}{index}"
 
+    def to_runtime_array(self, bus: "AbstractBusInterface"):
+        """Convert to a runtime RegisterArrayAccessor from core.register."""
+        from fpga_lib.runtime.register import RegisterArrayAccessor
+        
+        runtime_fields = [f.to_runtime_bitfield() for f in self.template.fields]
+        
+        return RegisterArrayAccessor(
+            name=self.name,
+            base_offset=self.base_address,
+            count=self.count,
+            stride=self.stride,
+            field_template=runtime_fields,
+            bus_interface=bus
+        )
+
     @computed_field
     @property
     def total_size(self) -> int:
@@ -162,7 +251,7 @@ class BlockUsage(str, Enum):
 
 class AddressBlock(BaseModel):
     """
-    Contiguous address block within a memory map.
+    Contiguous address block within a memory map (Pydantic model).
     
     Can contain registers, memory, or reserved space.
     """
@@ -177,12 +266,38 @@ class AddressBlock(BaseModel):
     default_reg_width: int = Field(default=32, description="Default register width")
 
     # Content
-    registers: List[Register] = Field(default_factory=list, description="Registers in block")
+    registers: List[RegisterDef] = Field(default_factory=list, description="Registers in block")
     
-    model_config = {"extra": "ignore", "validate_assignment": True}
+    model_config = {"extra": "ignore", "validate_assignment": True, "populate_by_name": True}
+
+    @property
+    def end_address(self) -> int:
+        """Calculate end address of the block."""
+        range_val = self.range
+        if isinstance(range_val, str):
+            # Simple parsing for common suffixes
+            suffix = range_val[-1].upper()
+            if suffix == 'K': range_val = int(range_val[:-1]) * 1024
+            elif suffix == 'M': range_val = int(range_val[:-1]) * 1024 * 1024
+            elif suffix == 'G': range_val = int(range_val[:-1]) * 1024 * 1024 * 1024
+            else: range_val = int(range_val)
+        
+        # Default to 0 size if None (though parser provides default)
+        size = range_val if range_val is not None else 0
+        return self.base_address + size
+
+    def contains_address(self, address: int) -> bool:
+        """Check if address is within this block."""
+        return self.base_address <= address < self.end_address
+
+    @property
+    def hex_range(self) -> str:
+        """Get range as hex string."""
+        return f"[{hex(self.base_address)} : {hex(self.end_address)}]"
     
+
 # Update forward refs
-Register.model_rebuild()
+RegisterDef.model_rebuild()
 AddressBlock.model_rebuild()
 
 
@@ -196,7 +311,7 @@ class MemoryMapReference(BaseModel):
 
 class MemoryMap(BaseModel):
     """
-    Complete memory map for an IP core.
+    Complete memory map for an IP core (Pydantic model).
 
     Organizes registers into address blocks with validation.
     """
@@ -234,7 +349,7 @@ class MemoryMap(BaseModel):
                 return block
         return None
 
-    def get_register_by_name(self, name: str) -> Optional[Register]:
+    def get_register_by_name(self, name: str) -> Optional[RegisterDef]:
         """Find register by name across all blocks."""
         for block in self.address_blocks:
             for reg in block.registers:
@@ -259,3 +374,10 @@ class MemoryMap(BaseModel):
         return max_end - min_start
 
     model_config = {"extra": "forbid", "validate_assignment": True}
+
+
+# Backward compatibility aliases
+# These allow existing code to continue using the old names
+Register = RegisterDef
+BitField = BitFieldDef
+RegisterArray = RegisterArrayDef
