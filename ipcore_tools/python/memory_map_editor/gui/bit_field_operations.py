@@ -6,7 +6,7 @@ and field manipulation operations.
 """
 
 from typing import List, Tuple, Optional
-from fpga_lib.core import BitField, Register, RegisterArrayAccessor
+from fpga_lib.runtime.register import BitField, Register, RegisterArrayAccessor
 
 
 class BitFieldOperations:

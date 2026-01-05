@@ -11,7 +11,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Signal, QEvent
 
-from fpga_lib.core import Register, RegisterArrayAccessor
+from fpga_lib.runtime.register import Register, RegisterArrayAccessor
 from debug_mode import debug_manager, DebugValue
 
 

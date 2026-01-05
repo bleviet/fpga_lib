@@ -10,7 +10,7 @@ from PySide6.QtCore import Qt, QRect, QSize
 from PySide6.QtGui import QPainter, QPen, QBrush, QColor, QFont, QFontMetrics
 
 from memory_map_core import MemoryMapProject
-from fpga_lib.core import Register, RegisterArrayAccessor, BitField
+from fpga_lib.runtime.register import Register, RegisterArrayAccessor, BitField
 from debug_mode import debug_manager
 
 

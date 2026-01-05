@@ -16,7 +16,7 @@ import os
 project_root = Path(__file__).parent.parent.parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-from fpga_lib.core import BitField, Register, AbstractBusInterface, RegisterArrayAccessor
+from fpga_lib.runtime.register import BitField, Register, AbstractBusInterface, RegisterArrayAccessor
 
 
 class MockBusInterface(AbstractBusInterface):

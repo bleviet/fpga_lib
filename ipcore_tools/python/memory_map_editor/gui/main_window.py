@@ -19,7 +19,7 @@ from .memory_map_outline import MemoryMapOutline
 from .register_detail_form import RegisterDetailForm
 from .bit_field_visualizer import BitFieldVisualizer
 from memory_map_core import MemoryMapProject, load_from_yaml, save_to_yaml, create_new_project
-from fpga_lib.core import Register, RegisterArrayAccessor
+from fpga_lib.runtime.register import Register, RegisterArrayAccessor
 
 
 class ScalingDialog(QDialog):

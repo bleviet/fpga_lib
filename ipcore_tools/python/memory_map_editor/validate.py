@@ -21,7 +21,7 @@ def main():
         # Test core imports
         print("Testing core imports...")
         from memory_map_core import MemoryMapProject, load_from_yaml, save_to_yaml
-        from fpga_lib.core import Register, BitField, RegisterArrayAccessor
+        from fpga_lib.runtime.register import Register, BitField, RegisterArrayAccessor
         print("✓ Core modules imported successfully")
         
         # Test loading a sample memory map
