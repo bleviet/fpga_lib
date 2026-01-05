@@ -21,49 +21,23 @@ trigger: always_on
 
 ## UI & Design System (Webviews)
 
-### 1. The 8-Point Grid System
-Strictly adhere to the 8-point spatial system for all layout, spacing, and sizing.
-- **Base Unit:** 8px.
-- **Sub-Unit:** 4px (only for fine-tuning inside components).
-- **Tailwind Mapping:**
-  - `class="...-1"` = 4px (0.25rem) -> *Sub-unit*
-  - `class="...-2"` = 8px (0.5rem) -> *1x Base Unit*
-  - `class="...-3"` = 12px (0.75rem) -> *Allowed for 4px rhythm*
-  - `class="...-4"` = 16px (1rem)    -> *2x Base Unit*
-  - `class="...-8"` = 32px (2rem)    -> *4x Base Unit*
-- **Forbidden:** Do NOT use arbitrary values like `w-[13px]` or `mt-[5px]`. Always snap to the nearest grid step.
+**All visual styling rules are centralized in:**
+📄 **[../../.github/instructions/visual-styling.md](../../.github/instructions/visual-styling.md)**
 
-### 2. Tailwind CSS & Theming
-- **Theme Support:** The UI must support VS Code Light, Dark, and High Contrast themes automatically.
-- **Color Variables:** Do NOT hardcode hex colors (e.g., `#ffffff`).
-  - Use VS Code CSS variables extended in Tailwind config.
-  - Example: `bg-[var(--vscode-editor-background)]` or `text-[var(--vscode-editor-foreground)]`.
-- **Flex/Grid:** Use Flexbox and Grid utility classes for layout. Avoid absolute positioning unless creating overlays/modals.
+This includes:
+- VS Code CSS variable usage (REQUIRED)
+- 8-point grid system (STRICT)
+- Typography rules (font-mono for technical data)
+- Component patterns
+- Color system
+- Dark mode support
 
-### 3. Component Structure
-- **Container:** Major sections should use `p-4` (16px) padding.
-- **Spacing:** Use `gap-2` (8px) or `gap-4` (16px) for lists and form groups.
-- **Interactivity:** Interactive elements must have `hover:bg-...` states that respect the VS Code theme contrast guidelines.
+**Quick Summary:**
+- ✅ Use `var(--vscode-*)` for ALL colors
+- ✅ Follow 8-point grid (no arbitrary px values)
+- ✅ Use `font-mono` for addresses, hex, bits
+- ❌ Never use hardcoded colors or Tailwind color scales
+- ❌ Never use arbitrary spacing (`mt-[13px]`)
 
-### 3. Adaptive Theming & Color Schemes
-The UI must automatically inherit the user's current VS Code theme (Light, Dark, High Contrast, or Custom).
-
-- **Zero Hardcoding Policy:**
-  - **FORBIDDEN:** Never use hex codes (`#ffffff`, `#000000`) or standard Tailwind color scales (`bg-gray-50`, `text-slate-900`) for base UI elements.
-  - **REQUIRED:** You MUST use VS Code CSS Variables. This ensures the extension looks correct in *any* theme.
-
-- **Variable Mapping (Tailwind):**
-  - Use arbitrary values referencing the variables:
-    - **Background:** `bg-[var(--vscode-editor-background)]`
-    - **Text:** `text-[var(--vscode-editor-foreground)]`
-    - **Borders:** `border-[var(--vscode-panel-border)]`
-    - **Inputs:** `bg-[var(--vscode-input-background)]`, `text-[var(--vscode-input-foreground)]`
-    - **Buttons:** `bg-[var(--vscode-button-background)]`, `text-[var(--vscode-button-foreground)]`
-
-- **Interactive States:**
-  - Hover and Focus states must also use theme variables to ensure contrast.
-  - Example: `hover:bg-[var(--vscode-list-hoverBackground)]` instead of `hover:bg-gray-200`.
-
-- **High Contrast Support:**
-  - Always verify that borders are visible when `var(--vscode-highContrast-border)` is active.
-  - Do not rely on shadows (`box-shadow`) alone for hierarchy, as these are often disabled in High Contrast mode.
+For complete guidelines, examples, and component patterns:
+👉 **[Read visual-styling.md](../../.github/instructions/visual-styling.md)**
