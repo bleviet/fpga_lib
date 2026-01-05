@@ -1,0 +1,7 @@
+apiVersion: "1.0"
+
+vlnv:
+  vendor: example.com
+  library: examples
+  name: minimal_core
+  version: 1.0.0

@@ -1,0 +1,37 @@
+- name: CSR_MAP
+  description: Control/Status Register Map with multiple fields
+  addressBlocks:
+    - name: CONTROL_REGS
+      offset: 0
+      usage: register
+      defaultRegWidth: 32
+      registers:
+        - name: CTRL
+          description: Control register with multiple fields
+          fields:
+            - name: ENABLE
+              bits: "[0:0]"
+              access: read-write
+              description: Global enable
+            - name: MODE
+              bits: "[2:1]"
+              access: read-write
+              description: Operating mode (2 bits)
+            - name: IRQ_EN
+              bits: "[3:3]"
+              access: read-write
+              description: Interrupt enable
+            - name: RESERVED
+              bits: "[31:4]"
+              access: read-only
+        - name: STATUS
+          description: Status register
+          access: read-only
+          fields:
+            - name: READY
+              bits: "[0:0]"
+              access: read-only
+              description: Ready flag
+            - name: RESERVED
+              bits: "[31:1]"
+              access: read-only

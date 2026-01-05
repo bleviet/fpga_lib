@@ -46,6 +46,9 @@
                 "selector": [
                     {
                         "filenamePattern": "*.memmap.yml"
+                    },
+                    {
+                        "filenamePattern": "*.mm.yml"
                     }
                 ],
                 "priority": "default"
@@ -55,7 +58,7 @@
                 "displayName": "IP Core Visual Editor",
                 "selector": [
                     {
-                        "filenamePattern": "*.yml"
+                        "filenamePattern": "*.ip.yml"
                     }
                 ],
                 "priority": "default"
@@ -83,7 +86,7 @@
         "test:unit:coverage": "jest --coverage",
         "test:all": "npm run test:unit && npm run test",
         "prepare": "husky install",
-        "generate-types": "json2ts -i schemas/memory_map.schema.json -o src/webview/types/memoryMap.d.ts && json2ts -i schemas/ip_core.schema.json -o src/webview/types/ipCore.d.ts"
+        "generate-types": "json2ts -i ../ipcore_spec/schemas/memory_map.schema.json -o src/webview/types/memoryMap.d.ts && json2ts -i ../ipcore_spec/schemas/ip_core.schema.json -o src/webview/types/ipCore.d.ts"
     },
     "devDependencies": {
         "@testing-library/jest-dom": "^6.9.1",

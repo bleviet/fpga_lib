@@ -1,0 +1,75 @@
+- name: CSR_MAP
+  description: Memory map demonstrating register arrays with count and stride
+  addressBlocks:
+    - name: CHANNEL_REGS
+      offset: 0
+      usage: register
+      defaultRegWidth: 32
+      registers:
+        # Register array: Creates multiple instances of these registers
+        - name: CHANNEL
+          count: 4               # Creates CHANNEL_0, CHANNEL_1, CHANNEL_2, CHANNEL_3
+          stride: 64             # 64 bytes between each channel instance
+          description: Per-channel configuration and status
+          registers:
+            - name: CTRL
+              offset: 0          # Offset within channel instance
+              description: Channel control
+              fields:
+                - name: ENABLE
+                  bits: "[0:0]"
+                  access: read-write
+                  description: Enable channel
+                - name: MODE
+                  bits: "[2:1]"
+                  access: read-write
+                  description: Channel mode
+                - name: INT_EN
+                  bits: "[3:3]"
+                  access: read-write
+                  description: Interrupt enable
+                - name: RESERVED
+                  bits: "[31:4]"
+                  access: read-only
+            
+            - name: STATUS
+              offset: 4
+              description: Channel status (write-1-to-clear)
+              access: write-1-to-clear
+              fields:
+                - name: IRQ_PENDING
+                  bits: "[0:0]"
+                  access: write-1-to-clear
+                  description: Interrupt pending
+                - name: OVERFLOW
+                  bits: "[1:1]"
+                  access: write-1-to-clear
+                  description: Counter overflow
+                - name: RESERVED
+                  bits: "[31:2]"
+                  access: read-only
+            
+            - name: PERIOD
+              offset: 8
+              description: Timer period value
+              access: read-write
+              fields:
+                - name: PERIOD_VALUE
+                  bits: "[31:0]"
+                  access: read-write
+                  description: Period in clock cycles
+            
+            - name: COUNTER
+              offset: 12
+              description: Current counter value
+              access: read-only
+              fields:
+                - name: COUNT_VALUE
+                  bits: "[31:0]"
+                  access: read-only
+                  description: Current count
+            
+            - name: COMPARE
+              offset: 16
+              description: Compare threshold
+              access: read-write
