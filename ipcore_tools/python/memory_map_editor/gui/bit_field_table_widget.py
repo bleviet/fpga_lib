@@ -11,7 +11,7 @@ from PySide6.QtCore import Signal, Qt, QSize
 from PySide6.QtGui import QColor, QKeySequence, QShortcut
 
 from memory_map_core import Register, RegisterArrayAccessor, BitField
-from examples.gui.memory_map_editor.debug_mode import debug_manager, DebugValue
+from debug_mode import debug_manager, DebugValue
 from .delegates import AccessTypeDelegate
 from .bit_field_operations import BitFieldOperations
 

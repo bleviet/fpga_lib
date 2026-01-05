@@ -11,7 +11,7 @@ from PySide6.QtGui import QPainter, QPen, QBrush, QColor, QFont, QFontMetrics
 
 from memory_map_core import MemoryMapProject
 from fpga_lib.core import Register, RegisterArrayAccessor, BitField
-from examples.gui.memory_map_editor.debug_mode import debug_manager
+from debug_mode import debug_manager
 
 
 class BitFieldVisualizerWidget(QWidget):
@@ -565,7 +565,7 @@ class BitFieldVisualizerWidget(QWidget):
         # Only update if the value actually changed
         if new_value != current_value:
             # Update the register value
-            from examples.gui.memory_map_editor.debug_mode import DebugValue
+            from debug_mode import DebugValue
             current_set.set_register_value(register_name, DebugValue(new_value))
 
             # Update field values from the new register value
