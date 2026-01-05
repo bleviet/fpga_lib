@@ -322,8 +322,8 @@ class MemoryMapEditorApp(App):
         try:
             parser = YamlIpCoreParser()
 
-            # Check if it's a .memmap.yml or a full IP core file
-            if file_path.suffix == ".yml" and ".memmap" in file_path.name:
+            # Check if it's a memory map file (.memmap.yml or .mm.yml) or a full IP core file
+            if file_path.suffix == ".yml" and (".memmap" in file_path.name or ".mm." in file_path.name):
                 # Direct memory map file
                 self.memory_maps = parser._load_memory_maps_from_file(file_path)
             else:
