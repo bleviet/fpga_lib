@@ -30,10 +30,8 @@ from pyparsing import (
     restOfLine,
 )
 
+from fpga_lib.model import IpCore, Port, PortDirection
 from fpga_lib.core.data_types import DataType, VHDLBaseType
-from fpga_lib.core.port import Port, Direction
-from fpga_lib.core.interface import Interface
-from fpga_lib.core.ip_core import IPCore
 
 # Enable packrat parsing for better performance
 ParserElement.set_default_whitespace_chars(" \t\n\r")
@@ -343,7 +341,7 @@ class VHDLParser:
             Parameter object
         """
         try:
-            from fpga_lib.core.ip_core import Parameter
+            from fpga_lib.model import Parameter
 
             generic_name = generic_data.get("generic_name")
             type_info = generic_data.get("type")
@@ -597,7 +595,7 @@ class VHDLParser:
 
                     # Add generics as parameters to the IPCore
                     for generic_data in generics:
-                        from fpga_lib.core.ip_core import Parameter
+                        from fpga_lib.model import Parameter
 
                         generic_name = generic_data[0].strip()
                         type_str = generic_data[1].strip()

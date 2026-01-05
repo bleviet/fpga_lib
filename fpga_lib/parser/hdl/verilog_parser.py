@@ -30,10 +30,8 @@ from pyparsing import (
     CaselessKeyword,
 )
 
+from fpga_lib.model import IpCore, Port, PortDirection
 from fpga_lib.core.data_types import DataType, VHDLBaseType
-from fpga_lib.core.port import Port, Direction
-from fpga_lib.core.interface import Interface
-from fpga_lib.core.ip_core import IPCore
 
 # Enable packrat parsing for better performance
 ParserElement.set_default_whitespace_chars(" \t\n\r")
