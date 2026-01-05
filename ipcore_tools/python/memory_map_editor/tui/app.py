@@ -1047,9 +1047,17 @@ class MemoryMapEditorApp(App):
         table.clear()
 
         for field in register.fields:
+            # Format bit range from offset and width
+            if field.bit_width == 1:
+                bit_range_str = f"[{field.bit_offset}:{field.bit_offset}]"
+            else:
+                msb = field.bit_offset + field.bit_width - 1
+                lsb = field.bit_offset
+                bit_range_str = f"[{msb}:{lsb}]"
+            
             table.add_row(
                 field.name,
-                field.bit_range,
+                bit_range_str,
                 field.access.value,
                 f"0x{field.reset_value or 0:X}",
                 field.description or ""
