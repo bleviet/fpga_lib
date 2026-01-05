@@ -80,12 +80,27 @@ python main.py
 
 ### Opening Sample Memory Maps
 
-The application includes several sample memory maps in the `resources/sample_memory_maps/` directory:
+Sample memory maps are available in the `ipcore_spec/examples/` directory:
 
-- `gpio_controller.yaml` - Simple GPIO controller with input/output registers
-- `uart_controller.yaml` - UART controller with configuration and data registers
-- `dma_engine.yaml` - Complex DMA engine with descriptor rings
-- `ethernet_mac.yaml` - Ethernet MAC controller with buffer descriptors
+**TUI:**
+```bash
+python tui_main.py ../../../ipcore_spec/examples/timers/my_timer_core.mm.yml
+python tui_main.py ../../../ipcore_spec/examples/interfaces/gpio/gpio_controller.mm.yml
+python tui_main.py ../../../ipcore_spec/examples/interfaces/uart/uart_controller.mm.yml
+```
+
+**GUI:**
+```bash
+python main.py
+# Then use File → Open to select a .mm.yml file from ipcore_spec/examples/
+```
+
+**Available examples:**
+- `ipcore_spec/examples/timers/my_timer_core.mm.yml` - Timer with array registers
+- `ipcore_spec/examples/interfaces/gpio/gpio_controller.mm.yml` - Simple GPIO controller
+- `ipcore_spec/examples/interfaces/uart/uart_controller.mm.yml` - UART controller
+- `ipcore_spec/examples/interfaces/dma/dma_engine.mm.yml` - Complex DMA engine
+- `ipcore_spec/examples/networking/ethernet_mac.mm.yml` - Ethernet MAC controller
 
 ### Interface Components
 
@@ -195,24 +210,41 @@ The memory map data can be used to drive:
 
 ```
 memory_map_editor/
-├── main.py                    # Application entry point
-├── memory_map_core.py         # Core data model
-├── gui/
+├── gui/                       # Desktop GUI (PyQt6)
 │   ├── __init__.py
 │   ├── main_window.py         # Main application window
 │   ├── memory_map_outline.py  # Register tree view
 │   ├── register_detail_form.py # Property editor
-│   └── bit_field_visualizer.py # Bit field visualization
-└── resources/
-    └── sample_memory_maps/    # Example memory maps
+│   ├── register_properties_widget.py
+│   ├── bit_field_table_widget.py
+│   ├── bit_field_visualizer.py # Bit field visualization
+│   ├── bit_field_operations.py
+│   └── delegates.py
+├── tui/                       # Terminal UI (Textual)
+│   ├── __init__.py
+│   ├── app.py                 # TUI application
+│   └── README.md              # TUI-specific docs
+├── main.py                    # GUI entry point
+├── tui_main.py                # TUI entry point
+├── memory_map_core.py         # Core data model (shared)
+├── debug_mode.py              # Debug functionality (shared)
+├── validate.py                # Validation utility
+└── requirements.txt           # Dependencies
 ```
 
 ### Testing
 
-The application can be tested with the provided sample memory maps:
+Test with sample memory maps from ipcore_spec:
 
+**GUI:**
 ```bash
-python main.py resources/sample_memory_maps/gpio_controller.yaml
+python main.py
+# File → Open → ../../../ipcore_spec/examples/timers/my_timer_core.mm.yml
+```
+
+**TUI:**
+```bash
+python tui_main.py ../../../ipcore_spec/examples/timers/my_timer_core.mm.yml
 ```
 
 ### Contributing
