@@ -37,7 +37,7 @@ pip install PySide6 PyYAML
 ### Running the Application
 
 ```bash
-cd examples/gui/memory_map_editor
+cd ipcore_tools/python/memory_map_editor
 python main.py
 ```
 
