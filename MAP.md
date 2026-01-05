@@ -3,19 +3,34 @@
 ## [Backend] - Python (uv)
 
 * **Entry Point:** `run_gen.py` - CLI tool that parses IP Core YAML and generates VHDL/testbench files.
-* **Core Models:** `fpga_lib/model/` - Pydantic models for IP cores, memory maps, buses, clocks, resets, ports, and file sets.
-* **Domain Logic:** `fpga_lib/core/` - Runtime abstractions for registers, bit fields, interfaces, and IP cores used by drivers.
-* **Parsers:** `fpga_lib/parser/yaml/` - `YamlIpCoreParser` for IP core YAML; `fpga_lib/parser/hdl/` - VHDL/Verilog parsers.
-* **Generators:** `fpga_lib/generator/hdl/vhdl_generator.py` - Jinja2-based VHDL code generator for packages, cores, bus wrappers.
+* **Schema Models:** `fpga_lib/model/` - Pydantic models for IP cores, memory maps, buses, clocks, resets, ports, and file sets (YAML validation).
+* **Runtime I/O:** `fpga_lib/runtime/` - Hardware register access classes (Register, BitField, RegisterArrayAccessor) for drivers and testbenches.
+* **Parsers:** `fpga_lib/parser/yaml/` - `YamlIpCoreParser` for IP core YAML; `fpga_lib/parser/hdl/` - VHDL/Verilog parsers (deprecated).
+* **Generators:** `fpga_lib/generator/hdl/vhdl_generator.py` - Jinja2-based VHDL code generator for packages, cores, bus wrappers, testbenches.
 * **Drivers:** `fpga_lib/driver/` - Runtime drivers for Cocotb simulation with AXI-Lite bus interface.
-* **TUI:** `fpga_lib/tui/app.py` - Textual-based terminal editor for memory map YAML files.
-* **Dependencies:** pydantic, jinja2, pyyaml, pyparsing, textual (see `pyproject.toml`).
+* **Memory Map Editor:** `ipcore_tools/python/memory_map_editor/` - Standalone GUI (PyQt6) and TUI (Textual) for editing memory maps.
+* **Dependencies:** pydantic, jinja2, pyyaml, pyparsing, textual, PySide6 (see `pyproject.toml`).
 
 ---
 
 ## [Tools] - Standalone Applications
 
 ### VSCode Extension (`ipcore_tools/vscode/ipcore_editor/`)
+* `package.json`: Extension manifest and configuration.
+* `src/extension.ts`: Main activation handler.
+* `src/providers/`: Custom editor providers for `.ip.yml` and `.mm.yml` files.
+* `src/webview/`: React-based visual editors (IP Core & Memory Map).
+* `src/generator/`: VHDL and testbench generation.
+
+### Memory Map Editor (`ipcore_tools/python/memory_map_editor/`)
+* `main.py`: PyQt6 standalone GUI application.
+* `tui_main.py`: Textual-based TUI application.
+* `gui/`: PyQt6 widgets and components.
+* `tui/`: Textual components and screens.
+
+---
+
+## [VSCode Extension] - TypeScript (npm)
 * `package.json`: Extension manifest and configuration.
 * `src/extension.ts`: Main activation handler.
 * `src/providers/`: Custom editor providers for `.ip.yml` and `.mm.yml` files.
