@@ -15,13 +15,14 @@ pip install textual rich
 Launch the editor with a memory map file:
 
 ```bash
-python -m fpga_lib.tui examples/ip/my_timer_core.memmap.yml
+cd ipcore_tools/python/memory_map_editor
+python tui_main.py ../../../ipcore_spec/examples/timers/my_timer_core.mm.yml
 ```
 
 Or start with an empty editor:
 
 ```bash
-python -m fpga_lib.tui
+python tui_main.py
 ```
 
 ## Features

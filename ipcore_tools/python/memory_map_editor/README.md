@@ -18,7 +18,9 @@ This application provides a graphical interface for creating, editing, and manag
 ## Requirements
 
 ```
-PySide6
+PySide6  # For Desktop GUI
+textual  # For Terminal UI
+rich     # For Terminal UI
 PyYAML
 fpga_lib
 ```
@@ -27,14 +29,40 @@ fpga_lib
 
 1. Install dependencies:
 ```bash
-pip install PySide6 PyYAML
+pip install PySide6 textual rich PyYAML
 ```
 
 2. Ensure fpga_lib is available in your Python path
 
-## Usage
+---
 
-### Running the Application
+## Terminal UI (TUI)
+
+A lightweight terminal-based editor for quick edits and SSH sessions.
+
+### Running the TUI
+
+```bash
+cd ipcore_tools/python/memory_map_editor
+python tui_main.py [path/to/file.mm.yml]
+```
+
+### TUI Features
+
+- **Vim-style navigation** (hjkl keys)
+- **Tree navigation** of memory maps and registers
+- **Inline editing** of bit fields
+- **32-bit visualizer** with reset values
+- **Undo/Redo** support
+- **Works over SSH** - no GUI required
+
+See [tui/README.md](tui/README.md) for detailed TUI documentation.
+
+---
+
+## Desktop GUI
+
+A full-featured PyQt6 application for visual memory map editing.
 
 ```bash
 cd ipcore_tools/python/memory_map_editor
