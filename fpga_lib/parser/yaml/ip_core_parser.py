@@ -448,7 +448,7 @@ class YamlIpCoreParser:
                     AddressBlock(
                         **self._filter_none({
                             "name": block_data.get("name"),
-                            "base_address": base_address,
+                            "offset": base_address,
                             "range": range_value,
                             "description": block_data.get("description"),
                             "usage": block_data.get("usage", "register"),
@@ -525,7 +525,7 @@ class YamlIpCoreParser:
                     Register(
                         **self._filter_none({
                             "name": reg_data.get("name"),
-                            "address_offset": address_offset,
+                            "offset": address_offset,
                             "size": size,
                             "access": access_type,
                             "description": reg_data.get("description"),
@@ -618,7 +618,7 @@ class YamlIpCoreParser:
                     Register(
                         **self._filter_none({
                             "name": reg_name,
-                            "address_offset": final_offset,
+                            "offset": final_offset,
                             "size": size,
                             "access": access_type,
                             "description": sub_reg.get("description"),
@@ -694,7 +694,7 @@ class YamlIpCoreParser:
                     Register(
                         **self._filter_none({
                             "name": reg_name,
-                            "address_offset": current_offset,
+                            "offset": current_offset,
                             "size": size,
                             "access": access_type,
                             "description": template_reg.get("description"),

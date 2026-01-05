@@ -22,9 +22,9 @@ package {{ entity_name }}_pkg is
   -- Register Enumeration (Order defines address)
   ----------------------------------------------------------------------------
   type t_reg_id is (
-{%- for reg in registers %}
+{% for reg in registers %}
     REG_{{ reg.name | upper }}{{ "," if not loop.last else "" }}  -- addr {{ "0x%02X" | format(loop.index0 * reg_width | default(4)) }}
-{%- endfor %}
+{% endfor %}
   );
 
   -- Calculate register address from enumeration
@@ -33,34 +33,34 @@ package {{ entity_name }}_pkg is
   ----------------------------------------------------------------------------
   -- Register Record Types
   ----------------------------------------------------------------------------
-{%- for reg in registers %}
-{%- if reg.fields %}
+{% for reg in registers %}
+{% if reg.fields %}
 
   -- {{ reg.name }} register fields
   type t_reg_{{ reg.name | lower }} is record
-{%- for field in reg.fields %}
-{%- if field.width == 1 %}
+{% for field in reg.fields %}
+{% if field.width == 1 %}
     {{ field.name | lower }} : std_logic;  -- bit {{ field.offset }}
-{%- else %}
+{% else %}
     {{ field.name | lower }} : std_logic_vector({{ field.width - 1 }} downto 0);  -- bits {{ field.offset + field.width - 1 }}:{{ field.offset }}
-{%- endif %}
-{%- endfor %}
+{% endif %}
+{% endfor %}
   end record;
 
   constant C_REG_{{ reg.name | upper }}_RESET : t_reg_{{ reg.name | lower }} := (
-{%- for field in reg.fields %}
-{%- if field.width == 1 %}
+{% for field in reg.fields %}
+{% if field.width == 1 %}
     {{ field.name | lower }} => '{{ field.reset_value | default(0) }}'{{ "," if not loop.last else "" }}
-{%- else %}
+{% else %}
     {{ field.name | lower }} => {{ "(others => '0')" if not field.reset_value else "std_logic_vector(to_unsigned(" ~ field.reset_value ~ ", " ~ field.width ~ "))" }}{{ "," if not loop.last else "" }}
-{%- endif %}
-{%- endfor %}
+{% endif %}
+{% endfor %}
   );
 
   function to_slv(reg : t_reg_{{ reg.name | lower }}) return std_logic_vector;
   function to_{{ reg.name | lower }}(slv : std_logic_vector(C_DATA_WIDTH-1 downto 0)) return t_reg_{{ reg.name | lower }};
-{%- endif %}
-{%- endfor %}
+{% endif %}
+{% endfor %}
 
   ----------------------------------------------------------------------------
   -- Aggregate Register Records (for clean port interface)
@@ -68,28 +68,28 @@ package {{ entity_name }}_pkg is
   
   -- SW -> HW: Registers written by software, read by hardware
   type t_regs_sw2hw is record
-{%- for reg in registers if reg.access in ['read-write', 'write-only', 'rw', 'wo'] %}
+{% for reg in registers if reg.access in ['read-write', 'write-only', 'rw', 'wo'] %}
     {{ reg.name | lower }} : t_reg_{{ reg.name | lower }};
-{%- endfor %}
+{% endfor %}
   end record;
 
   constant C_REGS_SW2HW_RESET : t_regs_sw2hw := (
-{%- for reg in registers if reg.access in ['read-write', 'write-only', 'rw', 'wo'] %}
+{% for reg in registers if reg.access in ['read-write', 'write-only', 'rw', 'wo'] %}
     {{ reg.name | lower }} => C_REG_{{ reg.name | upper }}_RESET{{ "," if not loop.last else "" }}
-{%- endfor %}
+{% endfor %}
   );
 
   -- HW -> SW: Registers written by hardware, read by software  
   type t_regs_hw2sw is record
-{%- for reg in registers if reg.access in ['read-only', 'ro'] %}
+{% for reg in registers if reg.access in ['read-only', 'ro'] %}
     {{ reg.name | lower }} : t_reg_{{ reg.name | lower }};
-{%- endfor %}
+{% endfor %}
   end record;
 
   constant C_REGS_HW2SW_RESET : t_regs_hw2sw := (
-{%- for reg in registers if reg.access in ['read-only', 'ro'] %}
+{% for reg in registers if reg.access in ['read-only', 'ro'] %}
     {{ reg.name | lower }} => C_REG_{{ reg.name | upper }}_RESET{{ "," if not loop.last else "" }}
-{%- endfor %}
+{% endfor %}
   );
 
 end package {{ entity_name }}_pkg;
@@ -108,36 +108,36 @@ package body {{ entity_name }}_pkg is
   ----------------------------------------------------------------------------
   -- Conversion Functions
   ----------------------------------------------------------------------------
-{%- for reg in registers %}
-{%- if reg.fields %}
+{% for reg in registers %}
+{% if reg.fields %}
 
   -- {{ reg.name }} conversions
   function to_slv(reg : t_reg_{{ reg.name | lower }}) return std_logic_vector is
     variable slv : std_logic_vector(C_DATA_WIDTH-1 downto 0) := (others => '0');
   begin
-{%- for field in reg.fields %}
-{%- if field.width == 1 %}
+{% for field in reg.fields %}
+{% if field.width == 1 %}
     slv({{ field.offset }}) := reg.{{ field.name | lower }};
-{%- else %}
+{% else %}
     slv({{ field.offset + field.width - 1 }} downto {{ field.offset }}) := reg.{{ field.name | lower }};
-{%- endif %}
-{%- endfor %}
+{% endif %}
+{% endfor %}
     return slv;
   end function;
 
   function to_{{ reg.name | lower }}(slv : std_logic_vector(C_DATA_WIDTH-1 downto 0)) return t_reg_{{ reg.name | lower }} is
     variable reg : t_reg_{{ reg.name | lower }};
   begin
-{%- for field in reg.fields %}
-{%- if field.width == 1 %}
+{% for field in reg.fields %}
+{% if field.width == 1 %}
     reg.{{ field.name | lower }} := slv({{ field.offset }});
-{%- else %}
+{% else %}
     reg.{{ field.name | lower }} := slv({{ field.offset + field.width - 1 }} downto {{ field.offset }});
-{%- endif %}
-{%- endfor %}
+{% endif %}
+{% endfor %}
     return reg;
   end function;
-{%- endif %}
-{%- endfor %}
+{% endif %}
+{% endfor %}
 
 end package body {{ entity_name }}_pkg;

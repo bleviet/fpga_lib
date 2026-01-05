@@ -20,11 +20,11 @@ TOPLEVEL_LANG ?= vhdl
 RTL_DIR = $(CURDIR)/../rtl
 VHDL_SOURCES += $(RTL_DIR)/{{ entity_name }}_pkg.vhd
 VHDL_SOURCES += $(RTL_DIR)/{{ entity_name }}_core.vhd
-{%- if bus_type == 'axil' %}
+{% if bus_type == 'axil' %}
 VHDL_SOURCES += $(RTL_DIR)/{{ entity_name }}_{{ bus_type }}.vhd
-{%- else %}
+{% else %}
 VHDL_SOURCES += $(RTL_DIR)/{{ entity_name }}_avmm.vhd
-{%- endif %}
+{% endif %}
 VHDL_SOURCES += $(RTL_DIR)/{{ entity_name }}.vhd
 
 # Top-level module

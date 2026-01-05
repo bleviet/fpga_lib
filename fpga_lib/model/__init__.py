@@ -3,6 +3,8 @@ Pydantic-based canonical data models for FPGA IP cores.
 
 This module provides the single source of truth for IP core representation,
 with validation-first design and computed properties.
+
+For runtime register access (hardware I/O), use fpga_lib.runtime.register.
 """
 
 from .base import VLNV, Parameter, Polarity
@@ -11,10 +13,15 @@ from .memory import (
     AccessType,
     MemoryMap,
     AddressBlock,
+    RegisterDef,
+    BitFieldDef,
+    RegisterArrayDef,
+    MemoryMapReference,
+    BlockUsage,
+    # Backward compatibility aliases
     Register,
     BitField,
     RegisterArray,
-    MemoryMapReference,
 )
 from .clock_reset import Clock, Reset
 from .port import Port, PortDirection
@@ -29,14 +36,19 @@ __all__ = [
     "BusInterface",
     "BusType",
     "ArrayConfig",
-    # Memory
+    # Memory (new names)
     "AccessType",
     "MemoryMap",
     "AddressBlock",
+    "RegisterDef",
+    "BitFieldDef",
+    "RegisterArrayDef",
+    "MemoryMapReference",
+    "BlockUsage",
+    # Memory (backward compatibility aliases)
     "Register",
     "BitField",
     "RegisterArray",
-    "MemoryMapReference",
     # Clock/Reset
     "Clock",
     "Reset",
@@ -51,3 +63,4 @@ __all__ = [
     # Core
     "IpCore",
 ]
+

@@ -386,6 +386,99 @@ class Register:
 
         self.write(reset_value)
 
+    # =========================================================================
+    # Async Methods (for cocotb compatibility)
+    # =========================================================================
+
+    async def read_async(self) -> int:
+        """
+        Async read for cocotb compatibility.
+
+        Handles both sync and async bus implementations.
+
+        Returns:
+            The 32-bit register value
+        """
+        result = self._bus.read_word(self.offset)
+        if hasattr(result, '__await__'):
+            return await result
+        return result
+
+    async def write_async(self, value: int) -> None:
+        """
+        Async write for cocotb compatibility.
+
+        Handles both sync and async bus implementations.
+
+        Args:
+            value: 32-bit value to write to the register
+        """
+        value = value & 0xFFFFFFFF
+        result = self._bus.write_word(self.offset, value)
+        if hasattr(result, '__await__'):
+            await result
+
+    async def read_field_async(self, field_name: str) -> int:
+        """
+        Async read a specific bit field from the register.
+
+        Args:
+            field_name: Name of the bit field to read
+
+        Returns:
+            The value of the bit field
+
+        Raises:
+            ValueError: If field doesn't exist or is write-only
+        """
+        if field_name not in self._fields:
+            raise ValueError(f"Register '{self.name}' has no field named '{field_name}'")
+
+        field = self._fields[field_name]
+        if field.access == 'wo':
+            raise ValueError(f"Field '{field_name}' in register '{self.name}' is write-only")
+
+        reg_value = await self.read_async()
+        return field.extract_value(reg_value)
+
+    async def write_field_async(self, field_name: str, value: int) -> None:
+        """
+        Async write a specific bit field in the register.
+
+        Performs a read-modify-write sequence for RW fields.
+
+        Args:
+            field_name: Name of the bit field to write
+            value: Value to write to the bit field
+
+        Raises:
+            ValueError: If field doesn't exist, is read-only, or value is out of range
+        """
+        if field_name not in self._fields:
+            raise ValueError(f"Register '{self.name}' has no field named '{field_name}'")
+
+        field = self._fields[field_name]
+        if field.access == 'ro':
+            raise ValueError(f"Field '{field_name}' in register '{self.name}' is read-only")
+
+        if value > field.max_value:
+            raise ValueError(f"Value {value} exceeds field '{field_name}' maximum {field.max_value}")
+
+        if field.access == 'rw':
+            # Read-modify-write for read-write fields
+            reg_value = await self.read_async()
+            new_reg_value = field.insert_value(reg_value, value)
+        elif field.access == 'rw1c':
+            # Read-write-1-to-clear
+            reg_value = await self.read_async()
+            clear_mask = (value << field.offset) & field.mask
+            new_reg_value = reg_value & ~clear_mask
+        else:
+            # Write-only field - don't read current value
+            new_reg_value = field.insert_value(0, value)
+
+        await self.write_async(new_reg_value)
+
     def __str__(self) -> str:
         """String representation of the register."""
         return f"Register('{self.name}', offset=0x{self.offset:04X}, fields={len(self._fields)})"

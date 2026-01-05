@@ -21,11 +21,13 @@ class FileType(str, Enum):
     SDC = "sdc"
     UCF = "ucf"
 
-    # Software
+    # Software/Scripts
     C_HEADER = "cHeader"
     C_SOURCE = "cSource"
     CPP_HEADER = "cppHeader"
     CPP_SOURCE = "cppSource"
+    PYTHON = "python"
+    MAKEFILE = "makefile"
 
     # Documentation
     PDF = "pdf"
@@ -36,6 +38,7 @@ class FileType(str, Enum):
     TCL = "tcl"
     YAML = "yaml"
     JSON = "json"
+    XML = "xml"
 
     # Other
     UNKNOWN = "unknown"

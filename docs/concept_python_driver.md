@@ -1,42 +1,26 @@
 # IP Core Driver Architecture: Concept Document
 
-## 1\. Introduction
+## 1. Introduction
 
-This document outlines a refined conceptual design for a unified Python-based driver architecture for IP cores. The primary goal is to create a single, elegant API that can seamlessly control an IP core in both hardware (via interfaces like JTAG) and simulation (via cocotb). This design promotes code reusability, simplifies maintenance, and standardizes the developer experience.
+This document outlines the design for a unified Python-based driver architecture for IP cores. The primary goal is to create a single, elegant API that can seamlessly control an IP core in both hardware (via interfaces like JTAG) and simulation (via cocotb). This design promotes code reusability, simplifies maintenance, and standardizes the developer experience.
 
-The architecture is built on the principle of abstraction, separating the high-level register and bit-field logic from the low-level bus access mechanism. This is achieved through a multi-layered, object-oriented approach that is now driven by a human-readable memory map definition.
+The architecture is built on the principle of abstraction, separating the high-level register and bit-field logic from the low-level bus access mechanism. This is achieved through a multi-layered, object-oriented approach driven by a human-readable memory map definition.
 
------
+---
 
-## 2\. Core Concept: The Memory Map
+## 2. Core Concept: The Memory Map
 
-Manually defining registers and bit-fields in Python for a complex IP core is tedious and error-prone. The foundation of this refined architecture is a **single source of truth** for the IP core's memory map, defined in a simple, human-readable **YAML** file.
+Manually defining registers and bit-fields in Python for a complex IP core is tedious and error-prone. The foundation of this architecture is a **single source of truth** for the IP core's memory map, defined in a simple, human-readable **YAML** file.
 
-This approach decouples the hardware specification from the driver's implementation. The driver will dynamically construct itself based on the contents of this file.
+This approach decouples the hardware specification from the driver's implementation. The driver dynamically constructs itself based on the contents of this file.
 
 ### Why YAML?
 
-Of course. YAML was chosen because it strikes the best balance between **human readability** and its ability to naturally represent the **nested structure** of a hardware memory map.
+YAML was chosen because it strikes the best balance between **human readability** and its ability to naturally represent the **nested structure** of a hardware memory map.
 
-The primary goal of this file is to be a "single source of truth" that is easy for engineers to read, understand, and, if necessary, edit by hand.
-
-* ✨ Superior Readability: YAML's syntax is minimal and uses indentation to denote structure. This makes the file look clean and almost like a document outline, which is perfect for describing a hierarchy of registers and their bit fields.
-
-* ✍️ Natural for Nested Lists: The core structure is a "list of registers," where each register contains a "list of bit fields." This pattern maps perfectly and intuitively to YAML's indented list format.
-
-* 💬 Essential Comment Support: Hardware design requires documentation. YAML's first-class support for comments (`#`) is crucial for adding descriptions and notes directly within the map, which is a major advantage.
-
-#### Comparison with TOML and JSON
-
-Here’s a direct comparison for this specific use case:
-
-##### Why Not JSON?
-
-The biggest reason is its **lack of support for comments**. For a file that serves as documentation, this is a significant drawback. Additionally, JSON's syntax is much noisier with required braces, quotes, and commas, making it more tedious to read and write manually compared to YAML.
-
-##### Why Not TOML?
-
-TOML is excellent for configuration files, but it's less intuitive for representing a **deeply nested list of complex objects**, which is exactly what a memory map is. Defining an array of registers, each with its own array of fields, can become syntactically awkward and visually disconnected in TOML. YAML’s simple indented structure keeps the definition of a register and its fields grouped together more cleanly.
+* ✨ **Superior Readability**: YAML's syntax is minimal and uses indentation to denote structure
+* ✍️ **Natural for Nested Lists**: Registers containing bit fields map perfectly to YAML's indented list format
+* 💬 **Comment Support**: First-class support for comments (`#`) is crucial for documentation
 
 | Feature | YAML | TOML | JSON |
 | :--- | :--- | :--- | :--- |
@@ -44,239 +28,174 @@ TOML is excellent for configuration files, but it's less intuitive for represent
 | **Comment Support** | ✅ Yes | ✅ Yes | ❌ **No** |
 | **Nested Lists/Objects** | ✅ **Very Natural** | 🆗 Awkward | ✅ Natural |
 
-
-#### Example Memory Map (`ip_core_map.yaml`)
+### Example Memory Map
 
 ```yaml
-# ip_core_map.yaml
-# Memory map definition for our example IP core.
+# my_timer_core.memmap.yml
+- name: CSR_MAP
+  description: Control/Status Registers
+  addressBlocks:
+    - name: GLOBAL_REGS
+      offset: 0x00
+      range: 4K
+      registers:
+        - name: CONTROL
+          offset: 0x00
+          fields:
+            - name: ENABLE
+              bits: "[0:0]"
+              access: read-write
+            - name: INT_ENABLE
+              bits: "[1:1]"
+              access: read-write
+            - name: SOFT_RESET
+              bits: "[31:31]"
+              access: write-only
 
-registers:
-  - name: control
-    offset: 0x00
-    description: "Main control register for the core."
-    fields:
-      - name: enable
-        bit: 0
-        access: rw
-        description: "Enable or disable the core."
-      - name: int_enable
-        bit: 1
-        access: rw
-        description: "Enable interrupts."
-      - name: soft_reset
-        bit: 31
-        access: wo # Write-only field
-        description: "Trigger a software reset (self-clearing)."
+        - name: STATUS
+          offset: 0x04
+          access: read-only
+          fields:
+            - name: READY
+              bits: "[0:0]"
+            - name: ERROR_CODE
+              bits: "[7:4]"
 
-  - name: status
-    offset: 0x04
-    description: "Status register for the core."
-    fields:
-      - name: ready
-        bit: 0
-        access: ro # Read-only field
-        description: "Core is ready to accept commands."
-      - name: error_code
-        bits: [7:4] # Defines a 4-bit field from bit 4 to 7
-        access: ro
-        description: "Indicates the type of error."
-
-  - name: data_in
-    offset: 0x08
-    description: "Input data FIFO."
-    fields: # This register has no bit-fields, it's accessed as a whole
-
-  # --- Definition for a Block RAM region ---
-  - name: lut_entry
-    offset: 0x100      # Base address of the entire block RAM
-    count: 64          # There are 64 entries in this RAM
-    stride: 4          # Each entry is 4 bytes apart
-    description: "A 64-entry lookup table."
-    fields: # This is the template for EACH of the 64 entries
-      - name: coefficient
-        bits: [15:0]
-        access: rw
-        description: "Coefficient value for this entry."
-      - name: enabled
-        bit: 31
-        access: rw
-        description: "Enable this specific LUT entry."
+    - name: LUT_BLOCK
+      offset: 0x100
+      registers:
+        - name: LUT_ENTRY
+          count: 64
+          stride: 4
+          fields:
+            - name: COEFFICIENT
+              bits: "[15:0]"
+            - name: ENABLED
+              bits: "[31:31]"
 ```
 
------
+---
 
-## 3\. Architectural Layers
+## 3. Implementation Architecture
 
-The driver is structured into layers, each with a specific responsibility. The architecture dynamically builds the top-level driver from the memory map.
+The driver is structured into layers, each with a specific responsibility. The implementation is split across several modules in `fpga_lib`:
 
-### Layer 1: The Register Map Loader
-
-This is a new, crucial component. A parser function is responsible for reading the `ip_core_map.yaml` file and programmatically instantiating the `Register` and `BitField` objects. This loader becomes the entry point for defining the driver's structure.
-
-#### Example Implementation (`driver_loader.py`)
-
-```python
-import yaml
-from enum import Enum, auto
-
-# --- Data Models (explained in next section) ---
-class Access(Enum):
-    RO = auto(); RW = auto(); WO = auto()
-
-@dataclass
-class BitField:
-    # ... as defined in the next section
-
-class Register:
-    # ... as defined in the next section
-
-def _parse_bits(bits_def):
-    """Helper to parse 'bit: 0' or 'bits: [7:4]' into offset and width."""
-    if isinstance(bits_def, int):
-        return bits_def, 1
-    if isinstance(bits_def, str) and ':' in bits_def:
-        high, low = map(int, bits_def.strip('[]').split(':'))
-        return low, (high - low + 1)
-    raise ValueError(f"Invalid bit definition: {bits_def}")
-
-class RegisterArrayAccessor:
-    """Provides indexed access to a block of registers."""
-    def __init__(self, base_offset, count, stride, field_template, bus_interface):
-        self._bus = bus_interface
-        self._base_offset = base_offset
-        self._count = count
-        self._stride = stride
-        self._field_template = field_template # The list of BitField objects
-
-    def __getitem__(self, index):
-        if not (0 <= index < self._count):
-            raise IndexError(f"Index {index} out of bounds for array of size {self._count}")
-        
-        # Calculate the absolute address of the requested element
-        item_offset = self._base_offset + (index * self._stride)
-        
-        # Create a Register object for this specific element on-the-fly
-        return Register(
-            name=f"item[{index}]",
-            offset=item_offset,
-            bus_interface=self._bus,
-            fields=self._field_template
-        )
-
-    def __len__(self):
-        return self._count
-
-def load_from_yaml(yaml_path: str, bus_interface: AbstractBusInterface):
-    """Loads a register map from YAML and builds a driver object."""
-    driver = IpCoreDriver(bus_interface)
-    with open(yaml_path, 'r') as f:
-        data = yaml.safe_load(f)
-    
-    for reg_info in data.get('registers', []):
-        fields = []
-        for field_info in reg_info.get('fields', []):
-            offset, width = _parse_bits(field_info.get('bit') or field_info.get('bits', 0))
-            fields.append(BitField(
-                name=field_info['name'],
-                offset=offset,
-                width=width,
-                access=Access[field_info.get('access', 'rw').upper()]
-            ))
-        
-        # Check if this is a register array
-        if 'count' in reg_info:
-            accessor = RegisterArrayAccessor(
-                base_offset=reg_info['offset'],
-                count=reg_info['count'],
-                stride=reg_info.get('stride', 4), # Default to 4-byte stride
-                field_template=fields,
-                bus_interface=bus_interface
-            )
-            setattr(driver, reg_info['name'], accessor)
-        else: # It's a single register
-            register = Register(
-                name=reg_info['name'],
-                offset=reg_info['offset'],
-                bus_interface=bus_interface,
-                fields=fields
-            )
-            setattr(driver, reg_info['name'], register)
-        
-    return driver
-
-class IpCoreDriver:
-    """A container for all the register objects."""
-    def __init__(self, bus_interface):
-        self._bus = bus_interface
+```
+fpga_lib/
+├── core/
+│   └── register.py          # Runtime register classes (AccessType, BitField, Register, RegisterArrayAccessor)
+├── model/
+│   └── memory.py             # Pydantic models for YAML parsing (RegisterDef, BitFieldDef, MemoryMap)
+└── driver/
+    ├── bus.py                # AbstractBusInterface and CocotbBus
+    └── loader.py             # load_driver() function
 ```
 
-### Layer 2: The Core IP Driver and Data Models
+### Layer 1: Pydantic Models for YAML Parsing
 
-This is the top-level API that users interact with. It contains the logical representation of the IP core, populated by the loader. The `Register` and `BitField` classes are now more robust, enforcing access rights and performing proper read-modify-write operations.
-
-#### Example Implementation
+The `fpga_lib.model.memory` module provides Pydantic models for parsing and validating YAML files:
 
 ```python
-from dataclasses import dataclass, field
-from enum import Enum, auto
+from fpga_lib.model import (
+    MemoryMap,
+    AddressBlock,
+    RegisterDef,    # Pydantic model for YAML
+    BitFieldDef,    # Pydantic model for YAML
+    AccessType,
+)
 
-class Access(Enum):
-    RO = auto()
-    RW = auto()
-    WO = auto()
+# These are schema/definition models, not runtime objects
+# Use to_runtime_*() methods to convert to runtime objects
+```
 
+### Layer 2: Runtime Register Classes
+
+The `fpga_lib.core.register` module provides runtime register classes for hardware access:
+
+```python
+from fpga_lib.core.register import (
+    AccessType,             # Enum: RO, WO, RW, RW1C
+    BitField,               # Runtime bit field with offset, width, access
+    Register,               # Runtime register with bus I/O
+    RegisterArrayAccessor,  # Indexed access to register arrays
+    AbstractBusInterface,   # ABC for bus backends
+)
+```
+
+#### AccessType Enum
+
+```python
+class AccessType(Enum):
+    RO = 'ro'       # Read-only
+    WO = 'wo'       # Write-only
+    RW = 'rw'       # Read-write
+    RW1C = 'rw1c'   # Read-write-1-to-clear
+```
+
+#### BitField Class
+
+```python
 @dataclass
 class BitField:
     name: str
-    offset: int
-    width: int
-    access: Access = Access.RW
-
-class Register:
-    def __init__(self, name, offset, bus_interface, fields: list[BitField]):
-        self._name = name
-        self._offset = offset
-        self._bus = bus_interface
-        self._fields = {f.name: f for f in fields}
-
-    def read(self):
-        """Reads the entire register value."""
-        return self._bus.read_word(self._offset)
-
-    def write(self, value: int):
-        """Writes a value to the entire register."""
-        self._bus.write_word(self._offset, value)
-
-    def __getattr__(self, name: str):
-        if name not in self._fields:
-            raise AttributeError(f"Register '{self._name}' has no bit-field named '{name}'")
-        
-        field = self._fields[name]
-        mask = ((1 << field.width) - 1) << field.offset
-
-        def getter(_):
-            if field.access == Access.WO:
-                raise AttributeError(f"Bit-field '{name}' is write-only.")
-            return (self.read() & mask) >> field.offset
-
-        def setter(_, value: int):
-            if field.access == Access.RO:
-                raise AttributeError(f"Bit-field '{name}' is read-only.")
-            
-            reg_value = self.read() if field.access == Access.RW else 0
-            cleared_val = reg_value & ~mask
-            new_reg_value = cleared_val | ((value << field.offset) & mask)
-            self.write(new_reg_value)
-
-        return property(getter, setter)
+    offset: int                           # Bit position (0-based, LSB = 0)
+    width: int                            # Number of bits
+    access: Union[AccessType, str] = AccessType.RW
+    description: str = ''
+    reset_value: Optional[int] = None
+    
+    @property
+    def mask(self) -> int:
+        """Bit mask for this field."""
+        return ((1 << self.width) - 1) << self.offset
 ```
 
-### Layer 3: The Bus Interface
+#### Register Class
 
-This abstraction layer defines the contract for all bus backends. By using Python's `abc` module, we enforce that any concrete implementation provides the necessary methods.
+```python
+class Register:
+    def __init__(self, name: str, offset: int, bus: AbstractBusInterface,
+                 fields: List[BitField], description: str = ''):
+        ...
+    
+    def read(self) -> int:
+        """Read entire register value."""
+        return self._bus.read_word(self.offset)
+    
+    def write(self, value: int) -> None:
+        """Write entire register value."""
+        self._bus.write_word(self.offset, value)
+    
+    def read_field(self, field_name: str) -> int:
+        """Read specific bit field."""
+        ...
+    
+    def write_field(self, field_name: str, value: int) -> None:
+        """Write specific bit field (read-modify-write)."""
+        ...
+```
 
-#### Example Implementation
+#### RegisterArrayAccessor Class
+
+```python
+class RegisterArrayAccessor:
+    """Provides indexed access to register arrays (Block RAM regions)."""
+    
+    def __init__(self, name: str, base_offset: int, count: int, stride: int,
+                 field_template: List[BitField], bus_interface: AbstractBusInterface):
+        ...
+    
+    def __getitem__(self, index: int) -> Register:
+        """Access specific element, creating Register on-demand."""
+        ...
+    
+    def __len__(self) -> int:
+        return self._count
+```
+
+### Layer 3: Bus Interface
+
+The `AbstractBusInterface` ABC defines the contract for all bus backends:
 
 ```python
 from abc import ABC, abstractmethod
@@ -284,42 +203,44 @@ from abc import ABC, abstractmethod
 class AbstractBusInterface(ABC):
     @abstractmethod
     def read_word(self, address: int) -> int:
-        """Reads a single word from the given address."""
-        raise NotImplementedError
+        """Read a 32-bit word from the given address."""
+        pass
 
     @abstractmethod
     def write_word(self, address: int, data: int) -> None:
-        """Writes a single word to the given address."""
-        raise NotImplementedError
+        """Write a 32-bit word to the given address."""
+        pass
 ```
 
-### Layer 4: The Concrete Bus Backends
-
-These are the environment-specific implementations of the `AbstractBusInterface`.
+### Layer 4: Concrete Bus Backends
 
 #### Simulation Backend (CocotbBus)
 
 ```python
-from cocotb.bus.axibuses import Axi4LiteBus
+from fpga_lib.core.register import AbstractBusInterface
 
 class CocotbBus(AbstractBusInterface):
-    def __init__(self, dut, bus_name, clock):
-        self._axi_driver = Axi4LiteBus.from_entity(dut, bus_name, clock)
+    """Bus interface for cocotb simulations using AXI-Lite."""
+    
+    def __init__(self, dut, bus_name: str, clock):
+        from cocotbext.axi import AxiLiteMaster, AxiLiteBus
+        bus = AxiLiteBus.from_prefix(dut, bus_name)
+        self._axi = AxiLiteMaster(bus, clock, dut.rst)
 
     async def read_word(self, address: int) -> int:
-        val = await self._axi_driver.read(address)
-        return int(val)
+        val = await self._axi.read(address, 4)
+        return int.from_bytes(val.data, byteorder='little')
 
     async def write_word(self, address: int, data: int) -> None:
-        await self._axi_driver.write(address, data)
+        await self._axi.write(address, data.to_bytes(4, byteorder='little'))
 ```
 
 #### Hardware Backend (JtagBus)
 
 ```python
-import tclrpc  # A library for JTAG access
-
 class JtagBus(AbstractBusInterface):
+    """Bus interface for hardware access via JTAG."""
+    
     def __init__(self, xsdb_session):
         self._xsdb = xsdb_session
 
@@ -330,81 +251,205 @@ class JtagBus(AbstractBusInterface):
         self._xsdb.write_mem(address, [data])
 ```
 
------
+---
 
-## 4\. The Unified Factory and Configuration
+## 4. Handling Async Operations in Cocotb
 
-To seamlessly switch between environments, the factory is now simplified. It takes a self-contained configuration object, instantiates the correct bus backend, and then uses the `load_from_yaml` function to build and return the complete driver.
+### The Challenge
 
-#### Example Configuration (`config.py`)
-
-```python
-from dataclasses import dataclass
-from typing import Any
-
-@dataclass
-class AxiSimConfig:
-    dut: Any
-    bus_name: str
-    clock: Any
-
-@dataclass
-class JtagBusConfig:
-    xsdb_session: Any
-
-@dataclass
-class DriverConfig:
-    map_file: str # Path to the YAML file
-    bus_type: str
-    bus_spec: AxiSimConfig | JtagBusConfig
-```
-
-#### Example Usage
+In cocotb, bus operations must be `async` (awaited). This creates a fundamental limitation:
 
 ```python
-# In a simulation testbench
-sim_config = DriverConfig(
-    map_file="ip_core_map.yaml",
-    bus_type="sim",
-    bus_spec=AxiSimConfig(dut=dut, bus_name="s_axi", clock=dut.aclk)
-)
-driver = create_driver(config=sim_config)
+# This CANNOT work in async context:
+driver.CONTROL.ENABLE = 1  # Property setter can't be async
 
-# In a hardware test script
-hw_config = DriverConfig(
-    map_file="ip_core_map.yaml",
-    bus_type="jtag",
-    bus_spec=JtagBusConfig(xsdb_session=tclrpc.connect(...))
-)
-driver = create_driver(config=hw_config)
-
-# --- The API is identical in both environments! ---
-driver.control.enable = 1
-status = driver.status.ready
-
-# --- Register arrays provide clean access to Block RAM ---
-# Accessing the 5th entry in the lookup table:
-driver.lut_entry[5].coefficient = 0xABCD
-
-# Enabling the 10th entry:
-driver.lut_entry[10].enabled = 1
-
-# Reading a value back from the 5th entry:
-coeff = driver.lut_entry[5].coefficient
-
-# Can also write to the whole register in the array
-driver.lut_entry[20].write(0xFFFFFFFF)
+# This is REQUIRED in cocotb:
+await driver.CONTROL.write_field('ENABLE', 1)  # Explicit async call
 ```
 
------
+### Solution: Dual API Pattern
 
-## 5\. Key Advantages
+The driver provides **two APIs** depending on the use case:
 
-  - **Single Source of Truth**: The YAML memory map ensures that hardware documentation, simulation, and hardware control are always in sync.
-  - **Portability and Reusability**: A single test script can be executed against both a simulator and a physical FPGA with only a configuration change.
-  - **Reduced Boilerplate**: The register map loader eliminates the need to manually write and maintain tedious register definition code. 📝
-  - **Decoupled Design**: Changes to a bus protocol do not require changes to the high-level register access logic.
-  - **Clean and Intuitive API**: The user-facing API allows developers to interact with registers and bit fields using simple, dot notation (`driver.reg_name.field_name`).
-  - **Handles Complex Structures**: The architecture elegantly supports not only single registers but also complex register arrays and block RAM regions. 🎛️
-  - **Memory Efficient**: The driver is lightweight as it doesn't pre-instantiate hundreds of objects for a large RAM; register objects are created on-demand.
-  - **Scalability**: New bus backends (e.g., for PCIe or SPI) can be added by simply implementing the `AbstractBusInterface`.
+#### 1. Synchronous API (Hardware/Blocking)
+
+For hardware backends (JTAG, SPI, etc.) where operations are blocking:
+
+```python
+# Works with JtagBus and other synchronous backends
+driver.GLOBAL_REGS.CONTROL.ENABLE = 1
+status = driver.GLOBAL_REGS.STATUS.READY
+```
+
+#### 2. Async API (Simulation/Cocotb)
+
+For cocotb simulations, use explicit async methods:
+
+```python
+# In cocotb test functions
+@cocotb.test()
+async def test_registers(dut):
+    driver = await create_async_driver(dut)
+    
+    # Read/write entire register
+    await driver.GLOBAL_REGS.CONTROL.write(0x01)
+    val = await driver.GLOBAL_REGS.CONTROL.read()
+    
+    # Read/write specific fields
+    await driver.GLOBAL_REGS.CONTROL.write_field('ENABLE', 1)
+    ready = await driver.GLOBAL_REGS.STATUS.read_field('READY')
+    
+    # Register arrays
+    await driver.LUT_BLOCK.LUT_ENTRY[5].write_field('COEFFICIENT', 0xABCD)
+```
+
+### Alternative: Shadow Register Pattern
+
+For cases where property-style access is desired in simulation, use **shadow registers**:
+
+```python
+class ShadowRegister:
+    """Cached register that batches writes."""
+    
+    def __init__(self, register: Register):
+        self._reg = register
+        self._shadow = 0
+        self._dirty = False
+    
+    def __setattr__(self, name: str, value: int):
+        if name.startswith('_'):
+            super().__setattr__(name, value)
+            return
+        # Update shadow, mark dirty
+        field = self._reg._fields[name]
+        self._shadow = field.insert_value(self._shadow, value)
+        self._dirty = True
+    
+    async def commit(self):
+        """Flush shadow to hardware."""
+        if self._dirty:
+            await self._reg.write(self._shadow)
+            self._dirty = False
+
+# Usage:
+shadow = ShadowRegister(driver.GLOBAL_REGS.CONTROL)
+shadow.ENABLE = 1
+shadow.INT_ENABLE = 1
+await shadow.commit()  # Single bus transaction
+```
+
+---
+
+## 5. Driver Loading
+
+The `load_driver` function creates a complete driver from a YAML memory map:
+
+```python
+from fpga_lib.driver import load_driver, CocotbBus
+from fpga_lib.core.register import AbstractBusInterface
+
+# For simulation
+bus = CocotbBus(dut, 's_axi', dut.clk)
+driver = load_driver('my_core_memmap.yml', bus)
+
+# For hardware
+bus = JtagBus(xsdb_session)
+driver = load_driver('my_core_memmap.yml', bus)
+
+# Access registers (async in cocotb, sync in hardware)
+await driver.GLOBAL_REGS.CONTROL.write_field('ENABLE', 1)
+```
+
+---
+
+## 6. Complete Example
+
+### Cocotb Testbench
+
+```python
+import cocotb
+from cocotb.clock import Clock
+from fpga_lib.driver import load_driver
+from fpga_lib.driver.bus import CocotbBus
+
+@cocotb.test()
+async def test_ip_core(dut):
+    """Test the IP core registers."""
+    
+    # Start clock
+    clock = Clock(dut.clk, 10, units="ns")
+    cocotb.start_soon(clock.start())
+    
+    # Reset
+    dut.rst.value = 1
+    await cocotb.triggers.ClockCycles(dut.clk, 10)
+    dut.rst.value = 0
+    await cocotb.triggers.ClockCycles(dut.clk, 5)
+    
+    # Create driver
+    bus = CocotbBus(dut, 's_axi', dut.clk)
+    driver = load_driver('my_timer_core_memmap.yml', bus)
+    
+    # Test control register
+    await driver.GLOBAL_REGS.CONTROL.write_field('ENABLE', 1)
+    await driver.GLOBAL_REGS.CONTROL.write_field('INT_ENABLE', 1)
+    
+    # Verify status
+    ready = await driver.GLOBAL_REGS.STATUS.read_field('READY')
+    assert ready == 1, "Core should be ready"
+    
+    # Test LUT array
+    for i in range(64):
+        await driver.LUT_BLOCK.LUT_ENTRY[i].write_field('COEFFICIENT', i * 10)
+        await driver.LUT_BLOCK.LUT_ENTRY[i].write_field('ENABLED', 1)
+    
+    # Verify LUT
+    coeff = await driver.LUT_BLOCK.LUT_ENTRY[32].read_field('COEFFICIENT')
+    assert coeff == 320, f"Expected 320, got {coeff}"
+```
+
+### Hardware Test Script
+
+```python
+from fpga_lib.driver import load_driver
+from my_jtag_lib import JtagBus, connect_xsdb
+
+# Connect to hardware
+xsdb = connect_xsdb('localhost:3121')
+bus = JtagBus(xsdb)
+driver = load_driver('my_timer_core_memmap.yml', bus)
+
+# Same API, but synchronous (no await)
+driver.GLOBAL_REGS.CONTROL.write_field('ENABLE', 1)
+ready = driver.GLOBAL_REGS.STATUS.read_field('READY')
+print(f"Core ready: {ready}")
+
+# LUT programming
+for i in range(64):
+    driver.LUT_BLOCK.LUT_ENTRY[i].write_field('COEFFICIENT', i * 10)
+```
+
+---
+
+## 7. Key Advantages
+
+| Advantage | Description |
+|-----------|-------------|
+| **Single Source of Truth** | YAML memory map ensures hardware, simulation, and tests are in sync |
+| **Portability** | Same test script works on simulator and hardware (with config change) |
+| **Reduced Boilerplate** | Register map loader eliminates manual register definition code |
+| **Decoupled Design** | Bus protocol changes don't affect register access logic |
+| **Type Safety** | Pydantic validation catches YAML errors at load time |
+| **Memory Efficient** | Register arrays create objects on-demand |
+| **Scalable** | New bus backends (PCIe, SPI) just implement `AbstractBusInterface` |
+
+---
+
+## 8. Module Reference
+
+| Module | Purpose |
+|--------|---------|
+| `fpga_lib.core.register` | Runtime register classes (`Register`, `BitField`, `AccessType`, `RegisterArrayAccessor`) |
+| `fpga_lib.model.memory` | Pydantic models for YAML parsing (`RegisterDef`, `BitFieldDef`, `MemoryMap`) |
+| `fpga_lib.driver.loader` | `load_driver()` function, `IpCoreDriver` class |
+| `fpga_lib.driver.bus` | `AbstractBusInterface`, `CocotbBus` |

@@ -1,223 +1,365 @@
-# fpga_lib/generator/hdl/vhdl_generator.py
-from jinja2 import Environment, FileSystemLoader
-from fpga_lib.core.ip_core import IPCore
-from fpga_lib.core.data_types import DataType, BitType, VectorType, IntegerType
+"""
+VHDL code generator using the new modular template structure.
+
+Generates:
+- Package (types, records, conversion functions)
+- Top-level (instantiates core + bus wrapper)
+- Core (bus-agnostic logic)
+- Bus wrapper (AXI-Lite or Avalon-MM)
+"""
+
+from typing import Dict, List, Optional, Any
+from pathlib import Path
 import os
 
+from jinja2 import Environment, FileSystemLoader
 
-class VHDLGenerator:
+from fpga_lib.model.core import IpCore
+from fpga_lib.model.memory import MemoryMap, Register, BitField
+from fpga_lib.generator.base_generator import BaseGenerator
+
+
+class VHDLGenerator(BaseGenerator):
     """
-    VHDL code generator class for generating VHDL entities and architectures.
+    VHDL code generator for IP cores with memory-mapped registers.
+    
+    Generates modular VHDL code:
+    - Package with register types, enumerations, and conversion functions
+    - Top-level entity that instantiates core and bus wrapper
+    - Core logic module (bus-agnostic)
+    - Bus wrapper (AXI-Lite or Avalon-MM)
     """
+    
+    SUPPORTED_BUS_TYPES = ['axil', 'avmm']
+    
+    def __init__(self, template_dir: Optional[str] = None):
+        """Initialize VHDL generator with templates."""
+        if template_dir is None:
+            template_dir = os.path.join(os.path.dirname(__file__), "templates")
+        super().__init__(template_dir)
+    
+    def _parse_bits(self, bits: str) -> dict:
+        """Parse bit string [M:N] or [N] into offset and width."""
+        import re
+        if not bits:
+            return {'offset': 0, 'width': 1}
+        
+        # Handle [M:N]
+        match_range = re.search(r'\[(\d+):(\d+)\]', bits)
+        if match_range:
+            high = int(match_range.group(1))
+            low = int(match_range.group(2))
+            return {'offset': low, 'width': abs(high - low) + 1}
+            
+        # Handle [N]
+        match_single = re.search(r'\[(\d+)\]', bits)
+        if match_single:
+            bit = int(match_single.group(1))
+            return {'offset': bit, 'width': 1}
+            
+        return {'offset': 0, 'width': 1}
 
-    def __init__(self):
-        """Initialize the VHDL generator."""
-        # Get the directory of the current file
-        self.template_dir = os.path.join(os.path.dirname(__file__), "templates")
-        # Initialize the Jinja2 environment with the template directory
-        self.env = Environment(loader=FileSystemLoader(self.template_dir))
-
-    def generate_entity(self, ip_core: IPCore) -> str:
+    def _prepare_registers(self, ip_core: IpCore) -> List[Dict[str, Any]]:
         """
-        Generate VHDL entity declaration for the given IP core.
-
-        Args:
-            ip_core: IPCore object to generate VHDL for
-
-        Returns:
-            String containing the VHDL entity declaration
+        Extract and prepare register information from memory maps (recursively).
         """
-        # Check if the IPCore has interfaces and get the default interface
-        ports = []
-        if hasattr(ip_core, "interfaces") and ip_core.interfaces:
-            # Use the first interface by default
-            interface = ip_core.interfaces[0]
-            # Make sure we get ALL ports from the interface
-            if hasattr(interface, "ports") and interface.ports:
-                ports = interface.ports
-        elif hasattr(ip_core, "ports"):
-            # Legacy support for IPCore objects with direct ports
-            ports = ip_core.ports
-        else:
-            # No ports found
-            ports = []
+        registers = []
+        
+        def process_register(reg, base_offset, prefix):
+            current_offset = base_offset + (getattr(reg, 'address_offset', None) or getattr(reg, 'offset', None) or 0)
+            reg_name = reg.name if hasattr(reg, 'name') else 'REG'
+            
+            # Check for nested registers (array/group)
+            nested_regs = getattr(reg, 'registers', [])
+            if nested_regs:
+                count = getattr(reg, 'count', 1) or 1
+                stride = getattr(reg, 'stride', 0) or 0
+                
+                for i in range(count):
+                    instance_offset = current_offset + (i * stride)
+                    instance_prefix = f"{prefix}{reg_name}_{i}_" if count > 1 else f"{prefix}{reg_name}_"
+                    
+                    for child in nested_regs:
+                        process_register(child, instance_offset, instance_prefix)
+                return
 
-        # Process ports to extract the correct type information
-        processed_ports = []
-        for port in ports:
-            port_info = {
-                "name": port.name.lower(),
-                "direction": (
-                    port.direction.value.lower()
-                    if hasattr(port.direction, "value")
-                    else str(port.direction).lower()
-                ),
-                "width": port.width,
-            }
+            # Leaf register processing
+            fields = []
+            for field in getattr(reg, 'fields', []):
+                # Handle bit parsing
+                bit_offset = getattr(field, 'bit_offset', None)
+                bit_width = getattr(field, 'bit_width', None)
+                
+                if bit_offset is None or bit_width is None:
+                    bits_str = getattr(field, 'bits', '') 
+                    parsed = self._parse_bits(bits_str)
+                    if bit_offset is None: bit_offset = parsed['offset']
+                    if bit_width is None: bit_width = parsed['width']
+                
+                # Access normalization
+                acc = getattr(field, 'access', 'read-write')
+                acc_str = acc.value if hasattr(acc, 'value') else str(acc)
+                reg_acc = getattr(reg, 'access', 'read-write')
+                reg_acc_str = reg_acc.value if hasattr(reg_acc, 'value') else str(reg_acc)
+                
+                fields.append({
+                    'name': field.name,
+                    'offset': bit_offset,
+                    'width': bit_width,
+                    'access': acc_str.lower() if acc_str else reg_acc_str.lower(),
+                    'reset_value': field.reset_value if getattr(field, 'reset_value', None) is not None else 0,
+                    'description': getattr(field, 'description', '')
+                })
 
-            # Use original type if available, otherwise generate a type string
-            if hasattr(port, "original_type") and port.original_type:
-                port_info["type"] = port.original_type
-            else:
-                port_info["type"] = self._get_port_type_string(port)
+            reg_acc = getattr(reg, 'access', 'read-write')
+            reg_acc_str = reg_acc.value if hasattr(reg_acc, 'value') else str(reg_acc)
 
-            processed_ports.append(port_info)
+            registers.append({
+                'name': prefix + reg_name,
+                'offset': current_offset,
+                'access': reg_acc_str.lower(),
+                'description': getattr(reg, 'description', ''),
+                'fields': fields
+            })
 
-        # Debug port count to ensure all ports are included
-        if not processed_ports:
-            print(f"Warning: No ports found for entity {ip_core.name}")
-
-        # Correctly set has_std_logic_vector based on vector types
-        has_std_logic_vector = any(
-            isinstance(port.type, VectorType) if hasattr(port, "type") else False
-            for port in ports
-        )
-
-        # Process generics/parameters
+        for mm in ip_core.memory_maps:
+            for block in mm.address_blocks:
+                block_offset = getattr(block, 'base_address', 0) or getattr(block, 'offset', 0) or 0
+                for reg in block.registers:
+                    process_register(reg, block_offset, "")
+        
+        return sorted(registers, key=lambda x: x['offset'])
+    
+    def _prepare_generics(self, ip_core: IpCore) -> List[Dict[str, Any]]:
+        """Prepare generics/parameters for templates."""
         generics = []
-        if hasattr(ip_core, "parameters") and ip_core.parameters:
-            for param_name, param in ip_core.parameters.items():
-                generic_info = {
-                    "name": param.name,
-                    "type": (
-                        param.type if param.type else "natural"
-                    ),  # Default to natural if no type specified
-                    "default_value": param.value if param.value is not None else None,
-                }
-                generics.append(generic_info)
+        for param in ip_core.parameters:
+            generics.append({
+                'name': param.name,
+                'type': param.data_type.value if hasattr(param.data_type, 'value') else str(param.data_type),
+                'default_value': param.value
+            })
+        return generics
+    
+    def _prepare_user_ports(self, ip_core: IpCore) -> List[Dict[str, Any]]:
+        """Prepare user-defined ports (non-bus ports)."""
+        ports = []
+        for port in ip_core.ports:
+            direction = port.direction.value if hasattr(port.direction, 'value') else str(port.direction)
+            width = port.width if hasattr(port, 'width') else 1
+            
+            if width == 1:
+                port_type = 'std_logic'
+            else:
+                port_type = f'std_logic_vector({width-1} downto 0)'
+            
+            ports.append({
+                'name': port.name.lower(),
+                'direction': direction.lower(),
+                'type': port_type
+            })
+        return ports
+    
+    def _get_template_context(
+        self, 
+        ip_core: IpCore, 
+        bus_type: str = 'axil'
+    ) -> Dict[str, Any]:
+        """Build common template context."""
+        registers = self._prepare_registers(ip_core)
+        
+        sw_access = ['read-write', 'write-only', 'rw', 'wo']
+        hw_access = ['read-only', 'ro']
+        
+        sw_registers = [r for r in registers if r['access'] in sw_access]
+        hw_registers = [r for r in registers if r['access'] in hw_access]
 
-        entity_template = self.env.get_template("entity.vhdl.j2")
-        entity_data = {
-            "entity_name": ip_core.name.lower(),
-            "ports": processed_ports,
-            "generics": generics,
-            "has_std_logic_vector": has_std_logic_vector,
+        return {
+            'entity_name': ip_core.vlnv.name.lower(),
+            'registers': registers,
+            'sw_registers': sw_registers,
+            'hw_registers': hw_registers,
+            'generics': self._prepare_generics(ip_core),
+            'user_ports': self._prepare_user_ports(ip_core),
+            'bus_type': bus_type,
+            'data_width': 32,
+            'addr_width': 8,
+            'reg_width': 4,
+            'memory_maps': ip_core.memory_maps,
+        }
+    
+    def generate_package(self, ip_core: IpCore) -> str:
+        """Generate VHDL package with register types and conversion functions."""
+        template = self.env.get_template('package.vhdl.j2')
+        context = self._get_template_context(ip_core)
+        return template.render(**context)
+    
+    def generate_top(self, ip_core: IpCore, bus_type: str = 'axil') -> str:
+        """Generate top-level entity that instantiates core and bus wrapper."""
+        if bus_type not in self.SUPPORTED_BUS_TYPES:
+            raise ValueError(f"Unsupported bus type: {bus_type}. Supported: {self.SUPPORTED_BUS_TYPES}")
+        
+        template = self.env.get_template('top.vhdl.j2')
+        context = self._get_template_context(ip_core, bus_type)
+        return template.render(**context)
+    
+    def generate_core(self, ip_core: IpCore) -> str:
+        """Generate core logic module (bus-agnostic)."""
+        template = self.env.get_template('core.vhdl.j2')
+        context = self._get_template_context(ip_core)
+        return template.render(**context)
+    
+    def generate_bus_wrapper(self, ip_core: IpCore, bus_type: str) -> str:
+        """Generate bus interface wrapper for register access."""
+        if bus_type not in self.SUPPORTED_BUS_TYPES:
+            raise ValueError(f"Unsupported bus type: {bus_type}. Supported: {self.SUPPORTED_BUS_TYPES}")
+        
+        template = self.env.get_template(f'bus_{bus_type}.vhdl.j2')
+        context = self._get_template_context(ip_core, bus_type)
+        return template.render(**context)
+    
+    def generate_register_file(self, ip_core: IpCore) -> str:
+        """Generate standalone register file (bus-agnostic)."""
+        template = self.env.get_template('register_file.vhdl.j2')
+        context = self._get_template_context(ip_core)
+        return template.render(**context)
+    
+    def generate_all(
+        self, 
+        ip_core: IpCore, 
+        bus_type: str = 'axil',
+        include_regfile: bool = False
+    ) -> Dict[str, str]:
+        """
+        Generate all VHDL files for the IP core.
+        
+        Args:
+            ip_core: IP core definition
+            bus_type: Bus interface type ('axil' or 'avmm')
+            include_regfile: Include standalone register file
+            
+        Returns:
+            Dictionary mapping filename to content
+        """
+        name = ip_core.vlnv.name.lower()
+        
+        files = {
+            f"{name}_pkg.vhd": self.generate_package(ip_core),
+            f"{name}.vhd": self.generate_top(ip_core, bus_type),
+            f"{name}_core.vhd": self.generate_core(ip_core),
+            f"{name}_{bus_type}.vhd": self.generate_bus_wrapper(ip_core, bus_type),
+        }
+        
+        if include_regfile:
+            files[f"{name}_regfile.vhd"] = self.generate_register_file(ip_core)
+        
+        return files
+    
+    def generate_intel_hw_tcl(self, ip_core: IpCore, bus_type: str = 'axil') -> str:
+        """Generate Intel Platform Designer _hw.tcl component file."""
+        template = self.env.get_template('intel_hw_tcl.j2')
+        context = self._get_template_context(ip_core, bus_type)
+        # Add VLNV info
+        context['vendor'] = ip_core.vlnv.vendor
+        context['library'] = ip_core.vlnv.library
+        context['version'] = ip_core.vlnv.version
+        context['description'] = ip_core.description if hasattr(ip_core, 'description') else ''
+        context['author'] = ip_core.vlnv.vendor
+        context['display_name'] = ip_core.vlnv.name.replace('_', ' ').title()
+        return template.render(**context)
+    
+    def generate_xilinx_component_xml(self, ip_core: IpCore) -> str:
+        """Generate Xilinx Vivado IP-XACT component.xml."""
+        template = self.env.get_template('xilinx_component_xml.j2')
+        context = self._get_template_context(ip_core, 'axil')
+        # Add VLNV info
+        context['vendor'] = ip_core.vlnv.vendor
+        context['library'] = ip_core.vlnv.library
+        context['version'] = ip_core.vlnv.version
+        context['description'] = ip_core.description if hasattr(ip_core, 'description') else ''
+        context['display_name'] = ip_core.vlnv.name.replace('_', ' ').title()
+        return template.render(**context)
+    
+    def generate_vendor_files(
+        self, 
+        ip_core: IpCore, 
+        vendor: str = 'both',
+        bus_type: str = 'axil'
+    ) -> Dict[str, str]:
+        """
+        Generate vendor-specific integration files.
+        
+        Args:
+            ip_core: IP core definition
+            vendor: 'intel', 'xilinx', or 'both'
+            bus_type: Bus interface type
+            
+        Returns:
+            Dictionary mapping filename to content
+        """
+        name = ip_core.vlnv.name.lower()
+        files = {}
+        
+        if vendor in ['intel', 'both']:
+            files[f"{name}_hw.tcl"] = self.generate_intel_hw_tcl(ip_core, bus_type)
+        
+        if vendor in ['xilinx', 'both']:
+            files["component.xml"] = self.generate_xilinx_component_xml(ip_core)
+        
+        return files
+    
+    def generate_cocotb_test(self, ip_core: IpCore, bus_type: str = 'axil') -> str:
+        """Generate cocotb Python test file."""
+        template = self.env.get_template('cocotb_test.py.j2')
+        context = self._get_template_context(ip_core, bus_type)
+        return template.render(**context)
+    
+    def generate_cocotb_makefile(self, ip_core: IpCore, bus_type: str = 'axil') -> str:
+        """Generate Makefile for cocotb simulation."""
+        template = self.env.get_template('cocotb_makefile.j2')
+        context = self._get_template_context(ip_core, bus_type)
+        return template.render(**context)
+
+    def generate_memmap_yaml(self, ip_core: IpCore) -> str:
+        """Generate memory map YAML for Python driver."""
+        template = self.env.get_template('memmap.yml.j2')
+        context = self._get_template_context(ip_core)
+        return template.render(**context)
+    
+    def generate_testbench(
+        self, 
+        ip_core: IpCore, 
+        bus_type: str = 'axil'
+    ) -> Dict[str, str]:
+        """
+        Generate testbench files for cocotb simulation.
+        
+        Args:
+            ip_core: IP core definition
+            bus_type: Bus interface type
+            
+        Returns:
+            Dictionary mapping filename to content
+        """
+        name = ip_core.vlnv.name.lower()
+        return {
+            f"{name}_test.py": self.generate_cocotb_test(ip_core, bus_type),
+            "Makefile": self.generate_cocotb_makefile(ip_core, bus_type),
+            f"{name}_memmap.yml": self.generate_memmap_yaml(ip_core),
         }
 
-        return entity_template.render(**entity_data)
 
-    def generate_architecture(self, ip_core: IPCore, arch_name: str = None) -> str:
-        """
-        Generate VHDL architecture for the given IP core.
-
-        Args:
-            ip_core: IPCore object to generate VHDL for
-            arch_name: Optional architecture name (defaults to ip_core.name_arch)
-
-        Returns:
-            String containing the VHDL architecture
-        """
-        if not arch_name:
-            arch_name = f"{ip_core.name.lower()}_arch"
-
-        architecture_template = self.env.get_template("architecture.vhdl.j2")
-        architecture_data = {
-            "architecture_name": arch_name,
-            "entity_name": ip_core.name.lower(),
-        }
-
-        return architecture_template.render(**architecture_data)
-
-    def generate_vhdl(self, ip_core: IPCore) -> str:
-        """
-        Generate complete VHDL code (entity and architecture) for the given IP core.
-
-        Args:
-            ip_core: IPCore object to generate VHDL for
-
-        Returns:
-            String containing the complete VHDL code
-        """
-        entity_code = self.generate_entity(ip_core)
-        architecture_code = self.generate_architecture(ip_core)
-
-        return f"{entity_code.strip()}\n\n{architecture_code.strip()}"
-
-    def _get_port_type_string(self, port) -> str:
-        """
-        Get the VHDL type string for a port.
-
-        Args:
-            port: Port object
-
-        Returns:
-            String representation of the port type for VHDL
-        """
-        if hasattr(port, "type"):
-            port_type = port.type
-
-            # First, check if we have the original type saved during parsing
-            if hasattr(port, "original_type") and port.original_type:
-                return port.original_type
-
-            # Otherwise, generate type based on the type object
-            if hasattr(port_type, "to_vhdl"):
-                return port_type.to_vhdl()
-            elif isinstance(port_type, VectorType):
-                return f"std_logic_vector({port.width - 1} downto 0)"
-            elif isinstance(port_type, BitType):
-                return "std_logic"
-            elif hasattr(port_type, "base_type") and hasattr(
-                port_type.base_type, "name"
-            ):
-                # Handle case when type is DataType with base_type
-                base_type_name = port_type.base_type.name
-
-                # For vector types, we need the range constraint
-                if base_type_name.lower() == "std_logic_vector":
-                    # Use the original range constraint if available
-                    if (
-                        hasattr(port_type, "range_constraint")
-                        and port_type.range_constraint
-                    ):
-                        return f"std_logic_vector({port_type.range_constraint})"
-                    else:
-                        # Fall back to calculating from width
-                        width = getattr(port, "width", 1)
-                        if width > 1:
-                            return f"std_logic_vector({width - 1} downto 0)"
-                        else:
-                            # If it's a 1-bit vector, use std_logic
-                            return "std_logic"
-                else:
-                    # Preserve original case of type name
-                    return base_type_name
-            elif isinstance(port_type, str):
-                # Preserve original type string exactly as it was
-                return port_type
-
-        # Default case for unknown types - preserve std_ulogic if that's what's needed
-        default_type = "std_logic"
-        if hasattr(port, "width") and port.width > 1:
-            default_type = f"std_logic_vector({port.width - 1} downto 0)"
-
-        return default_type
-
-
-# Keep the original function for backward compatibility
-def generate_vhdl(ip_core: IPCore) -> str:
+# Backward compatibility: standalone function
+def generate_vhdl(ip_core: IpCore, bus_type: str = 'axil') -> Dict[str, str]:
     """
-    Generates VHDL code for a given IPCore object using Jinja2 templates,
-    including support for bus interfaces.
-
+    Generate VHDL files for an IP core.
+    
     Args:
-        ip_core (IPCore): The IP core for which to generate VHDL.
-
+        ip_core: IP core definition
+        bus_type: Bus interface type
+        
     Returns:
-        str: The generated VHDL code.
+        Dictionary mapping filename to content
     """
     generator = VHDLGenerator()
-    return generator.generate_vhdl(ip_core)
-
-
-if __name__ == "__main__":
-    # Example usage
-    from fpga_lib.core.ip_core import RAM, FIFO
-
-    ram_instance = RAM(depth=1024, width=32)
-    vhdl_code_ram = generate_vhdl(ram_instance)
-    print("VHDL for RAM with AXI Lite:\n", vhdl_code_ram)
-
-    fifo_instance = FIFO(depth=64, width=16)
-    vhdl_code_fifo = generate_vhdl(fifo_instance)
-    print("\nVHDL for FIFO with AXI Stream:\n", vhdl_code_fifo)
+    return generator.generate_all(ip_core, bus_type)
