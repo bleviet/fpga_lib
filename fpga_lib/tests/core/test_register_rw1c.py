@@ -9,7 +9,7 @@ writing 1 clears the bit and writing 0 has no effect.
 import pytest
 from unittest.mock import Mock
 
-from fpga_lib.core.register import BitField, Register, AbstractBusInterface
+from fpga_lib.runtime.register import BitField, Register, AbstractBusInterface
 
 
 class MockBusInterface(AbstractBusInterface):
