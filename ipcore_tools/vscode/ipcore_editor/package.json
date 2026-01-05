@@ -67,7 +67,7 @@
     },
     "scripts": {
         "vscode:prepublish": "npm run package",
-        "sync-templates": "mkdir -p src/generator/templates && cp -r ../fpga_lib/generator/hdl/templates/* src/generator/templates/",
+        "sync-templates": "mkdir -p src/generator/templates && cp -r ../../../fpga_lib/generator/hdl/templates/* src/generator/templates/",
         "precompile": "npm run sync-templates",
         "compile": "webpack",
         "watch": "webpack --watch",
