@@ -31,15 +31,6 @@
 ---
 
 ## [VSCode Extension] - TypeScript (npm)
-* `package.json`: Extension manifest and configuration.
-* `src/extension.ts`: Main activation handler.
-* `src/providers/`: Custom editor providers for `.ip.yml` and `.mm.yml` files.
-* `src/webview/`: React-based visual editors (IP Core & Memory Map).
-* `src/generator/`: VHDL and testbench generation.
-
-### Memory Map GUI (`ipcore_tools/python/memory_map_editor/`)
-* `main.py`: PyQt6 standalone memory map editor application.
-* `resources/`: Sample memory maps and assets.
 
 ## [Backend] - Python (uv)
 
