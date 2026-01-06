@@ -85,3 +85,6 @@ sim_build/
 results.xml
 *.ghw
 *.vcd
+
+# Generated IP core outputs (regeneratable)
+ipcore_spec/examples/*/my_timer_core/
