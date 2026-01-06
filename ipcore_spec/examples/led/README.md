@@ -66,48 +66,44 @@ The LED controller is a configurable IP core with an AXI-Lite interface that pro
 - `PWM_BITS` (default: 8) - PWM resolution for brightness control (4-16 bits)
 - `BLINK_COUNTER_WIDTH` (default: 24) - Width of blink timer counter (16-32 bits)
 
+
+## Generating the Core
+
+This IP core is generated using the `ipcore` CLI tool (or VS Code extension).
+
+### Using CLI
+```bash
+# from project root
+uv run scripts/ipcore.py generate \
+  ipcore_spec/examples/led/led_controller.ip.yml \
+  --output ipcore_spec/examples/led \
+  --vendor both \
+  --force
+```
+
 ## Running Tests
 
 ### Prerequisites
 - GHDL (VHDL simulator)
-- cocotb (Python testbench framework) - v1.9.2 or v2.0.0+
-- cocotbext-axi (AXI verification components)
-- Python 3.8+
+- Python 3.8+ (managed via `uv`)
 
-### Quick Test
+### Run Tests
 ```bash
-cd tb
-make MODULE=simple_test
-```
-
-### Full Register Test
-```bash
-cd tb
-PYTHONPATH=/path/to/fpga_lib:$PYTHONPATH make
-```
-
-### Generate Waveforms
-```bash
-cd tb
-make WAVES=1 MODULE=simple_test
-# View with: gtkwave led_controller.ghw
+# from project root
+uv run pytest ipcore_spec/examples/led/tb/led_controller_test.py
 ```
 
 ## Integration with FPGAs
 
 ### Altera/Intel Platform Designer
-1. Copy the `intel/led_controller_hw.tcl` file to your IP directory
+1. Use generated `intel/led_controller_hw.tcl`
 2. In Platform Designer, refresh IP catalog
 3. Add "led_controller" component to your system
-4. Connect AXI-Lite interface and clock/reset signals
-5. Export LED output ports to top-level
 
 ### Xilinx Vivado
-1. Copy entire directory to Vivado IP repository
+1. Use generated `xilinx/component.xml`
 2. In Vivado: Settings → IP → Repository → Add Repository
-3. Select this directory
-4. The LED controller will appear in IP catalog
-5. Add to block design and connect interfaces
+3. Select the `xilinx` directory
 
 ## Customization
 
@@ -132,15 +128,6 @@ begin
   end if;
 end process;
 ```
-
-## Verification Status
-
-✅ VHDL files compile successfully with GHDL  
-✅ Basic instantiation test passes  
-✅ Register interface generated correctly  
-⏳ Full register read/write testing (requires fpga_lib driver)  
-⏳ PWM and blink pattern implementation  
-⏳ Hardware testing on real FPGA
 
 ## License
 
