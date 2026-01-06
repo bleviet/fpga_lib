@@ -9,13 +9,19 @@ from fpga_lib.parser.yaml.ip_core_parser import YamlIpCoreParser
 
 def main():
     if len(sys.argv) < 2:
-        print("Usage: python run_gen.py <ip_core.yaml>")
+        print("Usage: python run_gen.py <ip_core.yaml> [output_dir]")
         sys.exit(1)
 
     yaml_path = sys.argv[1]
-    
+
+    # Optional: specify output directory, defaults to same directory as YAML
+    if len(sys.argv) > 2:
+        output_base = sys.argv[2]
+    else:
+        output_base = os.path.dirname(yaml_path)
+
     print(f"Loading IP Core from {yaml_path}...")
-    
+
     # Use IpCoreParser to handle imports and normalization
     parser = YamlIpCoreParser()
     try:
@@ -25,57 +31,36 @@ def main():
         import traceback
         traceback.print_exc()
         sys.exit(1)
-        
-    print(f"Generating for {ip_core.vlnv.name}...")
-    
-    gen = VHDLGenerator()
-    
-    # Generate generated HDL
-    # Note: 'generate_all' returns dict of {filename: content}
-    hdl_files = gen.generate_all(ip_core, bus_type='axil', include_regfile=True)
-    
-    # Generate Vendor integration
-    vendor_files = gen.generate_vendor_files(ip_core, vendor='both', bus_type='axil')
-    
-    # Generate Testbench (includes memmap.yml now!)
-    tb_files = gen.generate_testbench(ip_core, bus_type='axil')
-    
-    # Output dirs
-    base_dir = os.path.dirname(yaml_path)
-    rtl_dir = os.path.join(base_dir, 'rtl')
-    tb_dir = os.path.join(base_dir, 'tb')
-    intel_dir = os.path.join(base_dir, 'intel')
-    xilinx_dir = os.path.join(base_dir, 'xilinx')
-    
-    os.makedirs(rtl_dir, exist_ok=True)
-    os.makedirs(tb_dir, exist_ok=True)
-    os.makedirs(intel_dir, exist_ok=True)
-    os.makedirs(xilinx_dir, exist_ok=True)
-    
-    # Write HDL
-    for fname, content in hdl_files.items():
-        with open(os.path.join(rtl_dir, fname), 'w') as f:
-            f.write(content)
-            print(f"Wrote {fname}")
-            
-    # Write Vendor
-    for fname, content in vendor_files.items():
-        if fname.endswith('.tcl'):
-            path = os.path.join(intel_dir, fname)
-        elif fname.endswith('.xml'):
-            path = os.path.join(xilinx_dir, fname)
-        else:
-            path = os.path.join(base_dir, fname)
-        
-        with open(path, 'w') as f:
-            f.write(content)
-            print(f"Wrote {fname}")
 
-    # Write TB
-    for fname, content in tb_files.items():
-        with open(os.path.join(tb_dir, fname), 'w') as f:
+    print(f"Generating for {ip_core.vlnv.name}...")
+
+    gen = VHDLGenerator()
+
+    # Generate all files with structured layout (rtl/, tb/, intel/, xilinx/)
+    all_files = gen.generate_all(
+        ip_core,
+        bus_type='axil',
+        structured=True,
+        vendor='both',
+        include_testbench=True,
+        include_regfile=True
+    )
+
+    # Write files
+    for filepath, content in all_files.items():
+        full_path = os.path.join(output_base, filepath)
+        os.makedirs(os.path.dirname(full_path), exist_ok=True)
+        with open(full_path, 'w') as f:
             f.write(content)
-            print(f"Wrote {fname}")
+        print(f"Wrote {filepath}")
+
+    print(f"\nGeneration Complete. Files written to: {output_base}")
+    print(f"Total files: {len(all_files)}")
+    print("\nDirectory structure:")
+    print("  rtl/        - VHDL source files")
+    print("  tb/         - Cocotb testbench files")
+    print("  intel/      - Intel Platform Designer integration")
+    print("  xilinx/     - Xilinx Vivado IP-XACT integration")
 
     print("Generation Complete.")
 
