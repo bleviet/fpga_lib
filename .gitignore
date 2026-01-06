@@ -67,3 +67,13 @@ coverage.xml
 
 # Ignore local dev scripts
 *.local.sh
+
+# Xilinx Vivado generated files
+*.jou
+*.log
+*.str
+*.backup.log
+*.backup.jou
+.Xil/
+vivado_pid*.str
+vivado*.backup.*
