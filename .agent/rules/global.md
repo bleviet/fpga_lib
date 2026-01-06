@@ -11,12 +11,13 @@ trigger: always_on
   - If you refactor: Update the description.
 - **Reuse:** Never create a new utility if one exists in the map.
 
-## 2. Cross-Domain Boundaries
-This repository is a hybrid (Python Backend + VS Code Extension).
-- **Backend:** Located in `/backend`. See `python.md` for rules.
-- **Extension:** Located in `/extension`. See `vscode.md` for rules.
-- **IPC:** If changing the communication interface (API/JSON-RPC) between them, you MUST update both sides atomically.
-
-## 3. General Hygiene
-- **Commit Messages:** Use Conventional Commits (feat, fix, docs, chore).
+## 2. General Hygiene
+- **Commit Messages:** Use Conventional Commits (feat, fix, docs, chore, test).
 - **Comments:** Do not leave commented-out code. Delete it.
+- **Documentation:** Keep README files up-to-date when changing functionality.
+
+## 3. Project Structure Awareness
+- **Python Backend:** Core library is in `/fpga_lib/` with models, parsers, generators, runtime, and drivers.
+- **Tools:** Standalone tools in `/ipcore_tools/` (Python GUI/TUI editors, VSCode extension).
+- **Schemas:** IP Core and Memory Map specifications in `/ipcore_spec/`.
+- **Tests:** All tests are in `/fpga_lib/tests/` with subdirectories matching the source structure.
