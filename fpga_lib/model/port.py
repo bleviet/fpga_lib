@@ -2,7 +2,7 @@
 Port definitions for IP cores.
 """
 
-from typing import Any
+from typing import Any, Union
 from enum import Enum
 from pydantic import BaseModel, Field, field_validator
 
@@ -25,7 +25,7 @@ class Port(BaseModel):
     name: str = Field(..., description="Physical port name (HDL)")
     logical_name: str = Field(default="", description="Standard logical name for association")
     direction: PortDirection = Field(..., description="Port direction")
-    width: int = Field(default=1, description="Port width in bits")
+    width: Union[int, str] = Field(default=1, description="Port width in bits or parameter name")
     description: str = Field(default="", description="Port description")
 
     @field_validator("direction", mode="before")
@@ -43,10 +43,15 @@ class Port(BaseModel):
 
     @field_validator("width")
     @classmethod
-    def validate_width(cls, v: int) -> int:
-        """Ensure port width is positive."""
-        if v <= 0:
-            raise ValueError("Port width must be positive")
+    def validate_width(cls, v: Union[int, str]) -> Union[int, str]:
+        """Ensure port width is positive or a valid parameter reference."""
+        if isinstance(v, int):
+            if v <= 0:
+                raise ValueError("Port width must be positive")
+        elif isinstance(v, str):
+            # Allow string for parameter references (e.g., "NUM_LEDS")
+            if not v or not v.strip():
+                raise ValueError("Port width parameter reference cannot be empty")
         return v
 
     @property
@@ -67,11 +72,16 @@ class Port(BaseModel):
     @property
     def is_vector(self) -> bool:
         """Check if port is a vector (multi-bit)."""
+        if isinstance(self.width, str):
+            return True  # Parameter-based widths are assumed to be vectors
         return self.width > 1
 
     @property
     def range_string(self) -> str:
         """Get VHDL-style range string (e.g., '7 downto 0')."""
+        if isinstance(self.width, str):
+            # Parameter-based width
+            return f"{self.width} - 1 downto 0"
         if self.width == 1:
             return ""
         return f"{self.width - 1} downto 0"

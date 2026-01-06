@@ -135,7 +135,8 @@ proc elaborate {} {
     set_interface_property conduit SVD_ADDRESS_GROUP ""
 
 {% for port in user_ports %}
-    add_interface_port conduit {{ port.name }} {{ port.name }} {{ 'Output' if port.direction == 'out' else 'Input' }} {{ port.width | default(1) }}
+    add_interface_port conduit {{ port.name }} {{ port.name }} {{ 'Output' if port.direction == 'out' else 'Input' }} {% if port.is_parameterized %}{{ port.width_expr }}{% else %}{{ port.width | default(1) }}{% endif %}
+
 {% endfor %}
 {% endif %}
 }

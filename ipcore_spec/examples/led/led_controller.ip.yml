@@ -35,13 +35,13 @@ ports:
 -   name: o_led
     logicalName: LED_OUT
     direction: out
-    width: 32
-    description: LED output array (one bit per LED, NUM_LEDS used)
+    width: NUM_LEDS
+    description: LED output array (one bit per LED)
 -   name: o_led_pwm
     logicalName: LED_PWM_OUT
     direction: out
-    width: 32
-    description: LED PWM output array for brightness control (NUM_LEDS used)
+    width: NUM_LEDS
+    description: LED PWM output array for brightness control
 -   name: o_irq
     logicalName: IRQ_OUT
     direction: out

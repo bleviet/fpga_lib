@@ -41,8 +41,8 @@ entity led_controller is
     s_axi_rvalid  : out std_logic;
     s_axi_rready  : in  std_logic;
     -- User ports
-    o_led : out std_logic_vector(31 downto 0);
-    o_led_pwm : out std_logic_vector(31 downto 0);
+    o_led : out std_logic_vector(NUM_LEDS-1 downto 0);
+    o_led_pwm : out std_logic_vector(NUM_LEDS-1 downto 0);
     o_irq : out std_logic
   );
 end entity led_controller;

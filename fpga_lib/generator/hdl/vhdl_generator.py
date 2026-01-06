@@ -150,15 +150,29 @@ class VHDLGenerator(BaseGenerator):
             direction = port.direction.value if hasattr(port.direction, 'value') else str(port.direction)
             width = port.width if hasattr(port, 'width') else 1
 
-            if width == 1:
+            # Check if width is a parameter reference (string) or a number
+            is_parameterized = isinstance(width, str)
+            if is_parameterized:
+                # Width is a parameter reference - use it directly in VHDL
+                port_type = f'std_logic_vector({width}-1 downto 0)'
+                width_expr = width  # Store the parameter name
+                numeric_width = None  # No numeric value for XML
+            elif width == 1:
                 port_type = 'std_logic'
+                width_expr = None
+                numeric_width = 1
             else:
                 port_type = f'std_logic_vector({width-1} downto 0)'
+                width_expr = None
+                numeric_width = width
 
             ports.append({
                 'name': port.name.lower(),
                 'direction': direction.lower(),
-                'type': port_type
+                'type': port_type,
+                'width': numeric_width,
+                'width_expr': width_expr,
+                'is_parameterized': is_parameterized
             })
         return ports
 

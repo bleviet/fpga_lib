@@ -99,8 +99,8 @@ proc elaborate {} {
     set_interface_property conduit CMSIS_SVD_VARIABLES ""
     set_interface_property conduit SVD_ADDRESS_GROUP ""
 
-    add_interface_port conduit o_led o_led Output 1
-    add_interface_port conduit o_led_pwm o_led_pwm Output 1
+    add_interface_port conduit o_led o_led Output NUM_LEDS
+    add_interface_port conduit o_led_pwm o_led_pwm Output NUM_LEDS
     add_interface_port conduit o_irq o_irq Output 1
 }
 

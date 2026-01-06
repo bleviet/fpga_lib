@@ -634,7 +634,11 @@
           <spirit:direction>{{ port.direction }}</spirit:direction>
 {% if port.type != 'std_logic' %}
           <spirit:vector>
-            <spirit:left spirit:format="long">{{ port.width | default(1) - 1 }}</spirit:left>
+{% if port.is_parameterized %}
+            <spirit:left spirit:resolve="user">{{ port.width_expr }}-1</spirit:left>
+{% else %}
+            <spirit:left spirit:format="long">{{ port.width - 1 }}</spirit:left>
+{% endif %}
             <spirit:right spirit:format="long">0</spirit:right>
           </spirit:vector>
 {% endif %}
