@@ -1,38 +1,37 @@
 - name: CSR_MAP
   description: Control/Status Register Map for AXI-Lite slave
   addressBlocks:
-    - name: CONTROL_REGS
-      offset: 0
-      usage: register
-      defaultRegWidth: 32
-      registers:
-        - name: CTRL
-          description: Control register
-          fields:
-            - name: ENABLE
-              bits: "[0:0]"
-              access: read-write
-              description: Global enable
-            - name: MODE
-              bits: "[2:1]"
-              access: read-write
-              description: Operating mode
-            - name: RESERVED
-              bits: "[31:3]"
-              access: read-only
-        
-        - name: STATUS
-          description: Status register
-          access: read-only
-          fields:
-            - name: READY
-              bits: "[0:0]"
-              access: read-only
-              description: Ready flag
-            - name: BUSY
-              bits: "[1:1]"
-              access: read-only
-              description: Busy flag
-            - name: RESERVED
-              bits: "[31:2]"
-              access: read-only
+  - name: CONTROL_REGS
+    offset: 0
+    usage: register
+    defaultRegWidth: 32
+    registers:
+    - name: CTRL
+      description: Control register
+      fields:
+      - name: ENABLE
+        bits: '[0:0]'
+        access: read-write
+        description: Global enable
+      - name: MODE
+        bits: '[2:1]'
+        access: read-write
+        description: Operating mode
+      - name: RESERVED
+        bits: '[31:3]'
+        access: read-only
+    - name: STATUS
+      description: Status register
+      access: read-only
+      fields:
+      - name: READY
+        bits: '[0:0]'
+        access: read-only
+        description: Ready flag
+      - name: BUSY
+        bits: '[1:1]'
+        access: read-only
+        description: Busy flag
+      - name: RESERVED
+        bits: '[31:2]'
+        access: read-only

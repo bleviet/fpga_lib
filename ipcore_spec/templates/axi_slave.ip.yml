@@ -1,46 +1,39 @@
-apiVersion: "1.0"
-
+apiVersion: '1.0'
 vlnv:
-    vendor: example.com
-    library: examples
-    name: axi_slave_core
-    version: 1.0.0
-
+  vendor: example.com
+  library: examples
+  name: axi_slave_core
+  version: 1.0.0
 description: IP core with AXI-Lite slave interface and register map
-
 useBusLibrary: ../common/bus_definitions.yml
-
 clocks:
-    - name: s_axi_aclk # Physical port name
-      logicalName: AXI_CLK # Logical name for association
-      direction: in
-      frequency: 100MHz
-      description: AXI-Lite clock
-
+- name: s_axi_aclk
+  logicalName: AXI_CLK
+  direction: in
+  frequency: 100MHz
+  description: AXI-Lite clock
 resets:
-    - name: s_axi_aresetn # Physical port name
-      logicalName: AXI_RST # Logical name for association
-      direction: in
-      polarity: activeLow
-      description: AXI-Lite reset, active low
-
+- name: s_axi_aresetn
+  logicalName: AXI_RST
+  direction: in
+  polarity: activeLow
+  description: AXI-Lite reset, active low
 busInterfaces:
-    - name: S_AXI_LITE # Logical name of this interface
-      type: AXI4L # Type from bus library
-      mode: slave
-      physicalPrefix: s_axi_ # Generates s_axi_awaddr, s_axi_wdata, etc.
-      associatedClock: s_axi_aclk # Physical clock port name
-      associatedReset: s_axi_aresetn # Physical reset port name
-      memoryMapRef: CSR_MAP # Links to memory map name
-      useOptionalPorts:
-          - AWPROT
-          - ARPROT
-      portWidthOverrides:
-          AWADDR: 12 # 4KB address space
-          ARADDR: 12
-          WDATA: 32
-          RDATA: 32
-          WSTRB: 4
-
+- name: S_AXI_LITE
+  type: AXI4L
+  mode: slave
+  physicalPrefix: s_axi_
+  associatedClock: s_axi_aclk
+  associatedReset: s_axi_aresetn
+  memoryMapRef: CSR_MAP
+  useOptionalPorts:
+  - AWPROT
+  - ARPROT
+  portWidthOverrides:
+    AWADDR: 12
+    ARADDR: 12
+    WDATA: 32
+    RDATA: 32
+    WSTRB: 4
 memoryMaps:
-    import: axi_slave.mm.yml
+  import: axi_slave.mm.yml

@@ -4,8 +4,6 @@ vlnv:
   library: test
   name: minimal_core
   version: 0.1.0
-
-description: Minimal IP core with only required fields - no interfaces or other optional elements
-
-# Location of the reusable bus library
+description: Minimal IP core with only required fields - no interfaces or other optional
+  elements
 useBusLibrary: ../../common/bus_definitions.yml

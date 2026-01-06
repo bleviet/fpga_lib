@@ -4,20 +4,9 @@ vlnv:
   library: my_library
   name: New_IP_Core
   version: 1.0.0
-
 description: A new IP Core definition
-
-# Location of the reusable bus library
 useBusLibrary: ../../common/bus_definitions.yml
-
-# Top-level clock definitions
 clocks: []
-
-# Top-level reset definitions
 resets: []
-
-# Bus interfaces
 busInterfaces: []
-
-# Parameters
 parameters: []

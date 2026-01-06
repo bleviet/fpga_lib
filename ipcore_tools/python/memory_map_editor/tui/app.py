@@ -1204,7 +1204,7 @@ class MemoryMapEditorApp(App):
                  pass
 
             with open(self.file_path, 'w') as f:
-                yaml.dump(data, f, sort_keys=False)
+                yaml.dump(data, f, sort_keys=False, indent=2)
 
             self.notify(f"Saved to {self.file_path.name}", severity="information")
         except Exception as e:

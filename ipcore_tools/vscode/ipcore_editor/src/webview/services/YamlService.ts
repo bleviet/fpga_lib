@@ -11,7 +11,7 @@ export class YamlService {
    */
   static dump(data: any): string {
     const cleaned = YamlService.cleanForYaml(data);
-    return jsyaml.dump(cleaned, { noRefs: true, sortKeys: false, lineWidth: -1 });
+    return jsyaml.dump(cleaned, { noRefs: true, sortKeys: false, lineWidth: -1, indent: 2 });
   }
 
   /**

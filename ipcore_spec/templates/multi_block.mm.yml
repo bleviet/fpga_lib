@@ -1,85 +1,74 @@
 - name: CSR_MAP
   description: Memory map showing different address block types
   addressBlocks:
-    # Address Block 1: Control/Status Registers
-    - name: CONTROL_REGS
-      offset: 0
-      usage: register
-      defaultRegWidth: 32
-      registers:
-        - name: CTRL
-          description: Control register
-          fields:
-            - name: ENABLE
-              bits: "[0:0]"
-              access: read-write
-              description: Global enable
-            - name: MODE
-              bits: "[2:1]"
-              access: read-write
-              description: Operating mode
-            - name: RESERVED
-              bits: "[31:3]"
-              access: read-only
-        
-        - name: STATUS
-          description: Status register
-          access: read-only
-          fields:
-            - name: READY
-              bits: "[0:0]"
-              access: read-only
-              description: Ready flag
-            - name: ERROR
-              bits: "[1:1]"
-              access: read-only
-              description: Error flag
-            - name: RESERVED
-              bits: "[31:2]"
-              access: read-only
-        
-        - name: VERSION
-          offset: 16
-          description: Hardware version
-          access: read-only
-          fields:
-            - name: MINOR
-              bits: "[7:0]"
-              access: read-only
-            - name: MAJOR
-              bits: "[15:8]"
-              access: read-only
-            - name: RESERVED
-              bits: "[31:16]"
-              access: read-only
-    
-    # Address Block 2: Data Registers
-    - name: DATA_REGS
-      offset: 256
-      usage: register
-      defaultRegWidth: 32
-      registers:
-        - name: DATA_IN
-          description: Input data register
-          access: write-only
-        
-        - name: DATA_OUT
-          description: Output data register
-          access: read-only
-        
-        - name: DATA_SCRATCH
-          description: Scratchpad register
-          access: read-write
-    
-    # Address Block 3: Local RAM
-    - name: LOCAL_RAM
-      offset: 4096
-      usage: memory
+  - name: CONTROL_REGS
+    offset: 0
+    usage: register
+    defaultRegWidth: 32
+    registers:
+    - name: CTRL
+      description: Control register
+      fields:
+      - name: ENABLE
+        bits: '[0:0]'
+        access: read-write
+        description: Global enable
+      - name: MODE
+        bits: '[2:1]'
+        access: read-write
+        description: Operating mode
+      - name: RESERVED
+        bits: '[31:3]'
+        access: read-only
+    - name: STATUS
+      description: Status register
+      access: read-only
+      fields:
+      - name: READY
+        bits: '[0:0]'
+        access: read-only
+        description: Ready flag
+      - name: ERROR
+        bits: '[1:1]'
+        access: read-only
+        description: Error flag
+      - name: RESERVED
+        bits: '[31:2]'
+        access: read-only
+    - name: VERSION
+      offset: 16
+      description: Hardware version
+      access: read-only
+      fields:
+      - name: MINOR
+        bits: '[7:0]'
+        access: read-only
+      - name: MAJOR
+        bits: '[15:8]'
+        access: read-only
+      - name: RESERVED
+        bits: '[31:16]'
+        access: read-only
+  - name: DATA_REGS
+    offset: 256
+    usage: register
+    defaultRegWidth: 32
+    registers:
+    - name: DATA_IN
+      description: Input data register
+      access: write-only
+    - name: DATA_OUT
+      description: Output data register
+      access: read-only
+    - name: DATA_SCRATCH
+      description: Scratchpad register
       access: read-write
-      description: 4KB local scratchpad RAM
-    
-    # Address Block 4: Reserved
-    - name: RESERVED
-      offset: 8192
-      usage: reserved
-      description: Reserved for future expansion
+  - name: LOCAL_RAM
+    offset: 4096
+    usage: memory
+    access: read-write
+    description: 4KB local scratchpad RAM
+  - name: RESERVED
+    offset: 8192
+    usage: reserved
+    description: Reserved for future expansion

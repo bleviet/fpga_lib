@@ -1,15 +1,15 @@
 - name: CSR_MAP
   description: Control/Status Register Map
   addressBlocks:
-    - name: CONTROL_REGS
-      offset: 0
-      usage: register
-      defaultRegWidth: 32
-      registers:
-        - name: CTRL
-          description: Control register
-          fields:
-            - name: ENABLE
-              bits: "[0:0]"
-              access: read-write
-              description: Global enable
+  - name: CONTROL_REGS
+    offset: 0
+    usage: register
+    defaultRegWidth: 32
+    registers:
+    - name: CTRL
+      description: Control register
+      fields:
+      - name: ENABLE
+        bits: '[0:0]'
+        access: read-write
+        description: Global enable

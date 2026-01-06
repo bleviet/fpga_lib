@@ -62,7 +62,7 @@ export class YamlValidator {
    */
   dump(data: unknown): string {
     try {
-      return yaml.dump(data, { noRefs: true, sortKeys: false, lineWidth: -1 });
+      return yaml.dump(data, { noRefs: true, sortKeys: false, lineWidth: -1, indent: 2 });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       this.logger.error('YAML serialization failed', error instanceof Error ? error : undefined);

@@ -482,7 +482,7 @@ class VHDLGenerator(BaseGenerator):
 
         # Write back to file
         with open(ip_path, 'w') as f:
-            yaml.dump(yaml_data, f, default_flow_style=False, sort_keys=False, indent=4)
+            yaml.dump(yaml_data, f, default_flow_style=False, sort_keys=False, indent=2)
 
         return True
 

@@ -1,98 +1,98 @@
 apiVersion: '1.0'
 vlnv:
-    vendor: test-hardware.com
-    library: peripherals
-    name: led_controller
-    version: 1.0.0
+  vendor: test-hardware.com
+  library: peripherals
+  name: led_controller
+  version: 1.0.0
 description: A configurable LED controller IP with AXI-Lite interface supporting multiple
-    LED outputs with individual control, PWM brightness, and blink patterns.
+  LED outputs with individual control, PWM brightness, and blink patterns.
 parameters:
--   name: NUM_LEDS
-    value: 8
-    dataType: integer
-    description: Number of LED outputs (1 to 32)
--   name: PWM_BITS
-    value: 8
-    dataType: integer
-    description: PWM resolution bits for brightness control
--   name: BLINK_COUNTER_WIDTH
-    value: 24
-    dataType: integer
-    description: Width of blink timer counter (determines max blink period)
+- name: NUM_LEDS
+  value: 8
+  dataType: integer
+  description: Number of LED outputs (1 to 32)
+- name: PWM_BITS
+  value: 8
+  dataType: integer
+  description: PWM resolution bits for brightness control
+- name: BLINK_COUNTER_WIDTH
+  value: 24
+  dataType: integer
+  description: Width of blink timer counter (determines max blink period)
 clocks:
--   name: i_clk
-    logicalName: CLK
-    direction: in
-    frequency: 100MHz
-    description: Main system clock
+- name: i_clk
+  logicalName: CLK
+  direction: in
+  frequency: 100MHz
+  description: Main system clock
 resets:
--   name: i_rst_n
-    logicalName: RESET_N
-    direction: in
-    polarity: activeLow
-    description: Active-low system reset
+- name: i_rst_n
+  logicalName: RESET_N
+  direction: in
+  polarity: activeLow
+  description: Active-low system reset
 ports:
--   name: o_led
-    logicalName: LED_OUT
-    direction: out
-    width: NUM_LEDS
-    description: LED output array (one bit per LED)
--   name: o_led_pwm
-    logicalName: LED_PWM_OUT
-    direction: out
-    width: NUM_LEDS
-    description: LED PWM output array for brightness control
--   name: o_irq
-    logicalName: IRQ_OUT
-    direction: out
-    description: Interrupt request output (for blink completion or pattern events)
+- name: o_led
+  logicalName: LED_OUT
+  direction: out
+  width: NUM_LEDS
+  description: LED output array (one bit per LED)
+- name: o_led_pwm
+  logicalName: LED_PWM_OUT
+  direction: out
+  width: NUM_LEDS
+  description: LED PWM output array for brightness control
+- name: o_irq
+  logicalName: IRQ_OUT
+  direction: out
+  description: Interrupt request output (for blink completion or pattern events)
 useBusLibrary: ../../common/bus_definitions.yml
 busInterfaces:
--   name: S_AXI_LITE
-    type: AXI4L
-    mode: slave
-    physicalPrefix: s_axi_
-    associatedClock: i_clk
-    associatedReset: i_rst_n
-    memoryMapRef: CSR_MAP
-    useOptionalPorts:
-    - AWPROT
-    - ARPROT
-    portWidthOverrides:
-        AWADDR: 12
-        ARADDR: 12
-        WDATA: 32
-        RDATA: 32
-        WSTRB: 4
+- name: S_AXI_LITE
+  type: AXI4L
+  mode: slave
+  physicalPrefix: s_axi_
+  associatedClock: i_clk
+  associatedReset: i_rst_n
+  memoryMapRef: CSR_MAP
+  useOptionalPorts:
+  - AWPROT
+  - ARPROT
+  portWidthOverrides:
+    AWADDR: 12
+    ARADDR: 12
+    WDATA: 32
+    RDATA: 32
+    WSTRB: 4
 memoryMaps:
-    import: led_controller.mm.yml
+  import: led_controller.mm.yml
 fileSets:
--   name: RTL_Sources
-    description: RTL Sources
-    files:
-    -   path: rtl/led_controller_pkg.vhd
-        type: vhdl
-    -   path: rtl/led_controller_regs.vhd
-        type: vhdl
-    -   path: rtl/led_controller_core.vhd
-        type: vhdl
-    -   path: rtl/led_controller_axil.vhd
-        type: vhdl
-    -   path: rtl/led_controller.vhd
-        type: vhdl
--   name: Simulation_Resources
-    description: Simulation Files
-    files:
-    -   path: tb/led_controller_test.py
-        type: python
-    -   path: tb/Makefile
-        type: unknown
--   name: Integration
-    description: Platform Integration Files
-    files:
-    -   path: intel/led_controller_hw.tcl
-        type: tcl
-    -   path: xilinx/component.xml
-        type: xml
-    -   path: xilinx/xgui/led_controller_v1_0_0.tcl
-        type: tcl
+- name: RTL_Sources
+  description: RTL Sources
+  files:
+  - path: rtl/led_controller_pkg.vhd
+    type: vhdl
+  - path: rtl/led_controller_regs.vhd
+    type: vhdl
+  - path: rtl/led_controller_core.vhd
+    type: vhdl
+  - path: rtl/led_controller_axil.vhd
+    type: vhdl
+  - path: rtl/led_controller.vhd
+    type: vhdl
+- name: Simulation_Resources
+  description: Simulation Files
+  files:
+  - path: tb/led_controller_test.py
+    type: python
+  - path: tb/Makefile
+    type: unknown
+- name: Integration
+  description: Platform Integration Files
+  files:
+  - path: intel/led_controller_hw.tcl
+    type: tcl
+  - path: xilinx/component.xml
+    type: xml
+  - path: xilinx/xgui/led_controller_v1_0_0.tcl
+    type: tcl
