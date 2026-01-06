@@ -1,15 +1,24 @@
+"""
+Generate VHDL files from IP Core YAML specification.
 
+Usage:
+    python scripts/generate_vhdl.py <ip_core.yaml> [output_dir]
+"""
 import sys
-import yaml
 import os
-from fpga_lib.model.core import IpCore
-from fpga_lib.generator.hdl.vhdl_generator import VHDLGenerator
+from pathlib import Path
 
+# Add project root to path
+project_root = Path(__file__).parent.parent
+sys.path.insert(0, str(project_root))
+
+from fpga_lib.generator.hdl.vhdl_generator import VHDLGenerator
 from fpga_lib.parser.yaml.ip_core_parser import YamlIpCoreParser
+
 
 def main():
     if len(sys.argv) < 2:
-        print("Usage: python run_gen.py <ip_core.yaml> [output_dir]")
+        print("Usage: python scripts/generate_vhdl.py <ip_core.yaml> [output_dir]")
         sys.exit(1)
 
     yaml_path = sys.argv[1]

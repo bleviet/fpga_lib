@@ -9,7 +9,7 @@ trigger: always_on
 - **Execution:** ALWAYS use `uv run <command>` (e.g., `uv run python`, `uv run pytest`).
 - **Do Not:** Never attempt to source `bin/activate`. It fails in non-persistent agent shells.
 - **Testing:** Run tests with `uv run pytest fpga_lib/tests/`.
-- **CLI Tool:** Main entry point is `run_gen.py` - use `uv run python run_gen.py`.
+- **CLI Tool:** Main entry point is `scripts/generate_vhdl.py` - use `uv run python scripts/generate_vhdl.py`.
 
 ## Code Standards
 - **Style:** Adhere to PEP 8. Configuration in `pyproject.toml` and `mypy.ini`.

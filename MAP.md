@@ -2,7 +2,7 @@
 
 ## [Backend] - Python (uv)
 
-* **Entry Point:** `run_gen.py` - CLI tool that parses IP Core YAML and generates VHDL/testbench files.
+* **Entry Point:** `scripts/generate_vhdl.py` - CLI tool that parses IP Core YAML and generates VHDL/testbench files.
 * **Schema Models:** `fpga_lib/model/` - Pydantic models for IP cores, memory maps, buses, clocks, resets, ports, and file sets (YAML validation).
 * **Runtime I/O:** `fpga_lib/runtime/` - Hardware register access classes (Register, BitField, RegisterArrayAccessor) for drivers and testbenches.
 * **Parsers:** `fpga_lib/parser/yaml/` - `YamlIpCoreParser` for IP core YAML; `fpga_lib/parser/hdl/` - VHDL/Verilog parsers (deprecated).

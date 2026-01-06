@@ -7,7 +7,7 @@ trigger: always_on
 ## [Backend] - Python (uv)
 
 ### Entry Points
-* `run_gen.py`: CLI tool for IP Core YAML parsing and VHDL/testbench generation.
+* `scripts/generate_vhdl.py`: CLI tool for IP Core YAML parsing and VHDL/testbench generation.
 * `pyproject.toml`: Dependency definitions and project configuration.
 
 ### Core Library (`fpga_lib/`)
