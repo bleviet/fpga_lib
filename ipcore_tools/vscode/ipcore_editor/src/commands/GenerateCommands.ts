@@ -1,25 +1,34 @@
 /**
  * VS Code Commands for VHDL Code Generation
- * 
+ *
  * Provides commands to generate VHDL files from IP core definitions.
+ * Uses Python backend (ipcore.py) when available, with TypeScript fallback.
  */
 
 import * as vscode from 'vscode';
 import * as path from 'path';
 import { VHDLGenerator, BusType } from '../generator';
+import { PythonBackend } from '../services/PythonBackend';
+
+// Singleton backend instance
+let pythonBackend: PythonBackend | undefined;
 
 /**
  * Register all generator commands with VS Code
  */
 export function registerGeneratorCommands(context: vscode.ExtensionContext): void {
-    // Generate VHDL command
+    // Initialize Python backend
+    pythonBackend = new PythonBackend();
+    context.subscriptions.push({ dispose: () => pythonBackend?.dispose() });
+
+    // Generate VHDL command (auto-detects bus from YAML)
     context.subscriptions.push(
         vscode.commands.registerCommand('fpga-ip-core.generateVHDL', async () => {
             await generateVHDL(context);
         })
     );
 
-    // Generate with specific bus type
+    // Generate with specific bus type (legacy, uses TypeScript only)
     context.subscriptions.push(
         vscode.commands.registerCommand('fpga-ip-core.generateVHDLWithBus', async () => {
             const busType = await vscode.window.showQuickPick(['axil', 'avmm'], {
@@ -27,16 +36,16 @@ export function registerGeneratorCommands(context: vscode.ExtensionContext): voi
                 title: 'Bus Type',
             });
             if (busType) {
-                await generateVHDL(context, busType as BusType);
+                await generateVHDLWithTypeScript(context, busType as BusType);
             }
         })
     );
 }
 
 /**
- * Get IP core data from active editor
+ * Get IP core file path from active editor
  */
-async function getIpCoreFromActiveEditor(): Promise<{ data: any; uri: vscode.Uri } | undefined> {
+function getActiveIpCoreFile(): vscode.Uri | undefined {
     const editor = vscode.window.activeTextEditor;
     if (!editor) {
         vscode.window.showErrorMessage('No active editor. Please open an IP core YAML file.');
@@ -44,44 +53,24 @@ async function getIpCoreFromActiveEditor(): Promise<{ data: any; uri: vscode.Uri
     }
 
     const document = editor.document;
-    if (!document.fileName.endsWith('.yml') && !document.fileName.endsWith('.yaml')) {
-        vscode.window.showErrorMessage('Active file is not a YAML file.');
+    if (!document.fileName.endsWith('.ip.yml') && !document.fileName.endsWith('.ip.yaml')) {
+        vscode.window.showErrorMessage('Active file is not an IP core file (*.ip.yml).');
         return undefined;
     }
 
-    const yaml = await import('yaml');
-    try {
-        const content = document.getText();
-        const data = yaml.parse(content);
-
-        // Check if it's an IP core file
-        if (!data.vlnv) {
-            vscode.window.showErrorMessage('File does not appear to be an IP core definition (missing vlnv).');
-            return undefined;
-        }
-
-        return { data, uri: document.uri };
-    } catch (error) {
-        vscode.window.showErrorMessage(`Failed to parse YAML: ${error}`);
-        return undefined;
-    }
+    return document.uri;
 }
 
 /**
- * Main VHDL generation command
+ * Main VHDL generation command - uses Python backend with TypeScript fallback
  */
-async function generateVHDL(
-    context: vscode.ExtensionContext,
-    busType: BusType = 'axil'
-): Promise<void> {
-    // Get IP core from active editor
-    const ipCore = await getIpCoreFromActiveEditor();
-    if (!ipCore) {
+async function generateVHDL(context: vscode.ExtensionContext): Promise<void> {
+    const ipCoreUri = getActiveIpCoreFile();
+    if (!ipCoreUri) {
         return;
     }
 
-    // Determine output directory (same as IP core file)
-    const sourceDir = path.dirname(ipCore.uri.fsPath);
+    const sourceDir = path.dirname(ipCoreUri.fsPath);
     const defaultOutputDir = path.join(sourceDir, 'generated');
 
     // Ask user for output directory
@@ -94,41 +83,106 @@ async function generateVHDL(
         title: 'Select directory for generated VHDL files',
     });
 
-    const outputDir = outputUri?.[0] || vscode.Uri.file(defaultOutputDir);
+    const outputDir = outputUri?.[0]?.fsPath || defaultOutputDir;
 
-    // Get template directory from extension
-    // Webpack copies templates to dist/templates
-    const templateDir = path.join(context.extensionPath, 'dist', 'templates');
+    // Check if Python backend is available
+    const usePython = pythonBackend && await pythonBackend.isAvailable();
 
-    try {
-        // Show progress
-        await vscode.window.withProgress(
-            {
-                location: vscode.ProgressLocation.Notification,
-                title: 'Generating VHDL files...',
-                cancellable: false,
-            },
-            async () => {
-                const generator = new VHDLGenerator(templateDir);
-                const written = await generator.writeFiles(ipCore.data, outputDir, busType);
+    await vscode.window.withProgress(
+        {
+            location: vscode.ProgressLocation.Notification,
+            title: usePython
+                ? 'Generating VHDL (Python backend)...'
+                : 'Generating VHDL (TypeScript)...',
+            cancellable: false,
+        },
+        async (progress) => {
+            let result: { success: boolean; count?: number; error?: string };
 
-                // Show success message with generated files
-                const fileList = Array.from(written.keys()).join(', ');
-                const result = await vscode.window.showInformationMessage(
-                    `Generated ${written.size} VHDL files: ${fileList}`,
-                    'Open Folder',
-                    'Open First File'
+            if (usePython && pythonBackend) {
+                // Use Python backend
+                result = await pythonBackend.generateVHDL(
+                    ipCoreUri.fsPath,
+                    outputDir,
+                    { updateYaml: true },
+                    progress
+                );
+            } else {
+                // Fallback to TypeScript generator
+                result = await generateWithTypeScript(context, ipCoreUri, outputDir);
+            }
+
+            if (result.success) {
+                const backend = usePython ? '(Python)' : '(TypeScript)';
+                const action = await vscode.window.showInformationMessage(
+                    `✓ Generated ${result.count} files ${backend}`,
+                    'Open Folder'
                 );
 
-                if (result === 'Open Folder') {
-                    await vscode.commands.executeCommand('vscode.openFolder', outputDir, { forceNewWindow: false });
-                } else if (result === 'Open First File') {
-                    const [, firstUri] = Array.from(written.entries())[0];
-                    await vscode.window.showTextDocument(firstUri);
+                if (action === 'Open Folder') {
+                    await vscode.commands.executeCommand('revealFileInOS', vscode.Uri.file(outputDir));
                 }
+            } else {
+                vscode.window.showErrorMessage(`Generation failed: ${result.error}`);
             }
-        );
+        }
+    );
+}
+
+/**
+ * TypeScript-only generation (fallback)
+ */
+async function generateWithTypeScript(
+    context: vscode.ExtensionContext,
+    ipCoreUri: vscode.Uri,
+    outputDir: string,
+    busType: BusType = 'axil'
+): Promise<{ success: boolean; count?: number; error?: string }> {
+    try {
+        const yaml = await import('yaml');
+        const fs = await import('fs');
+        const content = fs.readFileSync(ipCoreUri.fsPath, 'utf-8');
+        const data = yaml.parse(content);
+
+        const templateDir = path.join(context.extensionPath, 'dist', 'templates');
+        const generator = new VHDLGenerator(templateDir);
+        const written = await generator.writeFiles(data, vscode.Uri.file(outputDir), busType);
+
+        return { success: true, count: written.size };
     } catch (error) {
-        vscode.window.showErrorMessage(`VHDL generation failed: ${error}`);
+        return { success: false, error: String(error) };
     }
+}
+
+/**
+ * Legacy: Generate with specific bus type (TypeScript only)
+ */
+async function generateVHDLWithTypeScript(
+    context: vscode.ExtensionContext,
+    busType: BusType
+): Promise<void> {
+    const ipCoreUri = getActiveIpCoreFile();
+    if (!ipCoreUri) {
+        return;
+    }
+
+    const sourceDir = path.dirname(ipCoreUri.fsPath);
+    const outputDir = path.join(sourceDir, 'generated');
+
+    await vscode.window.withProgress(
+        {
+            location: vscode.ProgressLocation.Notification,
+            title: `Generating VHDL (${busType})...`,
+            cancellable: false,
+        },
+        async () => {
+            const result = await generateWithTypeScript(context, ipCoreUri, outputDir, busType);
+
+            if (result.success) {
+                vscode.window.showInformationMessage(`✓ Generated ${result.count} files`);
+            } else {
+                vscode.window.showErrorMessage(`Generation failed: ${result.error}`);
+            }
+        }
+    );
 }
