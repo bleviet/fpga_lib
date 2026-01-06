@@ -77,3 +77,7 @@ coverage.xml
 .Xil/
 vivado_pid*.str
 vivado*.backup.*
+
+
+--output-dir/
+debug_build/

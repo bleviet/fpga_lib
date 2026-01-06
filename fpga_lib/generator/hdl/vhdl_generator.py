@@ -405,44 +405,44 @@ class VHDLGenerator(BaseGenerator):
     ) -> bool:
         """
         Update the IP core YAML file with fileSets section based on generated files.
-        
+
         Args:
             ip_core_path: Path to the .ip.yml file
             generated_files: Dictionary of generated files (from generate_all_with_structure)
             include_regs: Whether register bank was generated
             vendor: Vendor files included ('none', 'intel', 'xilinx', 'both')
             include_testbench: Whether testbench files were generated
-            
+
         Returns:
             True if file was updated, False if no changes needed
         """
         from fpga_lib.parser.yaml.ip_core_parser import YamlIpCoreParser
-        
+
         ip_path = Path(ip_core_path)
         if not ip_path.exists():
             return False
-            
+
         # Parse existing IP core
         parser = YamlIpCoreParser()
         ip_core = parser.parse_file(ip_path)
         name = ip_core.vlnv.name.lower()
-        
+
         # Build expected fileSets from generated files
         expected_filesets = self._build_filesets_from_generated(
             name, generated_files, include_regs, vendor, include_testbench
         )
-        
+
         # Check if existing fileSets match
         if self._filesets_match(ip_core.file_sets, expected_filesets):
             return False  # No update needed
-            
+
         # Read the YAML file
         with open(ip_path, 'r') as f:
             yaml_content = f.read()
-            
+
         # Load as dict to preserve comments and formatting
         yaml_data = yaml.safe_load(yaml_content)
-        
+
         # Convert expected fileSets to dict format
         filesets_dict = [
             {
@@ -455,14 +455,14 @@ class VHDLGenerator(BaseGenerator):
             }
             for fs in expected_filesets
         ]
-        
+
         # Update or add fileSets
         yaml_data['fileSets'] = filesets_dict
-        
+
         # Write back to file
         with open(ip_path, 'w') as f:
             yaml.dump(yaml_data, f, default_flow_style=False, sort_keys=False, indent=4)
-            
+
         return True
 
     def _build_filesets_from_generated(
@@ -475,28 +475,28 @@ class VHDLGenerator(BaseGenerator):
     ) -> List[FileSet]:
         """Build FileSet objects from generated files."""
         filesets = []
-        
+
         # RTL Sources
         rtl_files = []
         rtl_files.append(File(path=f"rtl/{name}_pkg.vhd", type=FileType.VHDL))
         if include_regs:
             rtl_files.append(File(path=f"rtl/{name}_regs.vhd", type=FileType.VHDL))
         rtl_files.append(File(path=f"rtl/{name}_core.vhd", type=FileType.VHDL))
-        
+
         # Determine bus type from generated files
         if f"rtl/{name}_axil.vhd" in generated_files:
             rtl_files.append(File(path=f"rtl/{name}_axil.vhd", type=FileType.VHDL))
         elif f"rtl/{name}_avmm.vhd" in generated_files:
             rtl_files.append(File(path=f"rtl/{name}_avmm.vhd", type=FileType.VHDL))
-            
+
         rtl_files.append(File(path=f"rtl/{name}.vhd", type=FileType.VHDL))
-        
+
         filesets.append(FileSet(
             name="RTL_Sources",
             description="RTL Sources",
             files=rtl_files
         ))
-        
+
         # Simulation Resources
         if include_testbench:
             sim_files = [
@@ -509,7 +509,7 @@ class VHDLGenerator(BaseGenerator):
                 description="Simulation Files",
                 files=sim_files
             ))
-        
+
         # Integration Files
         if vendor != 'none':
             integration_files = []
@@ -521,14 +521,14 @@ class VHDLGenerator(BaseGenerator):
                 xgui_files = [f for f in generated_files.keys() if f.startswith("xilinx/xgui/") and f.endswith(".tcl")]
                 if xgui_files:
                     integration_files.append(File(path=xgui_files[0], type=FileType.TCL))
-                
+
             if integration_files:
                 filesets.append(FileSet(
                     name="Integration",
                     description="Platform Integration Files",
                     files=integration_files
                 ))
-        
+
         return filesets
 
     def _filesets_match(
@@ -541,27 +541,27 @@ class VHDLGenerator(BaseGenerator):
             return True
         if not existing or len(existing) != len(expected):
             return False
-            
+
         # Create lookup dict by name
         existing_dict = {fs.name: fs for fs in existing}
-        
+
         for exp_fs in expected:
             if exp_fs.name not in existing_dict:
                 return False
-                
+
             exist_fs = existing_dict[exp_fs.name]
-            
+
             # Check file count
             if len(exist_fs.files) != len(exp_fs.files):
                 return False
-                
+
             # Check each file path and type
             exist_files = {(f.path, f.type) for f in exist_fs.files}
             exp_files = {(f.path, f.type) for f in exp_fs.files}
-            
+
             if exist_files != exp_files:
                 return False
-                
+
         return True
 
     def generate_cocotb_test(self, ip_core: IpCore, bus_type: str = 'axil') -> str:

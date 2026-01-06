@@ -72,7 +72,7 @@ def main():
         vendor='both',
         include_testbench=True
     )
-    
+
     if updated:
         print(f"\n✓ Updated {yaml_path} with fileSets")
     else:

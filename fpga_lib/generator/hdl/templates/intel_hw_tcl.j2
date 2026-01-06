@@ -33,9 +33,9 @@ proc elaborate {} {
     set_interface_property clk PORT_NAME_MAP ""
     set_interface_property clk CMSIS_SVD_VARIABLES ""
     set_interface_property clk SVD_ADDRESS_GROUP ""
-    
+
     add_interface_port clk clk clk Input 1
-    
+
     # -----------------------------------------------------------------------------
     # Reset Interface
     # -----------------------------------------------------------------------------
@@ -47,9 +47,9 @@ proc elaborate {} {
     set_interface_property reset PORT_NAME_MAP ""
     set_interface_property reset CMSIS_SVD_VARIABLES ""
     set_interface_property reset SVD_ADDRESS_GROUP ""
-    
+
     add_interface_port reset rst reset Input 1
-    
+
     # -----------------------------------------------------------------------------
     # Slave Interface
     # -----------------------------------------------------------------------------
@@ -110,7 +110,7 @@ proc elaborate {} {
     set_interface_property avs PORT_NAME_MAP ""
     set_interface_property avs CMSIS_SVD_VARIABLES ""
     set_interface_property avs SVD_ADDRESS_GROUP ""
-    
+
     add_interface_port avs avs_address address Input {{ addr_width }}
     add_interface_port avs avs_read read Input 1
     add_interface_port avs avs_readdata readdata Output {{ data_width }}
@@ -133,7 +133,7 @@ proc elaborate {} {
     set_interface_property conduit PORT_NAME_MAP ""
     set_interface_property conduit CMSIS_SVD_VARIABLES ""
     set_interface_property conduit SVD_ADDRESS_GROUP ""
-    
+
 {% for port in user_ports %}
     add_interface_port conduit {{ port.name }} {{ port.name }} {{ 'Output' if port.direction == 'out' else 'Input' }} {{ port.width | default(1) }}
 {% endfor %}
