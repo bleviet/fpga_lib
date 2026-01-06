@@ -364,7 +364,7 @@ export class IpCoreEditorProvider implements vscode.CustomTextEditorProvider {
             if (filename.endsWith('.vhd')) return rtlDir;
             if (filename.endsWith('.py') || filename === 'Makefile') return tbDir;
             if (filename.endsWith('_hw.tcl')) return intelDir;
-            if (filename === 'component.xml') return xilinxDir;
+            if (filename === 'component.xml' || filename.endsWith('_xgui.tcl')) return xilinxDir;
             return outputBaseDir;
           };
 
@@ -422,9 +422,9 @@ export class IpCoreEditorProvider implements vscode.CustomTextEditorProvider {
             });
 
             // categories
-            const rtlFiles = yamlRelativeFiles.filter(f => f.endsWith('.vhd') && !f.endsWith('_regfile.vhd') && !f.endsWith('_tb.vhd'));
+            const rtlFiles = yamlRelativeFiles.filter(f => f.endsWith('.vhd') && !f.endsWith('_regs.vhd') && !f.endsWith('_tb.vhd'));
             const simFiles = yamlRelativeFiles.filter(f => f.endsWith('.py') || f.endsWith('Makefile') || f.endsWith('_tb.vhd'));
-            const integrationFiles = yamlRelativeFiles.filter(f => f.endsWith('.tcl') || f.endsWith('.xml') || f.endsWith('_regfile.vhd'));
+            const integrationFiles = yamlRelativeFiles.filter(f => f.endsWith('.tcl') || f.endsWith('.xml') || f.endsWith('_regs.vhd'));
 
             this.logger.info(`Categorized files - RTL: ${rtlFiles.length}, Sim: ${simFiles.length}, Integration: ${integrationFiles.length}`);
             this.logger.info(`RTL files: ${JSON.stringify(rtlFiles)}`);

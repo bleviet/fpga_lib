@@ -297,7 +297,7 @@ export const GeneratorPanel: React.FC<GeneratorPanelProps> = ({ ipCore }) => {
                             </div>
                             {options.includeRegfile && (
                                 <div style={{ paddingLeft: '24px', opacity: 0.8 }}>
-                                    └── {ipName}_regfile.vhd
+                                    └── {ipName}_regs.vhd
                                 </div>
                             )}
                         </div>
@@ -325,7 +325,10 @@ export const GeneratorPanel: React.FC<GeneratorPanelProps> = ({ ipCore }) => {
                         <div style={{ paddingLeft: '16px' }}>
                             <div>└── xilinx/</div>
                             <div style={{ paddingLeft: '24px', opacity: 0.8 }}>
-                                └── component.xml
+                                ├── component.xml
+                            </div>
+                            <div style={{ paddingLeft: '24px', opacity: 0.8 }}>
+                                └── xgui/{ipName}_v*.tcl
                             </div>
                         </div>
                     )}
@@ -336,8 +339,8 @@ export const GeneratorPanel: React.FC<GeneratorPanelProps> = ({ ipCore }) => {
                         if (options.includeVhdl) count += 4;
                         if (options.includeRegfile) count += 1;
                         if (options.vendorFiles === 'intel') count += 1;
-                        if (options.vendorFiles === 'xilinx') count += 1;
-                        if (options.vendorFiles === 'both') count += 2;
+                        if (options.vendorFiles === 'xilinx') count += 2; // component.xml + xgui
+                        if (options.vendorFiles === 'both') count += 3; // intel hw.tcl + xilinx 2 files
                         if (options.includeTestbench) count += 2;
                         return `${count} file(s) will be generated`;
                     })()}

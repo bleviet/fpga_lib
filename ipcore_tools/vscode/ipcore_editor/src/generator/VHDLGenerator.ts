@@ -327,7 +327,7 @@ export class VHDLGenerator {
 
         // Standalone register file
         if (opts.includeRegfile) {
-            files.set(`${name}_regfile.vhd`, this.generateRegisterFile(ipCore));
+            files.set(`${name}_regs.vhd`, this.generateRegisterFile(ipCore));
         }
 
         // Vendor integration files
