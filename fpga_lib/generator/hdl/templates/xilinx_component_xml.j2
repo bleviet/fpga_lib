@@ -6,10 +6,7 @@
   <spirit:library>{{ library | default('user') }}</spirit:library>
   <spirit:name>{{ entity_name }}</spirit:name>
   <spirit:version>{{ version | default('1.0') }}</spirit:version>
-
-  <!-- Bus Interfaces -->
   <spirit:busInterfaces>
-    <!-- AXI-Lite Slave Interface -->
     <spirit:busInterface>
       <spirit:name>S_AXI</spirit:name>
       <spirit:busType spirit:vendor="xilinx.com" spirit:library="interface" spirit:name="aximm" spirit:version="1.0"/>
@@ -19,80 +16,156 @@
       </spirit:slave>
       <spirit:portMaps>
         <spirit:portMap>
-          <spirit:logicalPort><spirit:name>AWADDR</spirit:name></spirit:logicalPort>
-          <spirit:physicalPort><spirit:name>s_axi_awaddr</spirit:name></spirit:physicalPort>
+          <spirit:logicalPort>
+            <spirit:name>AWADDR</spirit:name>
+          </spirit:logicalPort>
+          <spirit:physicalPort>
+            <spirit:name>s_axi_awaddr</spirit:name>
+          </spirit:physicalPort>
         </spirit:portMap>
         <spirit:portMap>
-          <spirit:logicalPort><spirit:name>AWPROT</spirit:name></spirit:logicalPort>
-          <spirit:physicalPort><spirit:name>s_axi_awprot</spirit:name></spirit:physicalPort>
+          <spirit:logicalPort>
+            <spirit:name>AWPROT</spirit:name>
+          </spirit:logicalPort>
+          <spirit:physicalPort>
+            <spirit:name>s_axi_awprot</spirit:name>
+          </spirit:physicalPort>
         </spirit:portMap>
         <spirit:portMap>
-          <spirit:logicalPort><spirit:name>AWVALID</spirit:name></spirit:logicalPort>
-          <spirit:physicalPort><spirit:name>s_axi_awvalid</spirit:name></spirit:physicalPort>
+          <spirit:logicalPort>
+            <spirit:name>AWVALID</spirit:name>
+          </spirit:logicalPort>
+          <spirit:physicalPort>
+            <spirit:name>s_axi_awvalid</spirit:name>
+          </spirit:physicalPort>
         </spirit:portMap>
         <spirit:portMap>
-          <spirit:logicalPort><spirit:name>AWREADY</spirit:name></spirit:logicalPort>
-          <spirit:physicalPort><spirit:name>s_axi_awready</spirit:name></spirit:physicalPort>
+          <spirit:logicalPort>
+            <spirit:name>AWREADY</spirit:name>
+          </spirit:logicalPort>
+          <spirit:physicalPort>
+            <spirit:name>s_axi_awready</spirit:name>
+          </spirit:physicalPort>
         </spirit:portMap>
         <spirit:portMap>
-          <spirit:logicalPort><spirit:name>WDATA</spirit:name></spirit:logicalPort>
-          <spirit:physicalPort><spirit:name>s_axi_wdata</spirit:name></spirit:physicalPort>
+          <spirit:logicalPort>
+            <spirit:name>WDATA</spirit:name>
+          </spirit:logicalPort>
+          <spirit:physicalPort>
+            <spirit:name>s_axi_wdata</spirit:name>
+          </spirit:physicalPort>
         </spirit:portMap>
         <spirit:portMap>
-          <spirit:logicalPort><spirit:name>WSTRB</spirit:name></spirit:logicalPort>
-          <spirit:physicalPort><spirit:name>s_axi_wstrb</spirit:name></spirit:physicalPort>
+          <spirit:logicalPort>
+            <spirit:name>WSTRB</spirit:name>
+          </spirit:logicalPort>
+          <spirit:physicalPort>
+            <spirit:name>s_axi_wstrb</spirit:name>
+          </spirit:physicalPort>
         </spirit:portMap>
         <spirit:portMap>
-          <spirit:logicalPort><spirit:name>WVALID</spirit:name></spirit:logicalPort>
-          <spirit:physicalPort><spirit:name>s_axi_wvalid</spirit:name></spirit:physicalPort>
+          <spirit:logicalPort>
+            <spirit:name>WVALID</spirit:name>
+          </spirit:logicalPort>
+          <spirit:physicalPort>
+            <spirit:name>s_axi_wvalid</spirit:name>
+          </spirit:physicalPort>
         </spirit:portMap>
         <spirit:portMap>
-          <spirit:logicalPort><spirit:name>WREADY</spirit:name></spirit:logicalPort>
-          <spirit:physicalPort><spirit:name>s_axi_wready</spirit:name></spirit:physicalPort>
+          <spirit:logicalPort>
+            <spirit:name>WREADY</spirit:name>
+          </spirit:logicalPort>
+          <spirit:physicalPort>
+            <spirit:name>s_axi_wready</spirit:name>
+          </spirit:physicalPort>
         </spirit:portMap>
         <spirit:portMap>
-          <spirit:logicalPort><spirit:name>BRESP</spirit:name></spirit:logicalPort>
-          <spirit:physicalPort><spirit:name>s_axi_bresp</spirit:name></spirit:physicalPort>
+          <spirit:logicalPort>
+            <spirit:name>BRESP</spirit:name>
+          </spirit:logicalPort>
+          <spirit:physicalPort>
+            <spirit:name>s_axi_bresp</spirit:name>
+          </spirit:physicalPort>
         </spirit:portMap>
         <spirit:portMap>
-          <spirit:logicalPort><spirit:name>BVALID</spirit:name></spirit:logicalPort>
-          <spirit:physicalPort><spirit:name>s_axi_bvalid</spirit:name></spirit:physicalPort>
+          <spirit:logicalPort>
+            <spirit:name>BVALID</spirit:name>
+          </spirit:logicalPort>
+          <spirit:physicalPort>
+            <spirit:name>s_axi_bvalid</spirit:name>
+          </spirit:physicalPort>
         </spirit:portMap>
         <spirit:portMap>
-          <spirit:logicalPort><spirit:name>BREADY</spirit:name></spirit:logicalPort>
-          <spirit:physicalPort><spirit:name>s_axi_bready</spirit:name></spirit:physicalPort>
+          <spirit:logicalPort>
+            <spirit:name>BREADY</spirit:name>
+          </spirit:logicalPort>
+          <spirit:physicalPort>
+            <spirit:name>s_axi_bready</spirit:name>
+          </spirit:physicalPort>
         </spirit:portMap>
         <spirit:portMap>
-          <spirit:logicalPort><spirit:name>ARADDR</spirit:name></spirit:logicalPort>
-          <spirit:physicalPort><spirit:name>s_axi_araddr</spirit:name></spirit:physicalPort>
+          <spirit:logicalPort>
+            <spirit:name>ARADDR</spirit:name>
+          </spirit:logicalPort>
+          <spirit:physicalPort>
+            <spirit:name>s_axi_araddr</spirit:name>
+          </spirit:physicalPort>
         </spirit:portMap>
         <spirit:portMap>
-          <spirit:logicalPort><spirit:name>ARPROT</spirit:name></spirit:logicalPort>
-          <spirit:physicalPort><spirit:name>s_axi_arprot</spirit:name></spirit:physicalPort>
+          <spirit:logicalPort>
+            <spirit:name>ARPROT</spirit:name>
+          </spirit:logicalPort>
+          <spirit:physicalPort>
+            <spirit:name>s_axi_arprot</spirit:name>
+          </spirit:physicalPort>
         </spirit:portMap>
         <spirit:portMap>
-          <spirit:logicalPort><spirit:name>ARVALID</spirit:name></spirit:logicalPort>
-          <spirit:physicalPort><spirit:name>s_axi_arvalid</spirit:name></spirit:physicalPort>
+          <spirit:logicalPort>
+            <spirit:name>ARVALID</spirit:name>
+          </spirit:logicalPort>
+          <spirit:physicalPort>
+            <spirit:name>s_axi_arvalid</spirit:name>
+          </spirit:physicalPort>
         </spirit:portMap>
         <spirit:portMap>
-          <spirit:logicalPort><spirit:name>ARREADY</spirit:name></spirit:logicalPort>
-          <spirit:physicalPort><spirit:name>s_axi_arready</spirit:name></spirit:physicalPort>
+          <spirit:logicalPort>
+            <spirit:name>ARREADY</spirit:name>
+          </spirit:logicalPort>
+          <spirit:physicalPort>
+            <spirit:name>s_axi_arready</spirit:name>
+          </spirit:physicalPort>
         </spirit:portMap>
         <spirit:portMap>
-          <spirit:logicalPort><spirit:name>RDATA</spirit:name></spirit:logicalPort>
-          <spirit:physicalPort><spirit:name>s_axi_rdata</spirit:name></spirit:physicalPort>
+          <spirit:logicalPort>
+            <spirit:name>RDATA</spirit:name>
+          </spirit:logicalPort>
+          <spirit:physicalPort>
+            <spirit:name>s_axi_rdata</spirit:name>
+          </spirit:physicalPort>
         </spirit:portMap>
         <spirit:portMap>
-          <spirit:logicalPort><spirit:name>RRESP</spirit:name></spirit:logicalPort>
-          <spirit:physicalPort><spirit:name>s_axi_rresp</spirit:name></spirit:physicalPort>
+          <spirit:logicalPort>
+            <spirit:name>RRESP</spirit:name>
+          </spirit:logicalPort>
+          <spirit:physicalPort>
+            <spirit:name>s_axi_rresp</spirit:name>
+          </spirit:physicalPort>
         </spirit:portMap>
         <spirit:portMap>
-          <spirit:logicalPort><spirit:name>RVALID</spirit:name></spirit:logicalPort>
-          <spirit:physicalPort><spirit:name>s_axi_rvalid</spirit:name></spirit:physicalPort>
+          <spirit:logicalPort>
+            <spirit:name>RVALID</spirit:name>
+          </spirit:logicalPort>
+          <spirit:physicalPort>
+            <spirit:name>s_axi_rvalid</spirit:name>
+          </spirit:physicalPort>
         </spirit:portMap>
         <spirit:portMap>
-          <spirit:logicalPort><spirit:name>RREADY</spirit:name></spirit:logicalPort>
-          <spirit:physicalPort><spirit:name>s_axi_rready</spirit:name></spirit:physicalPort>
+          <spirit:logicalPort>
+            <spirit:name>RREADY</spirit:name>
+          </spirit:logicalPort>
+          <spirit:physicalPort>
+            <spirit:name>s_axi_rready</spirit:name>
+          </spirit:physicalPort>
         </spirit:portMap>
       </spirit:portMaps>
       <spirit:parameters>
@@ -110,8 +183,6 @@
         </spirit:parameter>
       </spirit:parameters>
     </spirit:busInterface>
-
-    <!-- Clock Interface -->
     <spirit:busInterface>
       <spirit:name>clk</spirit:name>
       <spirit:busType spirit:vendor="xilinx.com" spirit:library="signal" spirit:name="clock" spirit:version="1.0"/>
@@ -119,8 +190,12 @@
       <spirit:slave/>
       <spirit:portMaps>
         <spirit:portMap>
-          <spirit:logicalPort><spirit:name>CLK</spirit:name></spirit:logicalPort>
-          <spirit:physicalPort><spirit:name>clk</spirit:name></spirit:physicalPort>
+          <spirit:logicalPort>
+            <spirit:name>CLK</spirit:name>
+          </spirit:logicalPort>
+          <spirit:physicalPort>
+            <spirit:name>clk</spirit:name>
+          </spirit:physicalPort>
         </spirit:portMap>
       </spirit:portMaps>
       <spirit:parameters>
@@ -134,8 +209,6 @@
         </spirit:parameter>
       </spirit:parameters>
     </spirit:busInterface>
-
-    <!-- Reset Interface -->
     <spirit:busInterface>
       <spirit:name>rst</spirit:name>
       <spirit:busType spirit:vendor="xilinx.com" spirit:library="signal" spirit:name="reset" spirit:version="1.0"/>
@@ -143,8 +216,12 @@
       <spirit:slave/>
       <spirit:portMaps>
         <spirit:portMap>
-          <spirit:logicalPort><spirit:name>RST</spirit:name></spirit:logicalPort>
-          <spirit:physicalPort><spirit:name>rst</spirit:name></spirit:physicalPort>
+          <spirit:logicalPort>
+            <spirit:name>RST</spirit:name>
+          </spirit:logicalPort>
+          <spirit:physicalPort>
+            <spirit:name>rst</spirit:name>
+          </spirit:physicalPort>
         </spirit:portMap>
       </spirit:portMaps>
       <spirit:parameters>
@@ -155,8 +232,6 @@
       </spirit:parameters>
     </spirit:busInterface>
   </spirit:busInterfaces>
-
-  <!-- Memory Maps -->
   <spirit:memoryMaps>
     <spirit:memoryMap>
       <spirit:name>{{ entity_name }}_mmap</spirit:name>
@@ -170,7 +245,7 @@
         <spirit:register>
           <spirit:name>{{ reg.name | upper }}</spirit:name>
           <spirit:description>{{ reg.description }}</spirit:description>
-          <spirit:addressOffset spirit:format="long">{{ "0x%X" | format(loop.index0 * reg_width) }}</spirit:addressOffset>
+          <spirit:addressOffset>{{ "0x%X" | format(loop.index0 * reg_width) }}</spirit:addressOffset>
           <spirit:size spirit:format="long">{{ data_width }}</spirit:size>
           <spirit:access>{{ 'read-write' if reg.access in ['read-write', 'rw'] else ('read-only' if reg.access in ['read-only', 'ro'] else 'write-only') }}</spirit:access>
 {% for field in reg.fields %}
@@ -179,6 +254,11 @@
             <spirit:bitOffset>{{ field.offset }}</spirit:bitOffset>
             <spirit:bitWidth spirit:format="long">{{ field.width }}</spirit:bitWidth>
             <spirit:access>{{ 'read-write' if field.access in ['read-write', 'rw'] else ('read-only' if field.access in ['read-only', 'ro'] else 'write-only') }}</spirit:access>
+            <spirit:writeValueConstraint>
+              <spirit:minimum>0</spirit:minimum>
+              <spirit:maximum>0</spirit:maximum>
+            </spirit:writeValueConstraint>
+            <spirit:testable spirit:testConstraint="unconstrained">false</spirit:testable>
           </spirit:field>
 {% endfor %}
         </spirit:register>
@@ -186,8 +266,6 @@
       </spirit:addressBlock>
     </spirit:memoryMap>
   </spirit:memoryMaps>
-
-  <!-- Model -->
   <spirit:model>
     <spirit:views>
       <spirit:view>
@@ -199,6 +277,12 @@
         <spirit:fileSetRef>
           <spirit:localName>xilinx_vhdlsynthesis_view_fileset</spirit:localName>
         </spirit:fileSetRef>
+        <spirit:parameters>
+          <spirit:parameter>
+            <spirit:name>viewChecksum</spirit:name>
+            <spirit:value>b8247d01</spirit:value>
+          </spirit:parameter>
+        </spirit:parameters>
       </spirit:view>
       <spirit:view>
         <spirit:name>xilinx_vhdlbehavioralsimulation</spirit:name>
@@ -209,6 +293,26 @@
         <spirit:fileSetRef>
           <spirit:localName>xilinx_vhdlbehavioralsimulation_view_fileset</spirit:localName>
         </spirit:fileSetRef>
+        <spirit:parameters>
+          <spirit:parameter>
+            <spirit:name>viewChecksum</spirit:name>
+            <spirit:value>b8247d01</spirit:value>
+          </spirit:parameter>
+        </spirit:parameters>
+      </spirit:view>
+      <spirit:view>
+        <spirit:name>xilinx_xpgui</spirit:name>
+        <spirit:displayName>UI Layout</spirit:displayName>
+        <spirit:envIdentifier>:vivado.xilinx.com:xgui.ui</spirit:envIdentifier>
+        <spirit:fileSetRef>
+          <spirit:localName>xilinx_xpgui_view_fileset</spirit:localName>
+        </spirit:fileSetRef>
+        <spirit:parameters>
+          <spirit:parameter>
+            <spirit:name>viewChecksum</spirit:name>
+            <spirit:value>844b65ec</spirit:value>
+          </spirit:parameter>
+        </spirit:parameters>
       </spirit:view>
     </spirit:views>
     <spirit:ports>
@@ -546,8 +650,6 @@
 {% endfor %}
     </spirit:ports>
   </spirit:model>
-
-  <!-- File Sets -->
   <spirit:fileSets>
     <spirit:fileSet>
       <spirit:name>xilinx_vhdlsynthesis_view_fileset</spirit:name>
@@ -579,6 +681,7 @@
         <spirit:name>../rtl/{{ entity_name }}.vhd</spirit:name>
         <spirit:fileType>vhdlSource</spirit:fileType>
         <spirit:userFileType>VHDL 2008</spirit:userFileType>
+        <spirit:userFileType>CHECKSUM_3ca5b181</spirit:userFileType>
         <spirit:logicalName>xil_defaultlib</spirit:logicalName>
       </spirit:file>
     </spirit:fileSet>
@@ -620,30 +723,25 @@
       <spirit:file>
         <spirit:name>xgui/{{ entity_name }}_v{{ version | replace('.', '_') }}.tcl</spirit:name>
         <spirit:fileType>tclSource</spirit:fileType>
+        <spirit:userFileType>CHECKSUM_844b65ec</spirit:userFileType>
         <spirit:userFileType>XGUI_VERSION_2</spirit:userFileType>
       </spirit:file>
     </spirit:fileSet>
   </spirit:fileSets>
-
-  <!-- Description -->
   <spirit:description>{{ description | default('IP core with AXI-Lite register interface') }}</spirit:description>
-
-  <!-- Parameters -->
   <spirit:parameters>
     <spirit:parameter>
       <spirit:name>Component_Name</spirit:name>
-      <spirit:value spirit:format="string" spirit:id="PARAM_VALUE.Component_Name">{{ entity_name }}</spirit:value>
+      <spirit:value spirit:id="PARAM_VALUE.Component_Name">{{ entity_name }}</spirit:value>
     </spirit:parameter>
 {% for generic in generics %}
     <spirit:parameter>
       <spirit:name>{{ generic.name | upper }}</spirit:name>
       <spirit:displayName>{{ generic.name | replace('_', ' ') | title }}</spirit:displayName>
-      <spirit:value spirit:format="{{ 'long' if generic.type == 'integer' else 'string' }}" spirit:id="PARAM_VALUE.{{ generic.name | upper }}">{{ generic.default_value }}</spirit:value>
+      <spirit:value spirit:format="{{ 'long' if generic.type == 'integer' else 'string' }}" spirit:resolve="user" spirit:id="PARAM_VALUE.{{ generic.name | upper }}">{{ generic.default_value }}</spirit:value>
     </spirit:parameter>
 {% endfor %}
   </spirit:parameters>
-
-  <!-- Vendor Extensions -->
   <spirit:vendorExtensions>
     <xilinx:coreExtensions>
       <xilinx:supportedFamilies>
@@ -659,7 +757,16 @@
         <xilinx:taxonomy>/UserIP</xilinx:taxonomy>
       </xilinx:taxonomies>
       <xilinx:displayName>{{ display_name | default(entity_name | replace('_', ' ') | title) }}</xilinx:displayName>
+      <xilinx:coreRevision>1</xilinx:coreRevision>
+      <xilinx:coreCreationDateTime>2026-01-06T11:59:43Z</xilinx:coreCreationDateTime>
     </xilinx:coreExtensions>
+    <xilinx:packagingInfo>
+      <xilinx:xilinxVersion>2024.2</xilinx:xilinxVersion>
+      <xilinx:checksum xilinx:scope="busInterfaces" xilinx:value="c142cef6"/>
+      <xilinx:checksum xilinx:scope="memoryMaps" xilinx:value="7de88724"/>
+      <xilinx:checksum xilinx:scope="fileGroups" xilinx:value="4835cfd2"/>
+      <xilinx:checksum xilinx:scope="ports" xilinx:value="16c87ccc"/>
+      <xilinx:checksum xilinx:scope="parameters" xilinx:value="6dd4074a"/>
+    </xilinx:packagingInfo>
   </spirit:vendorExtensions>
-
 </spirit:component>
