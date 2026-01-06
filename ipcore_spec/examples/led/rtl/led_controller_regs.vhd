@@ -88,11 +88,14 @@ begin
       elsif wr_en = '1' then
         v_addr_index := to_integer(unsigned(wr_addr(C_ADDR_WIDTH-1 downto 2)));
 
-        case v_addr_index is          when t_reg_id'pos(REG_CONTROL) =>
+        case v_addr_index is
+          when t_reg_id'pos(REG_CONTROL) =>
             v_wdata := apply_wstrb(to_slv(regs.control), wr_data, wr_strb);
-            regs.control <= to_control(v_wdata);          when t_reg_id'pos(REG_LED_OUTPUT) =>
+            regs.control <= to_control(v_wdata);
+          when t_reg_id'pos(REG_LED_OUTPUT) =>
             v_wdata := apply_wstrb(to_slv(regs.led_output), wr_data, wr_strb);
-            regs.led_output <= to_led_output(v_wdata);          when others =>
+            regs.led_output <= to_led_output(v_wdata);
+          when others =>
             null;
         end case;
       end if;
@@ -114,10 +117,14 @@ begin
       elsif rd_en = '1' then
         v_addr_index := to_integer(unsigned(rd_addr(C_ADDR_WIDTH-1 downto 2)));
 
-        case v_addr_index is          when t_reg_id'pos(REG_CONTROL) =>
-            rd_data_int <= to_slv(regs.control);          when t_reg_id'pos(REG_STATUS) =>
-            rd_data_int <= to_slv(regs_in.status);          when t_reg_id'pos(REG_LED_OUTPUT) =>
-            rd_data_int <= to_slv(regs.led_output);          when others =>
+        case v_addr_index is
+          when t_reg_id'pos(REG_CONTROL) =>
+            rd_data_int <= to_slv(regs.control);
+          when t_reg_id'pos(REG_STATUS) =>
+            rd_data_int <= to_slv(regs_in.status);
+          when t_reg_id'pos(REG_LED_OUTPUT) =>
+            rd_data_int <= to_slv(regs.led_output);
+          when others =>
             rd_data_int <= (others => '0');
         end case;
 
