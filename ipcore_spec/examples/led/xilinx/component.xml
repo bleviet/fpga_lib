@@ -728,7 +728,7 @@
         <spirit:wire>
           <spirit:direction>out</spirit:direction>
           <spirit:vector>
-            <spirit:left spirit:resolve="user">NUM_LEDS-1</spirit:left>
+            <spirit:left>spirit:id('MODELPARAM_VALUE.NUM_LEDS') - 1</spirit:left>
             <spirit:right spirit:format="long">0</spirit:right>
           </spirit:vector>
           <spirit:wireTypeDefs>
@@ -745,7 +745,7 @@
         <spirit:wire>
           <spirit:direction>out</spirit:direction>
           <spirit:vector>
-            <spirit:left spirit:resolve="user">NUM_LEDS-1</spirit:left>
+            <spirit:left>spirit:id('MODELPARAM_VALUE.NUM_LEDS') - 1</spirit:left>
             <spirit:right spirit:format="long">0</spirit:right>
           </spirit:vector>
           <spirit:wireTypeDefs>
