@@ -145,6 +145,9 @@ class VHDLGenerator(BaseGenerator):
 
     def _prepare_user_ports(self, ip_core: IpCore) -> List[Dict[str, Any]]:
         """Prepare user-defined ports (non-bus ports)."""
+        # Build parameter lookup for default values
+        param_defaults = {param.name: param.value for param in ip_core.parameters}
+
         ports = []
         for port in ip_core.ports:
             direction = port.direction.value if hasattr(port.direction, 'value') else str(port.direction)
@@ -157,14 +160,18 @@ class VHDLGenerator(BaseGenerator):
                 port_type = f'std_logic_vector({width}-1 downto 0)'
                 width_expr = width  # Store the parameter name
                 numeric_width = None  # No numeric value for XML
+                # Get default value for the parameter to use in XML
+                default_value = param_defaults.get(width, 32) - 1
             elif width == 1:
                 port_type = 'std_logic'
                 width_expr = None
                 numeric_width = 1
+                default_value = None
             else:
                 port_type = f'std_logic_vector({width-1} downto 0)'
                 width_expr = None
                 numeric_width = width
+                default_value = None
 
             ports.append({
                 'name': port.name.lower(),
@@ -172,7 +179,8 @@ class VHDLGenerator(BaseGenerator):
                 'type': port_type,
                 'width': numeric_width,
                 'width_expr': width_expr,
-                'is_parameterized': is_parameterized
+                'is_parameterized': is_parameterized,
+                'default_width': default_value
             })
         return ports
 

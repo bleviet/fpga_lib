@@ -635,7 +635,7 @@
 {% if port.type != 'std_logic' %}
           <spirit:vector>
 {% if port.is_parameterized %}
-            <spirit:left>spirit:id('MODELPARAM_VALUE.{{ port.width_expr }}') - 1</spirit:left>
+            <spirit:left spirit:format="long" spirit:resolve="dependent" spirit:dependency="(spirit:decode(id('PARAM_VALUE.{{ port.width_expr }}')) - 1)">{{ port.default_width }}</spirit:left>
 {% else %}
             <spirit:left spirit:format="long">{{ port.width - 1 }}</spirit:left>
 {% endif %}
@@ -644,7 +644,7 @@
 {% endif %}
           <spirit:wireTypeDefs>
             <spirit:wireTypeDef>
-              <spirit:typeName>{{ port.type }}</spirit:typeName>
+              <spirit:typeName>{% if port.is_parameterized %}std_logic_vector{% else %}{{ port.type }}{% endif %}</spirit:typeName>
               <spirit:viewNameRef>xilinx_vhdlsynthesis</spirit:viewNameRef>
               <spirit:viewNameRef>xilinx_vhdlbehavioralsimulation</spirit:viewNameRef>
             </spirit:wireTypeDef>
