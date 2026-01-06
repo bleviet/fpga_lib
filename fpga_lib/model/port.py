@@ -26,6 +26,7 @@ class Port(BaseModel):
     logical_name: str = Field(default="", description="Standard logical name for association")
     direction: PortDirection = Field(..., description="Port direction")
     width: Union[int, str] = Field(default=1, description="Port width in bits or parameter name")
+    type: str = Field(default="std_logic", description="VHDL type (e.g. std_logic, std_logic_vector)")
     description: str = Field(default="", description="Port description")
 
     @field_validator("direction", mode="before")

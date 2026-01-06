@@ -2,7 +2,7 @@
 Memory map definitions for IP cores.
 
 These are Pydantic models for YAML parsing and validation.
-For runtime register access, use fpga_lib.core.register classes.
+For runtime register access, use fpga_lib.runtime.register classes.
 
 Naming convention:
 - Classes here use *Def suffix (e.g., RegisterDef, BitFieldDef) to indicate

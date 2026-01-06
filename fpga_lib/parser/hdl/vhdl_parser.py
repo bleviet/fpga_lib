@@ -4,6 +4,7 @@ VHDL Parser module using pyparsing to parse VHDL entities and architectures.
 
 from typing import Dict, List, Optional, Tuple, Any
 import re
+import traceback
 from pyparsing import (
     Word,
     alphas,
@@ -28,10 +29,12 @@ from pyparsing import (
     Regex,
     cppStyleComment,
     restOfLine,
+    nestedExpr,
+    original_text_for,
+    Combine,
 )
 
-from fpga_lib.model import IpCore, Port, PortDirection
-from fpga_lib.core.data_types import DataType, VHDLBaseType
+from fpga_lib.model import IpCore, Port, PortDirection, Parameter, VLNV
 
 # Enable packrat parsing for better performance
 ParserElement.set_default_whitespace_chars(" \t\n\r")
@@ -63,6 +66,8 @@ class VHDLParser:
             "buffer": CaselessKeyword("buffer"),
             "linkage": CaselessKeyword("linkage"),
             "package": CaselessKeyword("package"),
+            "downto": CaselessKeyword("downto"),
+            "to": CaselessKeyword("to"),
         }
 
         # Basic building blocks
@@ -72,18 +77,19 @@ class VHDLParser:
         # Enhanced type handling
         self.simple_type_name = Word(alphas + "_", alphanums + "_.")
 
-        # Better range handling for complex expressions like "31 downto 0"
-        self.range_expr = Word(alphanums + "_-+:() ")
-        self.range_type = Group(
-            self.simple_type_name + Suppress("(") + self.range_expr + Suppress(")")
+        # Use nestedExpr to correctly handle ranges with parentheses, including nested ones
+        self.range_type = Combine(
+            self.simple_type_name + original_text_for(nestedExpr())
         )
         self.data_type = self.range_type | self.simple_type_name
 
         # Default value for generics - captures everything after ":=" until semicolon or closing paren
-        self.default_value = Suppress(":=") + CharsNotIn(";)")
+        # Enhanced to handle nested expressions like (others => '0')
+        self.default_value = Suppress(":=") + original_text_for(
+            nestedExpr() | CharsNotIn(";)")
+        )
 
         # Enhanced port declaration parser
-        # This now properly handles ports with or without a trailing semicolon
         self.port_decl = Group(
             self.identifier.set_results_name("port_name")
             + Suppress(":")
@@ -92,7 +98,7 @@ class VHDLParser:
             + Opt(Suppress(";"))  # Semicolon is optional to handle the last port
         ).set_results_name("port_decl")
 
-        # Generic declaration parser (similar to port but without direction, with optional default value)
+        # Generic declaration parser
         self.generic_decl = Group(
             self.identifier.set_results_name("generic_name")
             + Suppress(":")
@@ -103,12 +109,12 @@ class VHDLParser:
 
         # Port list that captures all ports, including the last one
         self.port_list = Group(
-            Suppress("(") + delimitedList(self.port_decl, ";") + Suppress(")")
+            Suppress("(") + ZeroOrMore(self.port_decl) + Suppress(")")
         ).set_results_name("port_list")
 
         # Generic list that captures all generics
         self.generic_list = Group(
-            Suppress("(") + delimitedList(self.generic_decl, ";") + Suppress(")")
+            Suppress("(") + ZeroOrMore(self.generic_decl) + Suppress(")")
         ).set_results_name("generic_list")
 
         # Entity declaration parser with optional generics
@@ -157,6 +163,7 @@ class VHDLParser:
         # Set parse actions to transform the parsed data
         self.port_list.set_parse_action(self._process_port_list)
 
+
     def parse_file(self, file_path: str) -> Dict[str, Any]:
         """
         Parse a VHDL file and extract entity and architecture information.
@@ -202,26 +209,38 @@ class VHDLParser:
                     if port:
                         ports.append(port)
 
-                # Create interface and IPCore
-                if ports:
-                    interface = Interface(
-                        name=entity_name, interface_type="vhdl_default", ports=ports
-                    )
-                    ip_core = IPCore(name=entity_name, interfaces=[interface])
-                else:
-                    ip_core = IPCore(name=entity_name)
+                # Create basic VLNV for parsed core
+                vlnv = VLNV(
+                    vendor="parsed",
+                    library="vhdl",
+                    name=entity_name,
+                    version="1.0"
+                )
+
+                # Create IPCore directly
+                ip_core = IpCore(
+                    api_version="1.0",
+                    vlnv=vlnv,
+                    description=f"Parsed from VHDL entity {entity_name}",
+                    ports=ports
+                )
 
                 # Add generics as parameters to the IPCore
+                parameters = []
                 for generic_data in generic_list:
                     parameter = self._create_parameter_from_data(generic_data)
                     if parameter:
-                        ip_core.parameters[parameter.name] = parameter
+                        parameters.append(parameter)
+                
+                # Update parameters field (it's a list)
+                if parameters:
+                    ip_core.parameters = parameters
 
                 result["entity"] = ip_core
         except Exception as e:
-            print(f"Error parsing entity with pyparsing: {e}")
-            # Fall back to regex-based parsing if pyparsing fails
-            return self._parse_with_regex(vhdl_text_clean)
+            print(f"PyParsing exception: {e}")
+            traceback.print_exc()
+            # No return here, let it fall through to regex check if entity is still None
 
         # If pyparsing didn't find an entity, try regex-based parsing as fallback
         if result["entity"] is None:
@@ -237,7 +256,6 @@ class VHDLParser:
                     "entity": arch_data.get("arch_entity"),
                 }
         except Exception as e:
-            print(f"Error parsing architecture with pyparsing: {e}")
             # Fall back to regex for architecture
             arch_match = re.search(
                 r"architecture\s+(\w+)\s+of\s+(\w+)\s+is",
@@ -257,7 +275,6 @@ class VHDLParser:
                 package_data = package_match[0]
                 result["package"] = {"name": package_data.get("package_name")}
         except Exception as e:
-            print(f"Error parsing package with pyparsing: {e}")
             # Fall back to regex for package
             package_match = re.search(
                 r"package\s+(\w+)\s+is", vhdl_text_clean, re.IGNORECASE | re.DOTALL
@@ -282,52 +299,53 @@ class VHDLParser:
             direction_str = port_data.get("direction", "in").lower()
             type_info = port_data.get("type")
 
-            # Map direction string to Direction enum
-            direction_map = {
-                "in": Direction.IN,
-                "out": Direction.OUT,
-                "inout": Direction.INOUT,
-                "buffer": Direction.BUFFER,
-                "linkage": Direction.LINKAGE,
-            }
-            direction = direction_map.get(direction_str, Direction.IN)
-
-            # Create original type string for later reference
+            # Handle type info which might be ParseResults or list or string
             original_type_str = ""
-            data_type = None
-
-            # Handle type (simple or range)
             if isinstance(type_info, str):
-                # Simple type (e.g., std_logic)
                 original_type_str = type_info
-                data_type = DataType(VHDLBaseType.from_string(type_info))
+            elif hasattr(type_info, "as_list"):
+                 original_type_str = " ".join([str(x) for x in type_info.as_list()])
             elif isinstance(type_info, list):
-                # Range type (e.g., std_logic_vector(7 downto 0))
-                base_type_str = type_info[0]
-                range_str = type_info[1]
-                original_type_str = f"{base_type_str}({range_str})"
-                base_type = VHDLBaseType.from_string(base_type_str)
-                data_type = DataType(base_type, range_constraint=range_str)
+                 original_type_str = " ".join([str(x) for x in type_info])
+            else:
+                 original_type_str = str(type_info)
 
-                # Explicitly set the width for vector types based on range
-                try:
-                    downto_match = re.search(r"(\d+)\s+downto\s+(\d+)", range_str)
-                    if downto_match:
-                        high = int(downto_match.group(1))
-                        low = int(downto_match.group(2))
-                        width = high - low + 1
-                        data_type.width = width
-                except Exception as e:
-                    print(f"Error calculating width from range: {e}")
+            # Map direction string to PortDirection enum
+            direction_map = {
+                "in": PortDirection.IN,
+                "out": PortDirection.OUT,
+                "inout": PortDirection.INOUT,
+                "buffer": PortDirection.OUT,  # Map buffer to OUT
+                "linkage": PortDirection.IN,  # Map linkage to IN
+            }
+            direction = direction_map.get(direction_str, PortDirection.IN)
 
-            # Create port with the type information
-            port = Port(port_name, direction, type=data_type)
-            # Store original type string as an attribute
-            setattr(port, "original_type", original_type_str)
+            # Extract width from type definition if possible
+            width = 1
+            if "vector" in original_type_str.lower():
+                # Check for (N downto M)
+                # Regex must handle potential spaces if Combine preserved them or if original had them
+                range_match = re.search(r"\((\d+)\s+downto\s+(\d+)\)", original_type_str, re.IGNORECASE)
+                if range_match:
+                    high = int(range_match.group(1))
+                    low = int(range_match.group(2))
+                    width = abs(high - low) + 1
+                else:
+                    # Could be parameterized width
+                    pass
+
+            port = Port(
+                name=port_name,
+                direction=direction,
+                width=width,
+                type=original_type_str,
+                description=""
+            )
 
             return port
         except Exception as e:
             print(f"Error creating port from data: {e}")
+            traceback.print_exc()
             return None
 
     def _create_parameter_from_data(self, generic_data: dict):
@@ -341,45 +359,54 @@ class VHDLParser:
             Parameter object
         """
         try:
-            from fpga_lib.model import Parameter
-
             generic_name = generic_data.get("generic_name")
             type_info = generic_data.get("type")
             default_value = generic_data.get("default_value")
-
-            # Create original type string for later reference
+            
+            # Debugging info
+            # print(f"DEBUG: generic_name={generic_name} ({type(generic_name)})")
+            # print(f"DEBUG: default_value={default_value} ({type(default_value)})")
+            # if default_value is not None:
+            #     print(f"DEBUG: default_value.strip type: {type(getattr(default_value, 'strip', None))}")
             original_type_str = ""
-
-            # Handle type (simple or range)
             if isinstance(type_info, str):
-                # Simple type (e.g., natural, integer)
                 original_type_str = type_info
+            elif hasattr(type_info, "as_list"):
+                 original_type_str = " ".join([str(x) for x in type_info.as_list()])
             elif isinstance(type_info, list):
-                # Range type (e.g., std_ulogic_vector(31 downto 0))
-                base_type_str = type_info[0]
-                range_str = type_info[1]
-                original_type_str = f"{base_type_str}({range_str})"
+                 original_type_str = " ".join([str(x) for x in type_info])
+            else:
+                 original_type_str = str(type_info)
 
-            # Create parameter with the type information
-            # Use the default value if available, otherwise None
-            parameter_value = default_value.strip() if default_value else None
+            # Create parameter value
+            parameter_value = None
+            if default_value is not None:
+                if isinstance(default_value, str):
+                    parameter_value = default_value.strip()
+                elif hasattr(default_value, '__getitem__') and len(default_value) > 0:
+                     # Handle ParseResults/list by taking first element which is the captured string
+                    parameter_value = str(default_value[0]).strip()
+                else:
+                    parameter_value = str(default_value).strip()
+            
             parameter = Parameter(
-                name=generic_name, value=parameter_value, type=original_type_str
+                name=str(generic_name),  # Explicit cast
+                value=parameter_value if parameter_value is not None else 0, # Default to 0/empty if None
+                description=f"VHDL Type: {original_type_str}"
             )
 
             return parameter
         except Exception as e:
             print(f"Error creating parameter from data: {e}")
+            traceback.print_exc()
             return None
 
     def _process_port_list(self, s, loc, tokens):
         """Parse action to process port list and extract all ports."""
-        # Process the port list, ensuring all ports are captured
         return tokens
 
     def _remove_comments(self, text):
-        """Remove comments from VHDL text for easier parsing."""
-        # Remove single line comments
+        """Remove comments from VHDL text."""
         result = re.sub(r"--.*$", "", text, flags=re.MULTILINE)
         return result
 
@@ -399,7 +426,6 @@ class VHDLParser:
         if expected_entity_name:
             try:
                 # Find the complete entity definition including generics and ports
-                # Use a more robust pattern that captures the entire entity
                 entity_pattern = rf"entity\s+{re.escape(expected_entity_name)}\s+is\s+(.*?)\s*end\s+(?:entity\s+)?{re.escape(expected_entity_name)}?"
                 entity_match = re.search(
                     entity_pattern, vhdl_text_clean, re.IGNORECASE | re.DOTALL
@@ -408,214 +434,79 @@ class VHDLParser:
                 if entity_match:
                     entity_body = entity_match.group(1)
 
-                    # Extract generic section if present - look for generic ( ... );
-                    generics = []
-                    generic_start = entity_body.find("generic")
-                    if generic_start != -1:
-                        # Find the opening parenthesis after 'generic'
-                        generic_paren_start = entity_body.find("(", generic_start)
-                        if generic_paren_start != -1:
-                            # Find the matching closing parenthesis by counting parentheses
-                            paren_count = 0
-                            generic_paren_end = -1
-
-                            for i in range(generic_paren_start, len(entity_body)):
-                                if entity_body[i] == "(":
-                                    paren_count += 1
-                                elif entity_body[i] == ")":
-                                    paren_count -= 1
-                                    if paren_count == 0:
-                                        generic_paren_end = i
-                                        break
-
-                            if generic_paren_end != -1:
-                                generics_text = entity_body[
-                                    generic_paren_start + 1 : generic_paren_end
-                                ]
-
-                                # Parse generics with similar approach as ports
-                                generic_entries = []
-
-                                # Split on semicolons first, then parse each generic individually
-                                generic_parts = re.split(r"\s*;\s*", generics_text)
-
-                                for generic_part in generic_parts:
-                                    generic_part = generic_part.strip()
-                                    if not generic_part:
-                                        continue
-
-                                    # Remove comments from generic declaration
-                                    generic_part = re.sub(
-                                        r"--.*$", "", generic_part, flags=re.MULTILINE
-                                    ).strip()
-                                    if not generic_part:
-                                        continue
-
-                                    # Match: generic_name : type_with_possible_parentheses [optional_default_value]
-                                    generic_match = re.match(
-                                        r"(\w+)\s*:\s*([^:=]+)(?:\s*:=\s*(.+))?",
-                                        generic_part,
-                                        re.IGNORECASE | re.DOTALL,
-                                    )
-                                    if generic_match:
-                                        generic_name = generic_match.group(1)
-                                        type_str = generic_match.group(2).strip()
-                                        default_value = (
-                                            generic_match.group(3).strip()
-                                            if generic_match.group(3)
-                                            else None
-                                        )
-                                        generic_entries.append(
-                                            (generic_name, type_str, default_value)
-                                        )
-
-                                generics = generic_entries
-
                     # Extract port section - look for port ( ... );
-                    # Use a more sophisticated approach to find the complete port section
+                    ports = []
                     port_start = entity_body.find("port")
                     if port_start != -1:
-                        # Find the opening parenthesis after 'port'
                         paren_start = entity_body.find("(", port_start)
                         if paren_start != -1:
-                            # Find the matching closing parenthesis by counting parentheses
+                            # Simple paren counting (same as strict parser logic)
                             paren_count = 0
-                            pos = paren_start
                             paren_end = -1
-
                             for i in range(paren_start, len(entity_body)):
-                                if entity_body[i] == "(":
-                                    paren_count += 1
+                                if entity_body[i] == "(": paren_count += 1
                                 elif entity_body[i] == ")":
                                     paren_count -= 1
                                     if paren_count == 0:
                                         paren_end = i
                                         break
-
+                            
                             if paren_end != -1:
                                 ports_text = entity_body[paren_start + 1 : paren_end]
-                            if paren_end != -1:
-                                ports_text = entity_body[paren_start + 1 : paren_end]
-
-                                # Parse ports with improved pattern that handles the last port and complex types
-                                # Split by semicolons first, then parse each port individually
-                                # This handles vector types with parentheses properly
-                                port_entries = []
-
-                                # First, split on semicolons to get individual port declarations
                                 port_parts = re.split(r"\s*;\s*", ports_text)
-
+                                
                                 for port_part in port_parts:
                                     port_part = port_part.strip()
-                                    if not port_part:
-                                        continue
-
-                                    # Remove comments from port declaration
-                                    port_part = re.sub(
-                                        r"--.*$", "", port_part, flags=re.MULTILINE
-                                    ).strip()
-                                    if not port_part:
-                                        continue
-
-                                    # Match: port_name : direction type_with_possible_parentheses
+                                    if not port_part: continue
+                                    port_part = re.sub(r"--.*$", "", port_part, flags=re.MULTILINE).strip()
+                                    
+                                    # Regex match port
                                     port_match = re.match(
                                         r"(\w+)\s*:\s*(in|out|inout|buffer|linkage)\s+(.+)",
                                         port_part,
                                         re.IGNORECASE | re.DOTALL,
                                     )
                                     if port_match:
-                                        port_entries.append(
-                                            (
-                                                port_match.group(1),
-                                                port_match.group(2),
-                                                port_match.group(3).strip(),
-                                            )
-                                        )
+                                        p_name = port_match.group(1)
+                                        p_dir_str = port_match.group(2).lower()
+                                        p_type = port_match.group(3)
+                                        
+                                        p_dir = {
+                                            "in": PortDirection.IN, "out": PortDirection.OUT, 
+                                            "inout": PortDirection.INOUT, "buffer": PortDirection.OUT, 
+                                            "linkage": PortDirection.IN
+                                        }.get(p_dir_str, PortDirection.IN)
 
-                                port_matches = port_entries
+                                        # Width calc
+                                        width = 1
+                                        range_match = re.search(r"\((.*?)\)", p_type)
+                                        if range_match:
+                                            r_str = range_match.group(1)
+                                            downto = re.search(r"(\d+)\s+downto\s+(\d+)", r_str)
+                                            if downto:
+                                                width = int(downto.group(1)) - int(downto.group(2)) + 1
+                                        
+                                        ports.append(Port(
+                                            name=p_name,
+                                            direction=p_dir,
+                                            width=width,
+                                            type=p_type
+                                        ))
 
-                    ports = []
-                    for port_match in port_matches:
-                        port_name = port_match[0].strip()
-                        direction_str = port_match[1].strip().lower()
-                        type_str = port_match[2].strip()
-
-                        direction_map = {
-                            "in": Direction.IN,
-                            "out": Direction.OUT,
-                            "inout": Direction.INOUT,
-                            "buffer": Direction.BUFFER,
-                            "linkage": Direction.LINKAGE,
-                        }
-                        direction = direction_map.get(direction_str, Direction.IN)
-
-                        # Store original type
-                        original_type_str = type_str
-
-                        # Parse type with improved regex for vector types
-                        # This handles std_logic_vector(7 downto 0) format correctly
-                        range_match = re.search(r"([\w\.\_]+)\s*\((.*?)\)", type_str)
-                        if range_match:
-                            base_type_str = range_match.group(1)
-                            range_str = range_match.group(2)
-                            base_type = VHDLBaseType.from_string(base_type_str)
-                            data_type = DataType(base_type, range_constraint=range_str)
-                            # Ensure range constraints are properly stored
-                            if hasattr(data_type, "width"):
-                                try:
-                                    # Try to extract numeric width from range constraints like "7 downto 0"
-                                    downto_match = re.search(
-                                        r"(\d+)\s+downto\s+(\d+)", range_str
-                                    )
-                                    if downto_match:
-                                        high = int(downto_match.group(1))
-                                        low = int(downto_match.group(2))
-                                        data_type.width = high - low + 1
-                                except:
-                                    # Default if parsing fails
-                                    data_type.width = 8
-                        else:
-                            data_type = DataType(VHDLBaseType.from_string(type_str))
-
-                        port = Port(port_name, direction, type=data_type)
-                        setattr(port, "original_type", original_type_str)
-                        ports.append(port)
-
-                    if ports:
-                        interface = Interface(
-                            name=expected_entity_name,
-                            interface_type="vhdl_default",
-                            ports=ports,
-                        )
-                        ip_core = IPCore(
-                            name=expected_entity_name, interfaces=[interface]
-                        )
-                    else:
-                        ip_core = IPCore(name=expected_entity_name)
-
-                    # Add generics as parameters to the IPCore
-                    for generic_data in generics:
-                        from fpga_lib.model import Parameter
-
-                        generic_name = generic_data[0].strip()
-                        type_str = generic_data[1].strip()
-                        default_value = (
-                            generic_data[2]
-                            if len(generic_data) > 2 and generic_data[2]
-                            else None
-                        )
-
-                        # Create parameter for the generic
-                        parameter = Parameter(
-                            name=generic_name, value=default_value, type=type_str
-                        )
-                        ip_core.parameters[parameter.name] = parameter
-
+                    # Create VLNV
+                    vlnv = VLNV(vendor="parsed", library="vhdl", name=expected_entity_name, version="1.0")
+                    ip_core = IpCore(
+                        api_version="1.0",
+                        vlnv=vlnv,
+                        description=f"Parsed from VHDL (regex fallback)",
+                        ports=ports
+                    )
+                    
                     result["entity"] = ip_core
             except Exception as e:
                 print(f"Error in regex fallback parsing: {e}")
 
-        # Parse architecture
+        # Parse architecture (regex)
         try:
             arch_match = re.search(
                 r"architecture\s+(\w+)\s+of\s+(\w+)\s+is",
@@ -627,17 +518,16 @@ class VHDLParser:
                     "name": arch_match.group(1),
                     "entity": arch_match.group(2),
                 }
-        except Exception as e:
-            print(f"Error parsing architecture with regex: {e}")
+        except Exception:
+            pass
 
-        # Parse package
         try:
             package_match = re.search(
                 r"package\s+(\w+)\s+is", vhdl_text_clean, re.IGNORECASE | re.DOTALL
             )
             if package_match:
                 result["package"] = {"name": package_match.group(1).strip()}
-        except Exception as e:
-            print(f"Error parsing package with regex: {e}")
+        except Exception:
+            pass
 
         return result

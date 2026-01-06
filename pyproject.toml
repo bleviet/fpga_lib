@@ -1,41 +1,49 @@
+[project]
+name = "fpga_lib"
+version = "0.1.0"
+description = "A Python library for working with FPGA designs"
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+    "jinja2",
+    "rich",
+    "openai",
+    "python-dotenv",
+    "pydantic",
+    "PySide6",
+    "pyyaml",
+    "textual",
+    "pyparsing",
+    "dataclasses-json",
+    "click"
+]
+
+[tool.pytest.ini_options]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+]
+testpaths = ["fpga_lib/tests"]
+python_files = ["test_*.py"]
+
+[project.optional-dependencies]
+test = [
+    "pytest",
+    "pytest-cov",
+    "cocotb",
+    "cocotb-bus",
+    "cocotbext-axi"
+]
+dev = [
+    "black",
+    "mypy"
+]
+
 [build-system]
 requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
-[tool.pytest.ini_options]
-testpaths = ["fpga_lib/tests"]
-python_files = ["test_*.py"]
-python_classes = ["Test*"]
-python_functions = ["test_*"]
-markers = [
-    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
-    "integration: marks tests as integration tests with real LLM providers (deselect with '-m \"not integration\"')"
-]
-
-[tool.black]
-line-length = 88
-target-version = ['py37']
-include = '\.pyi?$'
-extend-exclude = '''
-/(
-  # directories
-  \.eggs
-  | \.git
-  | \.hg
-  | \.mypy_cache
-  | \.tox
-  | \.venv
-  | build
-  | dist
-)/
-'''
-
-[tool.mypy]
-python_version = "3.7"
-warn_return_any = true
-warn_unused_configs = true
-disallow_untyped_defs = true
-
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["fpga_lib*"]
+include = ["fpga_lib*", "scripts*"]
+
