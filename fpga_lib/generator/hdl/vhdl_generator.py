@@ -339,7 +339,7 @@ class VHDLGenerator(BaseGenerator):
             files["component.xml"] = self.generate_xilinx_component_xml(ip_core)
             # Generate XGUI file with version in filename (e.g., component_v1_0_0.tcl)
             version_str = ip_core.vlnv.version.replace('.', '_')
-            files[f"xgui/{name}_v{version_str}.tcl"] = self.generate_xilinx_xgui(ip_core)
+            files[f"xilinx/xgui/{name}_v{version_str}.tcl"] = self.generate_xilinx_xgui(ip_core)
 
         return files
 

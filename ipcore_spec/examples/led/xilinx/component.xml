@@ -406,7 +406,7 @@
         <spirit:parameters>
           <spirit:parameter>
             <spirit:name>viewChecksum</spirit:name>
-            <spirit:value>7ddfa0d3</spirit:value>
+            <spirit:value>844b65ec</spirit:value>
           </spirit:parameter>
         </spirit:parameters>
       </spirit:view>
@@ -438,6 +438,7 @@
           </spirit:wireTypeDefs>
         </spirit:wire>
       </spirit:port>
+      <!-- AXI-Lite Slave Interface Ports -->
       <spirit:port>
         <spirit:name>s_axi_awaddr</spirit:name>
         <spirit:wire>
@@ -721,6 +722,7 @@
           </spirit:wireTypeDefs>
         </spirit:wire>
       </spirit:port>
+      <!-- User Ports -->
       <spirit:port>
         <spirit:name>o_led</spirit:name>
         <spirit:wire>
@@ -885,14 +887,14 @@
         <xilinx:taxonomy>/UserIP</xilinx:taxonomy>
       </xilinx:taxonomies>
       <xilinx:displayName>Led Controller</xilinx:displayName>
-      <xilinx:coreRevision>2</xilinx:coreRevision>
-      <xilinx:coreCreationDateTime>2026-01-06T12:44:59Z</xilinx:coreCreationDateTime>
+      <xilinx:coreRevision>1</xilinx:coreRevision>
+      <xilinx:coreCreationDateTime>2026-01-06T11:59:43Z</xilinx:coreCreationDateTime>
     </xilinx:coreExtensions>
     <xilinx:packagingInfo>
       <xilinx:xilinxVersion>2024.2</xilinx:xilinxVersion>
       <xilinx:checksum xilinx:scope="busInterfaces" xilinx:value="c142cef6"/>
       <xilinx:checksum xilinx:scope="memoryMaps" xilinx:value="7de88724"/>
-      <xilinx:checksum xilinx:scope="fileGroups" xilinx:value="b06a9015"/>
+      <xilinx:checksum xilinx:scope="fileGroups" xilinx:value="4835cfd2"/>
       <xilinx:checksum xilinx:scope="ports" xilinx:value="16c87ccc"/>
       <xilinx:checksum xilinx:scope="parameters" xilinx:value="6dd4074a"/>
     </xilinx:packagingInfo>
