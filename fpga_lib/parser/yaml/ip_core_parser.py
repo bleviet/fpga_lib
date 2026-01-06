@@ -141,6 +141,9 @@ class YamlIpCoreParser:
         api_version = data.get("apiVersion")
         if not api_version:
             raise ParseError("Missing required field: apiVersion", file_path)
+        
+        # Convert numeric apiVersion to string if needed
+        api_version = str(api_version)
 
         vlnv_data = data.get("vlnv")
         if not vlnv_data:
