@@ -381,7 +381,6 @@ class VHDLGenerator(BaseGenerator):
         if include_testbench:
             files[f"tb/{name}_test.py"] = self.generate_cocotb_test(ip_core, bus_type)
             files[f"tb/Makefile"] = self.generate_cocotb_makefile(ip_core, bus_type)
-            files[f"tb/{name}_memmap.yml"] = self.generate_memmap_yaml(ip_core)
 
         # Vendor integration files
         if vendor in ['intel', 'both']:
@@ -501,8 +500,7 @@ class VHDLGenerator(BaseGenerator):
         if include_testbench:
             sim_files = [
                 File(path=f"tb/{name}_test.py", type=FileType.PYTHON),
-                File(path="tb/Makefile", type=FileType.UNKNOWN),
-                File(path=f"tb/{name}_memmap.yml", type=FileType.YAML)
+                File(path="tb/Makefile", type=FileType.UNKNOWN)
             ]
             filesets.append(FileSet(
                 name="Simulation_Resources",
@@ -601,7 +599,6 @@ class VHDLGenerator(BaseGenerator):
         return {
             f"{name}_test.py": self.generate_cocotb_test(ip_core, bus_type),
             "Makefile": self.generate_cocotb_makefile(ip_core, bus_type),
-            f"{name}_memmap.yml": self.generate_memmap_yaml(ip_core),
         }
 
 

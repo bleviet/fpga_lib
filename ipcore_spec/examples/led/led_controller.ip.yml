@@ -87,8 +87,6 @@ fileSets:
         type: python
     -   path: tb/Makefile
         type: unknown
-    -   path: tb/led_controller_memmap.yml
-        type: yaml
 -   name: Integration
     description: Platform Integration Files
     files:

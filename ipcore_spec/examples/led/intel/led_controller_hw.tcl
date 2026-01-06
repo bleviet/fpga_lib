@@ -33,9 +33,9 @@ proc elaborate {} {
     set_interface_property clk PORT_NAME_MAP ""
     set_interface_property clk CMSIS_SVD_VARIABLES ""
     set_interface_property clk SVD_ADDRESS_GROUP ""
-    
+
     add_interface_port clk clk clk Input 1
-    
+
     # -----------------------------------------------------------------------------
     # Reset Interface
     # -----------------------------------------------------------------------------
@@ -47,9 +47,9 @@ proc elaborate {} {
     set_interface_property reset PORT_NAME_MAP ""
     set_interface_property reset CMSIS_SVD_VARIABLES ""
     set_interface_property reset SVD_ADDRESS_GROUP ""
-    
+
     add_interface_port reset rst reset Input 1
-    
+
     # -----------------------------------------------------------------------------
     # Slave Interface
     # -----------------------------------------------------------------------------
@@ -98,7 +98,7 @@ proc elaborate {} {
     set_interface_property conduit PORT_NAME_MAP ""
     set_interface_property conduit CMSIS_SVD_VARIABLES ""
     set_interface_property conduit SVD_ADDRESS_GROUP ""
-    
+
     add_interface_port conduit o_led o_led Output 1
     add_interface_port conduit o_led_pwm o_led_pwm Output 1
     add_interface_port conduit o_irq o_irq Output 1
