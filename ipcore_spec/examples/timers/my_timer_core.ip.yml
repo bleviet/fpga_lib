@@ -135,36 +135,3 @@ parameters:
     value: 48
     dataType: integer
     description: Width of timestamp counter in bits
-
-fileSets:
-  - import: common/c_api.fileset.yml
-  - name: Documentation
-    description: Datasheet and register map
-    files: []
-  - name: Simulation_Resources
-    description: Simulation Files
-    files:
-      - path: my_timer_core/tb/my_timer_core_test.py
-        type: python
-      - path: my_timer_core/tb/Makefile
-        type: unknown
-  - name: Integration
-    description: Integration Files
-    files:
-      - path: my_timer_core/rtl/my_timer_core_regfile.vhd
-        type: vhdl
-      - path: my_timer_core/intel/my_timer_core_hw.tcl
-        type: tcl
-      - path: my_timer_core/xilinx/component.xml
-        type: unknown
-  - name: RTL_Sources
-    description: RTL Sources
-    files:
-      - path: my_timer_core/rtl/my_timer_core_pkg.vhd
-        type: vhdl
-      - path: my_timer_core/rtl/my_timer_core.vhd
-        type: vhdl
-      - path: my_timer_core/rtl/my_timer_core_core.vhd
-        type: vhdl
-      - path: my_timer_core/rtl/my_timer_core_axil.vhd
-        type: vhdl
