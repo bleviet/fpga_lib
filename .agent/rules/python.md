@@ -16,6 +16,7 @@ trigger: always_on
 - **Type Hints:** Required for all function signatures. Use mypy for type checking.
 - **Imports:** Absolute imports preferred (e.g., `from fpga_lib.model import x` instead of relative imports).
 - **Docstrings:** Use Google-style docstrings for all public APIs.
+- **Whitespace:** ALWAYS trim trailing spaces from all lines. No trailing whitespace allowed.
 
 ## Project Architecture ("Screaming Architecture")
 - **Models:** Pydantic schemas in `fpga_lib/model/` (base, bus, clock_reset, core, fileset, memory, port, validators).
