@@ -85,7 +85,7 @@ export const GeneratorPanel: React.FC<GeneratorPanelProps> = ({ ipCore }) => {
     const [options, setOptions] = useState<GenerationOptions>({
         busType: detectedBus?.busType || 'axil',
         includeVhdl: true,
-        includeRegfile: false,
+        includeRegfile: true,  // Always include regs with VHDL files
         vendorFiles: 'none',
         includeTestbench: false,
     });
@@ -216,17 +216,9 @@ export const GeneratorPanel: React.FC<GeneratorPanelProps> = ({ ipCore }) => {
                     <input
                         type="checkbox"
                         checked={options.includeVhdl}
-                        onChange={(e) => setOptions({ ...options, includeVhdl: e.target.checked })}
+                        onChange={(e) => setOptions({ ...options, includeVhdl: e.target.checked, includeRegfile: e.target.checked })}
                     />
-                    Package, Top, Core, Bus Wrapper
-                </label>
-                <label style={checkboxRowStyle}>
-                    <input
-                        type="checkbox"
-                        checked={options.includeRegfile}
-                        onChange={(e) => setOptions({ ...options, includeRegfile: e.target.checked })}
-                    />
-                    Standalone Register File
+                    Package, Top, Core, Bus Wrapper, Register Bank
                 </label>
             </div>
 
@@ -295,11 +287,9 @@ export const GeneratorPanel: React.FC<GeneratorPanelProps> = ({ ipCore }) => {
                             <div style={{ paddingLeft: '24px', opacity: 0.8 }}>
                                 ├── {ipName}_{detectedBus?.busType || 'axil'}.vhd
                             </div>
-                            {options.includeRegfile && (
-                                <div style={{ paddingLeft: '24px', opacity: 0.8 }}>
-                                    └── {ipName}_regs.vhd
-                                </div>
-                            )}
+                            <div style={{ paddingLeft: '24px', opacity: 0.8 }}>
+                                └── {ipName}_regs.vhd
+                            </div>
                         </div>
                     )}
                     {options.includeTestbench && (
@@ -336,8 +326,7 @@ export const GeneratorPanel: React.FC<GeneratorPanelProps> = ({ ipCore }) => {
                 <div style={{ marginTop: '8px', fontSize: '10px', opacity: 0.7 }}>
                     {(() => {
                         let count = 0;
-                        if (options.includeVhdl) count += 4;
-                        if (options.includeRegfile) count += 1;
+                        if (options.includeVhdl) count += 5;  // pkg, top, core, bus, regs
                         if (options.vendorFiles === 'intel') count += 1;
                         if (options.vendorFiles === 'xilinx') count += 2; // component.xml + xgui
                         if (options.vendorFiles === 'both') count += 3; // intel hw.tcl + xilinx 2 files
