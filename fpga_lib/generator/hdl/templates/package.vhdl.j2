@@ -18,6 +18,7 @@ package {{ entity_name }}_pkg is
   constant C_ADDR_WIDTH : natural := {{ addr_width | default(8) }};
   constant C_REG_WIDTH  : natural := {{ reg_width | default(4) }};  -- Bytes per register
 
+{% if registers %}
   ----------------------------------------------------------------------------
   -- Register Enumeration (Order defines address)
   ----------------------------------------------------------------------------
@@ -29,6 +30,7 @@ package {{ entity_name }}_pkg is
 
   -- Calculate register address from enumeration
   function reg_addr(reg : t_reg_id) return natural;
+{% endif %}
 
   ----------------------------------------------------------------------------
   -- Register Record Types
@@ -62,41 +64,50 @@ package {{ entity_name }}_pkg is
 {% endif %}
 {% endfor %}
 
+{% if registers %}
   ----------------------------------------------------------------------------
   -- Aggregate Register Records (for clean port interface)
   ----------------------------------------------------------------------------
-  
+{% set sw2hw_regs = registers | selectattr('access', 'in', ['read-write', 'write-only', 'rw', 'wo']) | list %}
+{% set hw2sw_regs = registers | selectattr('access', 'in', ['read-only', 'ro']) | list %}
+{% if sw2hw_regs %}
+
   -- SW -> HW: Registers written by software, read by hardware
   type t_regs_sw2hw is record
-{% for reg in registers if reg.access in ['read-write', 'write-only', 'rw', 'wo'] %}
+{% for reg in sw2hw_regs %}
     {{ reg.name | lower }} : t_reg_{{ reg.name | lower }};
 {% endfor %}
   end record;
 
   constant C_REGS_SW2HW_RESET : t_regs_sw2hw := (
-{% for reg in registers if reg.access in ['read-write', 'write-only', 'rw', 'wo'] %}
+{% for reg in sw2hw_regs %}
     {{ reg.name | lower }} => C_REG_{{ reg.name | upper }}_RESET{{ "," if not loop.last else "" }}
 {% endfor %}
   );
+{% endif %}
+{% if hw2sw_regs %}
 
-  -- HW -> SW: Registers written by hardware, read by software  
+  -- HW -> SW: Registers written by hardware, read by software
   type t_regs_hw2sw is record
-{% for reg in registers if reg.access in ['read-only', 'ro'] %}
+{% for reg in hw2sw_regs %}
     {{ reg.name | lower }} : t_reg_{{ reg.name | lower }};
 {% endfor %}
   end record;
 
   constant C_REGS_HW2SW_RESET : t_regs_hw2sw := (
-{% for reg in registers if reg.access in ['read-only', 'ro'] %}
+{% for reg in hw2sw_regs %}
     {{ reg.name | lower }} => C_REG_{{ reg.name | upper }}_RESET{{ "," if not loop.last else "" }}
 {% endfor %}
   );
+{% endif %}
+{% endif %}
 
 end package {{ entity_name }}_pkg;
 
 
 package body {{ entity_name }}_pkg is
 
+{% if registers %}
   ----------------------------------------------------------------------------
   -- Register Address Function
   ----------------------------------------------------------------------------
@@ -104,6 +115,7 @@ package body {{ entity_name }}_pkg is
   begin
     return t_reg_id'pos(reg) * C_REG_WIDTH;
   end function;
+{% endif %}
 
   ----------------------------------------------------------------------------
   -- Conversion Functions

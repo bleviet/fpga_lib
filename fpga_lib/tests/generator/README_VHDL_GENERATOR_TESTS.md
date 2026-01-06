@@ -20,7 +20,18 @@ Unit tests for individual generator methods:
   - Makefile generation
   - All testbench files
 
-### `test_vhdl_generator_e2e.py`
+### `test_template_coverage.py`
+Template rendering coverage tests:
+- **TestTemplateRendering**: Individual template tests (23 tests)
+  - Verify all 13 Jinja2 templates render without errors
+  - Test templates with various IP core configurations
+  - Check for template artifacts (unrendered Jinja2 syntax)
+  - Validate VHDL syntax (entity/package presence, proper ending)
+- **TestTemplateEdgeCases**: Edge case tests (4 tests)
+  - Empty memory maps
+  - Single-bit register fields
+  - Wide (32-bit) register fields
+  - Many ports (20+ ports)
 End-to-end tests using actual example YAML files:
 - **TestVHDLGeneratorE2E**: Full pipeline tests (5 tests)
   - Parse minimal/basic/timer YAML examples
@@ -48,6 +59,11 @@ PYTHONPATH=/home/balevision/workspace/bleviet/fpga_lib uv run pytest fpga_lib/te
 PYTHONPATH=/home/balevision/workspace/bleviet/fpga_lib uv run pytest fpga_lib/tests/generator/hdl/test_vhdl_generator_e2e.py -v
 ```
 
+### Run only template coverage tests:
+```bash
+PYTHONPATH=/home/balevision/workspace/bleviet/fpga_lib uv run pytest fpga_lib/tests/generator/hdl/test_template_coverage.py -v
+```
+
 ### Run syntax validation tests (requires GHDL):
 ```bash
 PYTHONPATH=/home/balevision/workspace/bleviet/fpga_lib uv run pytest fpga_lib/tests/generator/hdl/test_vhdl_generator_e2e.py::TestVHDLGeneratorSyntaxValidation -v
@@ -60,10 +76,15 @@ PYTHONPATH=/home/balevision/workspace/bleviet/fpga_lib uv run pytest fpga_lib/te
 
 ## Test Coverage
 
+**Overall Status: 47/50 tests passing (94%)**
+
 Current coverage:
-- ✅ **15/15** unit tests passing
-- ✅ **4/5** E2E tests passing (1 fails due to missing example file)
-- ⏳ **0/2** syntax validation tests (require GHDL installation)
+- ✅ **15/15** unit tests passing (test_vhdl_generator.py)
+- ✅ **27/27** template coverage tests passing (test_template_coverage.py)
+- ✅ **5/8** E2E tests passing (test_vhdl_generator_e2e.py)
+  - 1 fails due to missing example file
+  - 2 skipped (minimal IPs without registers - generator not designed for this edge case)
+  - 1 GHDL syntax validation test **passing** ✅
 
 ### What's Tested
 
@@ -86,6 +107,17 @@ Current coverage:
 - `generate_memmap_yaml()` - Driver memory map
 - `generate_testbench()` - Complete testbench set
 
+**GHDL Syntax Validation:**
+- Generated VHDL compiles with GHDL `--std=08`
+- IP cores with registers produce syntactically valid VHDL
+- Package template fixed to handle empty register cases
+- Proper compilation order: package → submodules → top-level
+
+**Template Rendering:**
+- All 13 Jinja2 templates render without errors
+- Edge cases: empty memory maps, single-bit fields, wide registers, many ports
+- No template artifacts in generated code
+
 **End-to-End:**
 - Parsing example YAML files
 - Generating all outputs
@@ -93,10 +125,9 @@ Current coverage:
 
 ### What's NOT Tested (Yet)
 
-- ❌ **VHDL Syntax Validation**: GHDL syntax checks (need GHDL installed)
-- ❌ **Simulation**: Running generated cocotb tests
-- ❌ **Template Coverage**: Ensuring all templates render without errors
-- ❌ **Functional Verification**: Register access correctness in simulation
+- ⚠️ **Minimal IPs Without Registers**: Templates designed for register-based IPs
+- ❌ **Functional Verification**: Running generated cocotb tests in simulation
+- ❌ **Register Access Correctness**: Verifying register read/write behavior in simulation
 
 ## Adding New Tests
 
