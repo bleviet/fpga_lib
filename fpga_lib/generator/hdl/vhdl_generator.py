@@ -437,7 +437,7 @@ class VHDLGenerator(BaseGenerator):
         Returns:
             True if file was updated, False if no changes needed
         """
-        from fpga_lib.parser.yaml.ip_core_parser import YamlIpCoreParser
+        from fpga_lib.parser.yaml.ip_yaml_parser import YamlIpCoreParser
 
         ip_path = Path(ip_core_path)
         if not ip_path.exists():

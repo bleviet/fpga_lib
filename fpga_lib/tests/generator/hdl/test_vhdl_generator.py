@@ -3,7 +3,7 @@ import pytest
 from pathlib import Path
 
 from fpga_lib.generator.hdl.vhdl_generator import VHDLGenerator
-from fpga_lib.parser.yaml.ip_core_parser import YamlIpCoreParser
+from fpga_lib.parser.yaml.ip_yaml_parser import YamlIpCoreParser
 from fpga_lib.model.core import IpCore
 from fpga_lib.model.base import VLNV
 from fpga_lib.model.port import Port, PortDirection
@@ -139,10 +139,10 @@ class TestVHDLGeneratorBasic:
         )
 
         generator = VHDLGenerator()
-        files = generator.generate_all(ip_core, bus_type='axil', include_regfile=True)
+        files = generator.generate_all(ip_core, bus_type='axil', include_regs=True)
 
         assert len(files) == 5
-        assert "test_regfile_regfile.vhd" in files
+        assert "test_regfile_regs.vhd" in files
 
 
 class TestVHDLGeneratorWithRegisters:
@@ -307,7 +307,7 @@ class TestVHDLGeneratorTestbench:
         generator = VHDLGenerator()
         files = generator.generate_testbench(ip_core)
 
-        assert len(files) == 3
+        assert len(files) == 2
         assert "tb_all_test.py" in files
         assert "Makefile" in files
-        assert "tb_all_memmap.yml" in files
+

@@ -5,7 +5,7 @@ import tempfile
 import subprocess
 
 from fpga_lib.generator.hdl.vhdl_generator import VHDLGenerator
-from fpga_lib.parser.yaml.ip_core_parser import YamlIpCoreParser
+from fpga_lib.parser.yaml.ip_yaml_parser import YamlIpCoreParser
 
 
 class TestVHDLGeneratorE2E:

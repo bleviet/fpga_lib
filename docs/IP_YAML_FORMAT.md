@@ -8,7 +8,7 @@ It is intentionally grounded in the actual implementation in `fpga_lib.parser.ya
 
 - The "root" YAML file (example: `examples/ip/my_timer_core.yml`) describes an IP core: metadata, clocks/resets/ports, bus interfaces, parameters, file sets, and (optionally) memory maps.
 - Memory maps are usually kept in a separate YAML file (example: `examples/ip/my_timer_core.memmap.yml`) and referenced via `memoryMaps: { import: "..." }`.
-- Parsing is performed by `fpga_lib/parser/yaml/ip_core_parser.py`.
+- Parsing is performed by `fpga_lib/parser/yaml/ip_yaml_parser.py`.
 - The output is always an `fpga_lib.model.core.IpCore` instance.
 
 ## Parser entry point
@@ -648,7 +648,7 @@ memoryMaps:
 
 ## Where to look in code
 
-- Parser: `fpga_lib/parser/yaml/ip_core_parser.py`
+- Parser: `fpga_lib/parser/yaml/ip_yaml_parser.py`
 - Root model: `fpga_lib/model/core.py`
 - Memory map models: `fpga_lib/model/memory.py`
 - Bus models: `fpga_lib/model/bus.py`

@@ -22,7 +22,7 @@ project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 from fpga_lib.generator.hdl.vhdl_generator import VHDLGenerator
-from fpga_lib.parser.yaml.ip_core_parser import YamlIpCoreParser
+from fpga_lib.parser.yaml.ip_yaml_parser import YamlIpCoreParser
 
 # Map YAML bus types to generator templates
 BUS_TYPE_MAP = {
