@@ -18,43 +18,45 @@ TOPLEVEL_LANG ?= vhdl
 
 # VHDL source files (relative to tb/ directory)
 RTL_DIR = $(CURDIR)/../rtl
-VHDL_SOURCES += $(RTL_DIR)/{{ entity_name }}_pkg.vhd
-VHDL_SOURCES += $(RTL_DIR)/{{ entity_name }}_core.vhd
-{% if bus_type == 'axil' %}
-VHDL_SOURCES += $(RTL_DIR)/{{ entity_name }}_{{ bus_type }}.vhd
-{% else %}
-VHDL_SOURCES += $(RTL_DIR)/{{ entity_name }}_avmm.vhd
-{% endif %}
-VHDL_SOURCES += $(RTL_DIR)/{{ entity_name }}.vhd
+VHDL_SOURCES += $(RTL_DIR)/my_timer_core_pkg.vhd
+VHDL_SOURCES += $(RTL_DIR)/my_timer_core_regs.vhd
+VHDL_SOURCES += $(RTL_DIR)/my_timer_core_core.vhd
+
+VHDL_SOURCES += $(RTL_DIR)/my_timer_core_axil.vhd
+
+VHDL_SOURCES += $(RTL_DIR)/my_timer_core.vhd
 
 # Top-level module
-TOPLEVEL = {{ entity_name }}
+TOPLEVEL = my_timer_core
 
 # Test module (Python file without .py extension)
-MODULE = {{ entity_name }}_test
+MODULE = my_timer_core_test
 
 # GHDL-specific options
 ifeq ($(SIM),ghdl)
     # Use VHDL-2008 standard
     COMPILE_ARGS += --std=08
-    
+
     # Relaxed rules for better compatibility
     COMPILE_ARGS += -frelaxed
-    
+
     # Generate waveforms if WAVES=1
     ifeq ($(WAVES),1)
-        SIM_ARGS += --wave={{ entity_name }}.ghw
+        SIM_ARGS += --wave=my_timer_core.ghw
     endif
-    
+
     # Additional elaboration options
     SIM_BUILD = sim_build
-    
+
     # Pass compile args to GHDL executable (before unit name)
     GHDL_ARGS += $(COMPILE_ARGS)
 endif
 
 # Cocotb settings
 export COCOTB_REDUCED_LOG_FMT=1
+
+# Add fpga_lib to Python path (go up to workspace root: tb -> led -> examples -> ipcore_spec -> fpga_lib)
+export PYTHONPATH := $(shell cd $(CURDIR)/../../../.. && pwd):$(PYTHONPATH)
 
 # Default target
 include $(shell cocotb-config --makefiles)/Makefile.sim
@@ -66,7 +68,7 @@ clean_all: clean
 	rm -rf sim_build __pycache__ results.xml *.ghw *.vcd
 
 view_waves:
-	gtkwave {{ entity_name }}.ghw &
+	gtkwave my_timer_core.ghw &
 
 lint:
 	@echo "Checking VHDL syntax..."
@@ -78,7 +80,7 @@ lint:
 
 # Help target
 help:
-	@echo "cocotb Testbench for {{ entity_name }}"
+	@echo "cocotb Testbench for my_timer_core"
 	@echo ""
 	@echo "Targets:"
 	@echo "  make            - Run all tests"

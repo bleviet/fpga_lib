@@ -8,6 +8,7 @@ import { MessageHandler } from '../services/MessageHandler';
 import { YamlValidator } from '../services/YamlValidator';
 import { DocumentManager } from '../services/DocumentManager';
 import { ImportResolver } from '../services/ImportResolver';
+import { PythonBackend } from '../services/PythonBackend';
 
 /**
  * Custom editor provider for FPGA IP core YAML files.
@@ -246,75 +247,14 @@ export class IpCoreEditorProvider implements vscode.CustomTextEditorProvider {
         });
         this.logger.debug(`Checked ${filePaths.length} file(s) for existence`);
       } else if (message.type === 'generate') {
-        // Handle VHDL generation request
+        // Handle VHDL generation request using Python backend
         this.logger.info('Generate request received', message.options);
 
         try {
-          // Import the generator
-          const { VHDLGenerator } = await import('../generator');
-
-          // Parse the current document as an IP core
-          const text = document.getText();
-          let rawData = jsyaml.load(text) as any;
           const baseDir = path.dirname(document.uri.fsPath);
-
-          // Helper to resolve imports (memoryMaps, fileSets)
-          const resolveImports = async (data: any, dir: string) => {
-            // Resolve memoryMaps import
-            if (data.memoryMaps && data.memoryMaps.import) {
-              try {
-                const importPath = path.join(dir, data.memoryMaps.import);
-                const content = await vscode.workspace.fs.readFile(vscode.Uri.file(importPath));
-                const importedMap = jsyaml.load(new TextDecoder().decode(content));
-                data.memoryMaps = Array.isArray(importedMap) ? importedMap : [importedMap];
-              } catch (e: any) {
-                this.logger.error(`Failed to resolve memory map import: ${data.memoryMaps.import}`, e instanceof Error ? e : new Error(String(e)));
-              }
-            }
-
-            // Resolve fileSets imports
-            if (data.fileSets && Array.isArray(data.fileSets)) {
-              const resolvedSets = [];
-              for (const set of data.fileSets) {
-                if (set.import) {
-                  try {
-                    const importPath = path.join(dir, set.import);
-                    const content = await vscode.workspace.fs.readFile(vscode.Uri.file(importPath));
-                    const importedSet = jsyaml.load(new TextDecoder().decode(content));
-                    if (Array.isArray(importedSet)) resolvedSets.push(...importedSet);
-                    else resolvedSets.push(importedSet);
-                  } catch (e: any) {
-                    this.logger.error(`Failed to resolve fileset import: ${set.import}`, e instanceof Error ? e : new Error(String(e)));
-                  }
-                } else {
-                  resolvedSets.push(set);
-                }
-              }
-              data.fileSets = resolvedSets;
-            }
-            return data;
-          };
-
-          // Helper to recursively convert camelCase keys to snake_case
-          const toSnakeCase = (str: string) => str.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
-          const normalizeKeys = (obj: any): any => {
-            if (Array.isArray(obj)) {
-              return obj.map(v => normalizeKeys(v));
-            } else if (obj !== null && typeof obj === 'object') {
-              return Object.keys(obj).reduce((acc, key) => {
-                const snakeKey = toSnakeCase(key);
-                acc[snakeKey] = normalizeKeys(obj[key]);
-                return acc;
-              }, {} as any);
-            }
-            return obj;
-          };
-
-          // Resolve and normalize data
-          rawData = await resolveImports(rawData, baseDir);
-          const ipCoreData = normalizeKeys(rawData);
-
-          const ipName = ipCoreData.vlnv?.name?.toLowerCase() || 'ip_core';
+          const text = document.getText();
+          const rawData = jsyaml.load(text) as any;
+          const ipName = rawData.vlnv?.name?.toLowerCase() || 'ip_core';
 
           // Ask user for output directory using folder picker
           const folderUris = await vscode.window.showOpenDialog({
@@ -335,61 +275,50 @@ export class IpCoreEditorProvider implements vscode.CustomTextEditorProvider {
             return;
           }
 
-          // Create output directory structure: <selected>/<ip_name>/
+          // Create output directory: <selected>/<ip_name>/
           const outputBaseDir = path.join(folderUris[0].fsPath, ipName);
 
-          // Create generator and generate files
-          // Fix: Pass correct template path (dist/templates)
-          const templatePath = path.join(this.context.extensionPath, 'dist', 'templates');
-          const generator = new VHDLGenerator(templatePath);
-          const busType = message.options?.busType || 'axil';
-          const files = generator.generateAll(ipCoreData, busType, {
-            includeVhdl: message.options?.includeVhdl !== false,
-            includeRegfile: message.options?.includeRegfile || false,
-            vendorFiles: message.options?.vendorFiles || 'none',
-            includeTestbench: message.options?.includeTestbench || false,
-          });
+          // Use Python backend for generation
+          const pythonBackend = new PythonBackend();
+          const isAvailable = await pythonBackend.isAvailable();
 
-          // Create subdirectories
-          const rtlDir = path.join(outputBaseDir, 'rtl');
-          const tbDir = path.join(outputBaseDir, 'tb');
-          const intelDir = path.join(outputBaseDir, 'intel');
-          const xilinxDir = path.join(outputBaseDir, 'xilinx');
-
-          await vscode.workspace.fs.createDirectory(vscode.Uri.file(outputBaseDir));
-          await vscode.workspace.fs.createDirectory(vscode.Uri.file(rtlDir));
-
-          // Determine subdirectory for each file
-          const getSubdir = (filename: string): string => {
-            if (filename.endsWith('.vhd')) return rtlDir;
-            if (filename.endsWith('.py') || filename === 'Makefile') return tbDir;
-            if (filename.endsWith('_hw.tcl')) return intelDir;
-            if (filename === 'component.xml' || filename.endsWith('_xgui.tcl')) return xilinxDir;
-            return outputBaseDir;
-          };
-
-          // Write files with organized structure
-          const writtenFiles: string[] = [];
-          const encoder = new TextEncoder();
-
-          for (const [filename, content] of files.entries()) {
-            const targetDir = getSubdir(filename);
-
-            // Create directory if needed
-            if (targetDir !== rtlDir) {
-              await vscode.workspace.fs.createDirectory(vscode.Uri.file(targetDir));
-            }
-
-            const filePath = path.join(targetDir, filename);
-            await vscode.workspace.fs.writeFile(
-              vscode.Uri.file(filePath),
-              encoder.encode(content)
-            );
-
-            // Show relative path from baseDir
-            const relativePath = path.relative(outputBaseDir, filePath);
-            writtenFiles.push(relativePath);
+          if (!isAvailable) {
+            webviewPanel.webview.postMessage({
+              type: 'generateResult',
+              success: false,
+              error: 'Python backend not available. Please ensure Python and fpga_lib are installed.'
+            });
+            pythonBackend.dispose();
+            return;
           }
+
+          // Call Python backend
+          const result = await pythonBackend.generateVHDL(
+            document.uri.fsPath,
+            outputBaseDir,
+            {
+              vendor: message.options?.vendorFiles || 'both',
+              includeTestbench: message.options?.includeTestbench !== false,
+              includeRegs: message.options?.includeRegfile || true,
+              updateYaml: false,  // We'll update YAML ourselves to refresh webview
+            }
+          );
+
+          pythonBackend.dispose();
+
+          if (!result.success) {
+            webviewPanel.webview.postMessage({
+              type: 'generateResult',
+              success: false,
+              error: result.error || 'Generation failed'
+            });
+            return;
+          }
+
+          // Get list of generated files (relative to outputBaseDir)
+          const writtenFiles = result.files
+            ? Object.keys(result.files)
+            : [];
 
           this.logger.info(`Generated ${writtenFiles.length} files to ${outputBaseDir}`);
 
@@ -413,41 +342,31 @@ export class IpCoreEditorProvider implements vscode.CustomTextEditorProvider {
           try {
             const doc = YAML.parseDocument(document.getText());
 
-            // Convert writtenFiles paths to be relative to YAML document location
-            // writtenFiles are relative to outputBaseDir (e.g., 'rtl/file.vhd')
-            // We need paths relative to baseDir (YAML document's directory)
+            // Convert file paths to be relative to YAML document location
             const yamlRelativeFiles = writtenFiles.map(f => {
               const absolutePath = path.join(outputBaseDir, f);
               return path.relative(baseDir, absolutePath);
             });
 
-            // categories
+            // Categorize files
             const rtlFiles = yamlRelativeFiles.filter(f => f.endsWith('.vhd') && !f.endsWith('_regs.vhd') && !f.endsWith('_tb.vhd'));
             const simFiles = yamlRelativeFiles.filter(f => f.endsWith('.py') || f.endsWith('Makefile') || f.endsWith('_tb.vhd'));
             const integrationFiles = yamlRelativeFiles.filter(f => f.endsWith('.tcl') || f.endsWith('.xml') || f.endsWith('_regs.vhd'));
 
             this.logger.info(`Categorized files - RTL: ${rtlFiles.length}, Sim: ${simFiles.length}, Integration: ${integrationFiles.length}`);
-            this.logger.info(`RTL files: ${JSON.stringify(rtlFiles)}`);
 
-            // Get current fileSets once
+            // Get current fileSets
             const currentData = doc.toJSON();
             let fileSets = currentData.fileSets || currentData.file_sets || [];
             const key = currentData.fileSets ? 'fileSets' : (currentData.file_sets ? 'file_sets' : 'fileSets');
 
-            // Ensure fileSets is an array
             if (!Array.isArray(fileSets)) {
               fileSets = [];
             }
 
-            this.logger.info(`Current fileSets: ${JSON.stringify(fileSets.map((fs: any) => ({ name: fs.name, filesCount: fs.files?.length || 0 })))}`);
-
             const updateFileSet = (setNames: string[], setDescription: string, newFiles: string[], fileTypeMap: (f: string) => string) => {
-              if (newFiles.length === 0) {
-                this.logger.info(`No files to add for set names: ${setNames.join(', ')}`);
-                return;
-              }
+              if (newFiles.length === 0) return;
 
-              // Find existing set matching any of the names
               let targetSetIndex = fileSets.findIndex((fs: any) =>
                 fs && fs.name && setNames.includes(fs.name)
               );
@@ -455,78 +374,50 @@ export class IpCoreEditorProvider implements vscode.CustomTextEditorProvider {
               let usedName = setNames[0];
 
               if (targetSetIndex === -1) {
-                // Create new file set
-                this.logger.info(`Creating new file set: ${usedName}`);
-                fileSets.push({
-                  name: usedName,
-                  description: setDescription,
-                  files: []
-                });
+                fileSets.push({ name: usedName, description: setDescription, files: [] });
                 targetSetIndex = fileSets.length - 1;
               } else {
                 usedName = fileSets[targetSetIndex].name;
-                this.logger.info(`Found existing file set: ${usedName} at index ${targetSetIndex}`);
               }
 
-              // Get or initialize files array
               if (!fileSets[targetSetIndex].files) {
                 fileSets[targetSetIndex].files = [];
               }
               const existingFiles = fileSets[targetSetIndex].files;
 
-              // Add new files if not already present
-              let addedCount = 0;
               for (const filePath of newFiles) {
                 const exists = existingFiles.some((f: any) => f.path === filePath);
                 if (!exists) {
-                  existingFiles.push({
-                    path: filePath,
-                    type: fileTypeMap(filePath)
-                  });
-                  addedCount++;
+                  existingFiles.push({ path: filePath, type: fileTypeMap(filePath) });
                 }
-              }
-
-              if (addedCount > 0) {
-                this.logger.info(`Added ${addedCount} files to '${usedName}' set.`);
               }
             };
 
-            // Targeted update with aliases from common conventions
-            updateFileSet(['RTL_Sources', 'rtl_sources', 'rtl', 'RTL'], 'RTL Sources', rtlFiles, (f) => 'vhdl');
-
+            updateFileSet(['RTL_Sources', 'rtl_sources', 'rtl', 'RTL'], 'RTL Sources', rtlFiles, () => 'vhdl');
             updateFileSet(['Simulation_Resources', 'simulation', 'tb'], 'Simulation Files', simFiles, (f) => {
               if (f.endsWith('Makefile')) return 'unknown';
               if (f.endsWith('.py')) return 'python';
               return 'vhdl';
             });
-
             updateFileSet(['Integration', 'integration'], 'Integration Files', integrationFiles, (f) => {
               if (f.endsWith('.tcl')) return 'tcl';
               if (f.endsWith('.xml')) return 'unknown';
               return 'vhdl';
             });
 
-            // Write back the updated fileSets once at the end
-            this.logger.info(`Final fileSets: ${JSON.stringify(fileSets.map((fs: any) => ({ name: fs.name, filesCount: fs.files?.length || 0 })))}`);
             doc.setIn([key], fileSets);
 
-            // Update document
             const newText = doc.toString();
             const updateSuccess = await this.documentManager.updateDocument(document, newText);
             if (updateSuccess) {
               this.logger.info('Updated file sets with generated files');
-              // Explicitly refresh the webview to show updated file sets
               await updateWebview();
             } else {
               this.logger.error('Failed to apply document edit for file sets');
-              vscode.window.showErrorMessage('Failed to update File Sets in YAML.');
             }
 
           } catch (e: any) {
-            const errorMsg = e instanceof Error ? e.message : String(e);
             this.logger.error('Error updating file sets', e);
-            vscode.window.showErrorMessage(`Error adding files to File Sets: ${errorMsg}`);
           }
 
         } catch (error: any) {
