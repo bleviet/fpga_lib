@@ -83,3 +83,5 @@ vivado*.backup.*
 debug_build/
 sim_build/
 results.xml
+*.ghw
+*.vcd
