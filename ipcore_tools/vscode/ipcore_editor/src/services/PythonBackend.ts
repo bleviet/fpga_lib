@@ -26,12 +26,12 @@ export interface GenerateOptions {
 
 export class PythonBackend {
     private pythonPath: string;
-    private workspaceRoot: string;
+    private projectRoot: string;
     private outputChannel: vscode.OutputChannel;
 
     constructor() {
         this.pythonPath = this.findPython();
-        this.workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || '';
+        this.projectRoot = this.findProjectRoot();
         this.outputChannel = vscode.window.createOutputChannel('FPGA Generator');
     }
 
@@ -47,13 +47,52 @@ export class PythonBackend {
     }
 
     /**
+     * Find the fpga_lib project root by looking for fpga_lib/ directory
+     */
+    private findProjectRoot(): string {
+        const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || '';
+
+        // Try to find fpga_lib directory by walking up from workspace root
+        let current = workspaceRoot;
+        for (let i = 0; i < 5; i++) {
+            const fpgaLibDir = path.join(current, 'fpga_lib');
+            const scriptsDir = path.join(current, 'scripts');
+            try {
+                // Check if both fpga_lib and scripts directories exist
+                const fs = require('fs');
+                if (fs.existsSync(fpgaLibDir) && fs.existsSync(scriptsDir)) {
+                    return current;
+                }
+            } catch {
+                // Ignore
+            }
+            const parent = path.dirname(current);
+            if (parent === current) break;
+            current = parent;
+        }
+
+        // Fallback to workspace root
+        return workspaceRoot;
+    }
+
+    /**
      * Check if Python backend is available
      */
     async isAvailable(): Promise<boolean> {
         try {
+            this.outputChannel.appendLine(`[DEBUG] Python: ${this.pythonPath}`);
+            this.outputChannel.appendLine(`[DEBUG] Project root: ${this.projectRoot}`);
+
             const result = await this.runPython(['-c', 'import fpga_lib; print("ok")']);
-            return result.stdout.includes('ok');
-        } catch {
+            const available = result.stdout.includes('ok');
+
+            if (!available) {
+                this.outputChannel.appendLine(`[DEBUG] fpga_lib import failed. stdout: ${result.stdout}, stderr: ${result.stderr}`);
+            }
+
+            return available;
+        } catch (error) {
+            this.outputChannel.appendLine(`[DEBUG] isAvailable error: ${error}`);
             return false;
         }
     }
@@ -68,7 +107,7 @@ export class PythonBackend {
         progress?: vscode.Progress<{ message?: string; increment?: number }>
     ): Promise<GenerateResult> {
         // Call ipcore.py with generate subcommand
-        const scriptPath = path.join(this.workspaceRoot, 'scripts', 'ipcore.py');
+        const scriptPath = path.join(this.projectRoot, 'scripts', 'ipcore.py');
         const args = [
             scriptPath,
             'generate',
@@ -116,8 +155,8 @@ export class PythonBackend {
     private runPython(args: string[]): Promise<{ stdout: string; stderr: string }> {
         return new Promise((resolve, reject) => {
             const proc = cp.spawn(this.pythonPath, args, {
-                cwd: this.workspaceRoot,
-                env: { ...process.env, PYTHONPATH: this.workspaceRoot }
+                cwd: this.projectRoot,
+                env: { ...process.env, PYTHONPATH: this.projectRoot }
             });
 
             let stdout = '';
@@ -147,8 +186,8 @@ export class PythonBackend {
     ): Promise<{ stdout: string; stderr: string }> {
         return new Promise((resolve, reject) => {
             const proc = cp.spawn(this.pythonPath, args, {
-                cwd: this.workspaceRoot,
-                env: { ...process.env, PYTHONPATH: this.workspaceRoot }
+                cwd: this.projectRoot,
+                env: { ...process.env, PYTHONPATH: this.projectRoot }
             });
 
             let stdout = '';
