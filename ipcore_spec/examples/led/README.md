@@ -25,7 +25,7 @@ The LED controller is a configurable IP core with an AXI-Lite interface that pro
 - `led_controller.vhd` - Top-level wrapper integrating bus interface and core logic
 - `led_controller_core.vhd` - Core LED control logic (placeholder for custom implementation)
 - `led_controller_axil.vhd` - AXI-Lite bus interface wrapper
-- `led_controller_regfile.vhd` - Register file implementation
+- `led_controller_regs.vhd` - Register file implementation
 
 #### Testbench (tb/)
 - `led_controller_test.py` - Full cocotb testbench with automated register testing
