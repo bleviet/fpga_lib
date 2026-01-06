@@ -88,3 +88,33 @@ parameters:
   value: 48
   dataType: integer
   description: Width of timestamp counter in bits
+fileSets:
+- name: RTL_Sources
+  description: RTL Sources
+  files:
+  - path: rtl/my_timer_core_pkg.vhd
+    type: vhdl
+  - path: rtl/my_timer_core_regs.vhd
+    type: vhdl
+  - path: rtl/my_timer_core_core.vhd
+    type: vhdl
+  - path: rtl/my_timer_core_axil.vhd
+    type: vhdl
+  - path: rtl/my_timer_core.vhd
+    type: vhdl
+- name: Simulation_Resources
+  description: Simulation Files
+  files:
+  - path: tb/my_timer_core_test.py
+    type: python
+  - path: tb/Makefile
+    type: unknown
+- name: Integration
+  description: Platform Integration Files
+  files:
+  - path: intel/my_timer_core_hw.tcl
+    type: tcl
+  - path: xilinx/component.xml
+    type: xml
+  - path: xilinx/xgui/my_timer_core_v1_2_0.tcl
+    type: tcl

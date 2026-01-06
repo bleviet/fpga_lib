@@ -27,7 +27,7 @@ async def test_register_access(dut):
     dut._log.info("Reset complete")
 
     # 3. Initialize Bus and Driver
-    bus = CocotbBus(dut, "s_axi", dut.i_clk_sys)
+    bus = CocotbBus(dut, "s_axi", dut.i_clk_sys, dut.i_rst_n_sys)
 
     # Locate the memmap file (use original .mm.yml from parent directory)
     memmap_path = os.path.join(os.path.dirname(__file__), "../my_timer_core.mm.yml")
@@ -115,7 +115,7 @@ async def test_field_access(dut):
     await RisingEdge(dut.i_clk_sys)
 
     # Initialize driver
-    bus = CocotbBus(dut, "s_axi", dut.i_clk_sys)
+    bus = CocotbBus(dut, "s_axi", dut.i_clk_sys, dut.i_rst_n_sys)
     memmap_path = os.path.join(os.path.dirname(__file__), "../my_timer_core.mm.yml")
     driver = load_driver(memmap_path, bus)
 

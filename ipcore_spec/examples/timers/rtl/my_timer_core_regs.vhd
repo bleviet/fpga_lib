@@ -88,27 +88,38 @@ begin
       elsif wr_en = '1' then
         v_addr_index := to_integer(unsigned(wr_addr(C_ADDR_WIDTH-1 downto 2)));
 
-        case v_addr_index is          when t_reg_id'pos(REG_GLOBAL_CTRL) =>
+        case v_addr_index is
+          when t_reg_id'pos(REG_GLOBAL_CTRL) =>
             v_wdata := apply_wstrb(to_slv(regs.global_ctrl), wr_data, wr_strb);
-            regs.global_ctrl <= to_global_ctrl(v_wdata);          when t_reg_id'pos(REG_SCRATCHPAD_USER) =>
+            regs.global_ctrl <= to_global_ctrl(v_wdata);
+          when t_reg_id'pos(REG_SCRATCHPAD_USER) =>
             v_wdata := apply_wstrb(to_slv(regs.scratchpad_user), wr_data, wr_strb);
-            regs.scratchpad_user <= to_scratchpad_user(v_wdata);          when t_reg_id'pos(REG_TIMER_0_CTRL) =>
+            regs.scratchpad_user <= to_scratchpad_user(v_wdata);
+          when t_reg_id'pos(REG_TIMER_0_CTRL) =>
             v_wdata := apply_wstrb(to_slv(regs.timer_0_ctrl), wr_data, wr_strb);
-            regs.timer_0_ctrl <= to_timer_0_ctrl(v_wdata);          when t_reg_id'pos(REG_TIMER_0_PERIOD) =>
+            regs.timer_0_ctrl <= to_timer_0_ctrl(v_wdata);
+          when t_reg_id'pos(REG_TIMER_0_PERIOD) =>
             v_wdata := apply_wstrb(to_slv(regs.timer_0_period), wr_data, wr_strb);
-            regs.timer_0_period <= to_timer_0_period(v_wdata);          when t_reg_id'pos(REG_TIMER_1_CTRL) =>
+            regs.timer_0_period <= to_timer_0_period(v_wdata);
+          when t_reg_id'pos(REG_TIMER_1_CTRL) =>
             v_wdata := apply_wstrb(to_slv(regs.timer_1_ctrl), wr_data, wr_strb);
-            regs.timer_1_ctrl <= to_timer_1_ctrl(v_wdata);          when t_reg_id'pos(REG_TIMER_1_PERIOD) =>
+            regs.timer_1_ctrl <= to_timer_1_ctrl(v_wdata);
+          when t_reg_id'pos(REG_TIMER_1_PERIOD) =>
             v_wdata := apply_wstrb(to_slv(regs.timer_1_period), wr_data, wr_strb);
-            regs.timer_1_period <= to_timer_1_period(v_wdata);          when t_reg_id'pos(REG_TIMER_2_CTRL) =>
+            regs.timer_1_period <= to_timer_1_period(v_wdata);
+          when t_reg_id'pos(REG_TIMER_2_CTRL) =>
             v_wdata := apply_wstrb(to_slv(regs.timer_2_ctrl), wr_data, wr_strb);
-            regs.timer_2_ctrl <= to_timer_2_ctrl(v_wdata);          when t_reg_id'pos(REG_TIMER_2_PERIOD) =>
+            regs.timer_2_ctrl <= to_timer_2_ctrl(v_wdata);
+          when t_reg_id'pos(REG_TIMER_2_PERIOD) =>
             v_wdata := apply_wstrb(to_slv(regs.timer_2_period), wr_data, wr_strb);
-            regs.timer_2_period <= to_timer_2_period(v_wdata);          when t_reg_id'pos(REG_TIMER_3_CTRL) =>
+            regs.timer_2_period <= to_timer_2_period(v_wdata);
+          when t_reg_id'pos(REG_TIMER_3_CTRL) =>
             v_wdata := apply_wstrb(to_slv(regs.timer_3_ctrl), wr_data, wr_strb);
-            regs.timer_3_ctrl <= to_timer_3_ctrl(v_wdata);          when t_reg_id'pos(REG_TIMER_3_PERIOD) =>
+            regs.timer_3_ctrl <= to_timer_3_ctrl(v_wdata);
+          when t_reg_id'pos(REG_TIMER_3_PERIOD) =>
             v_wdata := apply_wstrb(to_slv(regs.timer_3_period), wr_data, wr_strb);
-            regs.timer_3_period <= to_timer_3_period(v_wdata);          when others =>
+            regs.timer_3_period <= to_timer_3_period(v_wdata);
+          when others =>
             null;
         end case;
       end if;
@@ -130,22 +141,38 @@ begin
       elsif rd_en = '1' then
         v_addr_index := to_integer(unsigned(rd_addr(C_ADDR_WIDTH-1 downto 2)));
 
-        case v_addr_index is          when t_reg_id'pos(REG_GLOBAL_CTRL) =>
-            rd_data_int <= to_slv(regs.global_ctrl);          when t_reg_id'pos(REG_GLOBAL_STATUS) =>
-            rd_data_int <= to_slv(regs_in.global_status);          when t_reg_id'pos(REG_SCRATCHPAD_USER) =>
-            rd_data_int <= to_slv(regs.scratchpad_user);          when t_reg_id'pos(REG_TIMER_0_CTRL) =>
-            rd_data_int <= to_slv(regs.timer_0_ctrl);          when t_reg_id'pos(REG_TIMER_0_PERIOD) =>
-            rd_data_int <= to_slv(regs.timer_0_period);          when t_reg_id'pos(REG_TIMER_0_VALUE) =>
-            rd_data_int <= to_slv(regs_in.timer_0_value);          when t_reg_id'pos(REG_TIMER_1_CTRL) =>
-            rd_data_int <= to_slv(regs.timer_1_ctrl);          when t_reg_id'pos(REG_TIMER_1_PERIOD) =>
-            rd_data_int <= to_slv(regs.timer_1_period);          when t_reg_id'pos(REG_TIMER_1_VALUE) =>
-            rd_data_int <= to_slv(regs_in.timer_1_value);          when t_reg_id'pos(REG_TIMER_2_CTRL) =>
-            rd_data_int <= to_slv(regs.timer_2_ctrl);          when t_reg_id'pos(REG_TIMER_2_PERIOD) =>
-            rd_data_int <= to_slv(regs.timer_2_period);          when t_reg_id'pos(REG_TIMER_2_VALUE) =>
-            rd_data_int <= to_slv(regs_in.timer_2_value);          when t_reg_id'pos(REG_TIMER_3_CTRL) =>
-            rd_data_int <= to_slv(regs.timer_3_ctrl);          when t_reg_id'pos(REG_TIMER_3_PERIOD) =>
-            rd_data_int <= to_slv(regs.timer_3_period);          when t_reg_id'pos(REG_TIMER_3_VALUE) =>
-            rd_data_int <= to_slv(regs_in.timer_3_value);          when others =>
+        case v_addr_index is
+          when t_reg_id'pos(REG_GLOBAL_CTRL) =>
+            rd_data_int <= to_slv(regs.global_ctrl);
+          when t_reg_id'pos(REG_GLOBAL_STATUS) =>
+            rd_data_int <= to_slv(regs_in.global_status);
+          when t_reg_id'pos(REG_SCRATCHPAD_USER) =>
+            rd_data_int <= to_slv(regs.scratchpad_user);
+          when t_reg_id'pos(REG_TIMER_0_CTRL) =>
+            rd_data_int <= to_slv(regs.timer_0_ctrl);
+          when t_reg_id'pos(REG_TIMER_0_PERIOD) =>
+            rd_data_int <= to_slv(regs.timer_0_period);
+          when t_reg_id'pos(REG_TIMER_0_VALUE) =>
+            rd_data_int <= to_slv(regs_in.timer_0_value);
+          when t_reg_id'pos(REG_TIMER_1_CTRL) =>
+            rd_data_int <= to_slv(regs.timer_1_ctrl);
+          when t_reg_id'pos(REG_TIMER_1_PERIOD) =>
+            rd_data_int <= to_slv(regs.timer_1_period);
+          when t_reg_id'pos(REG_TIMER_1_VALUE) =>
+            rd_data_int <= to_slv(regs_in.timer_1_value);
+          when t_reg_id'pos(REG_TIMER_2_CTRL) =>
+            rd_data_int <= to_slv(regs.timer_2_ctrl);
+          when t_reg_id'pos(REG_TIMER_2_PERIOD) =>
+            rd_data_int <= to_slv(regs.timer_2_period);
+          when t_reg_id'pos(REG_TIMER_2_VALUE) =>
+            rd_data_int <= to_slv(regs_in.timer_2_value);
+          when t_reg_id'pos(REG_TIMER_3_CTRL) =>
+            rd_data_int <= to_slv(regs.timer_3_ctrl);
+          when t_reg_id'pos(REG_TIMER_3_PERIOD) =>
+            rd_data_int <= to_slv(regs.timer_3_period);
+          when t_reg_id'pos(REG_TIMER_3_VALUE) =>
+            rd_data_int <= to_slv(regs_in.timer_3_value);
+          when others =>
             rd_data_int <= (others => '0');
         end case;
 
