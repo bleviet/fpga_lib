@@ -2,7 +2,7 @@
   description: Control/Status Registers and Scratchpad RAM
   addressBlocks:
   - name: GLOBAL_REGS
-    offset: 2
+    offset: 0
     usage: register
     defaultRegWidth: 32
     registers:
