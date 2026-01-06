@@ -104,12 +104,23 @@ def cmd_generate(args):
             }))
         else:
             # Human-readable output
+            name = ip_core.vlnv.name if ip_core.vlnv else 'ipcore'
             print(f"\n✓ Generated {len(all_files)} files to: {output_base}")
-            print("\nDirectory structure:")
-            print("  rtl/        - VHDL source files")
-            print("  tb/         - Cocotb testbench files")
-            print("  intel/      - Intel Platform Designer integration")
-            print("  xilinx/     - Xilinx Vivado IP-XACT integration")
+            print(f"\nDirectory structure for '{name}':")
+            print(f"  rtl/")
+            print(f"    {name}_pkg.vhd      - Package (types, records)")
+            print(f"    {name}.vhd          - Top-level entity")
+            print(f"    {name}_core.vhd     - Core logic")
+            print(f"    {name}_axil.vhd     - AXI-Lite bus wrapper")
+            print(f"    {name}_regs.vhd     - Register bank")
+            print(f"  tb/")
+            print(f"    {name}_test.py      - Cocotb testbench")
+            print(f"    Makefile            - Simulation makefile")
+            print(f"  intel/")
+            print(f"    {name}_hw.tcl       - Platform Designer")
+            print(f"  xilinx/")
+            print(f"    component.xml       - IP-XACT")
+            print(f"    xgui/{name}_v*.tcl  - Vivado GUI")
 
     except Exception as e:
         if args.json:
