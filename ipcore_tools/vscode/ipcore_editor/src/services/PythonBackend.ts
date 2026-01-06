@@ -214,9 +214,15 @@ export class PythonBackend {
             });
 
             proc.on('close', (code) => {
-                // Extract JSON from stdout (last line after PROGRESS lines)
-                const jsonMatch = stdout.match(/\{[\s\S]*\}$/);
-                const jsonOutput = jsonMatch ? jsonMatch[0] : stdout;
+                // Filter out PROGRESS lines and extract JSON
+                const lines = stdout.split('\n').filter(line =>
+                    !line.startsWith('PROGRESS:') && line.trim()
+                );
+                // Find the JSON object (line starting with {)
+                const jsonLine = lines.find(line => line.trim().startsWith('{'));
+                const jsonOutput = jsonLine || '{}';
+
+                this.outputChannel.appendLine(`[DEBUG] Extracted JSON: ${jsonOutput.substring(0, 100)}...`);
 
                 if (code === 0) {
                     resolve({ stdout: jsonOutput, stderr });
