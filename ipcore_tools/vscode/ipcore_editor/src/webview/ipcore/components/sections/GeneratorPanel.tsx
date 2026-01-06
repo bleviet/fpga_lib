@@ -1,11 +1,11 @@
 /**
  * GeneratorPanel - VHDL Code Generation UI
- * 
+ *
  * Provides interface for generating VHDL files, vendor integration files,
  * and testbenches from IP Core definitions.
  */
 
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { IpCore, BusInterface } from '../../../types/ipCore';
 import { vscode } from '../../../vscode';
 
@@ -92,6 +92,24 @@ export const GeneratorPanel: React.FC<GeneratorPanelProps> = ({ ipCore }) => {
 
     const [status, setStatus] = useState<GenerationStatus>({ status: 'idle' });
 
+    // Responsive layout - detect container width
+    const containerRef = useRef<HTMLDivElement>(null);
+    const [isWideLayout, setIsWideLayout] = useState(false);
+
+    useEffect(() => {
+        const checkWidth = () => {
+            if (containerRef.current) {
+                setIsWideLayout(containerRef.current.offsetWidth > 700);
+            }
+        };
+        checkWidth();
+        const resizeObserver = new ResizeObserver(checkWidth);
+        if (containerRef.current) {
+            resizeObserver.observe(containerRef.current);
+        }
+        return () => resizeObserver.disconnect();
+    }, []);
+
     const handleGenerate = useCallback(() => {
         setStatus({ status: 'generating', message: 'Generating files...' });
 
@@ -162,7 +180,7 @@ export const GeneratorPanel: React.FC<GeneratorPanelProps> = ({ ipCore }) => {
     };
 
     return (
-        <div style={{ padding: '16px', maxWidth: '600px' }}>
+        <div ref={containerRef} style={{ padding: '16px' }}>
             <h2 style={{ fontSize: '16px', fontWeight: 600, marginBottom: '16px' }}>
                 Generate HDL
             </h2>
@@ -172,227 +190,241 @@ export const GeneratorPanel: React.FC<GeneratorPanelProps> = ({ ipCore }) => {
                 <strong>{ipCore.vlnv?.name}</strong>.
             </p>
 
-            {/* Detected Bus Interface Section */}
-            <div style={sectionStyle}>
-                <label style={labelStyle}>Bus Interface</label>
-                {detectedBus ? (
-                    <div>
-                        <div style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '8px',
-                            padding: '8px 12px',
-                            background: 'var(--vscode-inputValidation-infoBackground)',
-                            borderRadius: '4px',
-                            fontSize: '12px',
-                        }}>
-                            <span style={{ fontWeight: 500 }}>
-                                {detectedBus.busType === 'axil' ? '🔵 AXI-Lite' : '🟢 Avalon-MM'}
-                            </span>
-                            <span style={{ opacity: 0.7 }}>
-                                (detected from {detectedBus.busInterface.name})
-                            </span>
-                        </div>
-                        <p style={infoStyle}>
-                            Memory Map: <code>{detectedBus.memoryMapRef}</code>
-                        </p>
-                    </div>
-                ) : (
-                    <div style={{
-                        padding: '8px 12px',
-                        background: 'var(--vscode-inputValidation-warningBackground)',
-                        borderRadius: '4px',
-                        fontSize: '12px',
-                    }}>
-                        ⚠️ No bus interface with memory map detected. Using default: AXI-Lite
-                    </div>
-                )}
-            </div>
-
-            {/* VHDL Files Section */}
-            <div style={sectionStyle}>
-                <label style={labelStyle}>VHDL Files</label>
-                <label style={checkboxRowStyle}>
-                    <input
-                        type="checkbox"
-                        checked={options.includeVhdl}
-                        onChange={(e) => setOptions({ ...options, includeVhdl: e.target.checked, includeRegfile: e.target.checked })}
-                    />
-                    Package, Top, Core, Bus Wrapper, Register Bank
-                </label>
-            </div>
-
-            {/* Vendor Integration Section */}
-            <div style={sectionStyle}>
-                <label style={labelStyle}>Vendor Integration</label>
-                <select
-                    value={options.vendorFiles}
-                    onChange={(e) =>
-                        setOptions({ ...options, vendorFiles: e.target.value as VendorType })
-                    }
-                    style={{
-                        width: '100%',
-                        padding: '6px 8px',
-                        fontSize: '12px',
-                        background: 'var(--vscode-dropdown-background)',
-                        color: 'var(--vscode-dropdown-foreground)',
-                        border: '1px solid var(--vscode-dropdown-border)',
-                        borderRadius: '2px',
-                    }}
-                >
-                    <option value="none">None</option>
-                    <option value="intel">Intel Platform Designer (_hw.tcl)</option>
-                    <option value="xilinx">Xilinx Vivado (component.xml)</option>
-                    <option value="both">Both Intel and Xilinx</option>
-                </select>
-            </div>
-
-            {/* Testbench Section */}
-            <div style={sectionStyle}>
-                <label style={labelStyle}>Testbench</label>
-                <label style={checkboxRowStyle}>
-                    <input
-                        type="checkbox"
-                        checked={options.includeTestbench}
-                        onChange={(e) => setOptions({ ...options, includeTestbench: e.target.checked })}
-                    />
-                    cocotb Python tests + Makefile (GHDL)
-                </label>
-            </div>
-
-            {/* Preview Section */}
+            {/* Responsive layout wrapper */}
             <div style={{
-                ...sectionStyle,
-                background: 'var(--vscode-textBlockQuote-background)',
-                fontFamily: 'monospace',
-                fontSize: '11px',
+                display: 'flex',
+                flexDirection: isWideLayout ? 'row' : 'column',
+                gap: '16px',
             }}>
-                <label style={labelStyle}>📁 Preview: Output Structure</label>
-                <div style={{ marginTop: '8px', lineHeight: '1.6' }}>
-                    <div style={{ color: 'var(--vscode-textPreformat-foreground)' }}>
-                        {ipName}/
+                {/* Left column: Options */}
+                <div style={{ flex: isWideLayout ? '1 1 50%' : '1 1 auto', minWidth: 0 }}>
+
+                    {/* Detected Bus Interface Section */}
+                    <div style={sectionStyle}>
+                        <label style={labelStyle}>Bus Interface</label>
+                        {detectedBus ? (
+                            <div>
+                                <div style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '8px',
+                                    padding: '8px 12px',
+                                    background: 'var(--vscode-inputValidation-infoBackground)',
+                                    borderRadius: '4px',
+                                    fontSize: '12px',
+                                }}>
+                                    <span style={{ fontWeight: 500 }}>
+                                        {detectedBus.busType === 'axil' ? '🔵 AXI-Lite' : '🟢 Avalon-MM'}
+                                    </span>
+                                    <span style={{ opacity: 0.7 }}>
+                                        (detected from {detectedBus.busInterface.name})
+                                    </span>
+                                </div>
+                                <p style={infoStyle}>
+                                    Memory Map: <code>{detectedBus.memoryMapRef}</code>
+                                </p>
+                            </div>
+                        ) : (
+                            <div style={{
+                                padding: '8px 12px',
+                                background: 'var(--vscode-inputValidation-warningBackground)',
+                                borderRadius: '4px',
+                                fontSize: '12px',
+                            }}>
+                                ⚠️ No bus interface with memory map detected. Using default: AXI-Lite
+                            </div>
+                        )}
                     </div>
-                    {options.includeVhdl && (
-                        <div style={{ paddingLeft: '16px' }}>
-                            <div>├── rtl/</div>
-                            <div style={{ paddingLeft: '24px', opacity: 0.8 }}>
-                                ├── {ipName}_pkg.vhd
-                            </div>
-                            <div style={{ paddingLeft: '24px', opacity: 0.8 }}>
-                                ├── {ipName}.vhd
-                            </div>
-                            <div style={{ paddingLeft: '24px', opacity: 0.8 }}>
-                                ├── {ipName}_core.vhd
-                            </div>
-                            <div style={{ paddingLeft: '24px', opacity: 0.8 }}>
-                                ├── {ipName}_{detectedBus?.busType || 'axil'}.vhd
-                            </div>
-                            <div style={{ paddingLeft: '24px', opacity: 0.8 }}>
-                                └── {ipName}_regs.vhd
-                            </div>
-                        </div>
-                    )}
-                    {options.includeTestbench && (
-                        <div style={{ paddingLeft: '16px' }}>
-                            <div>├── tb/</div>
-                            <div style={{ paddingLeft: '24px', opacity: 0.8 }}>
-                                ├── {ipName}_test.py
-                            </div>
-                            <div style={{ paddingLeft: '24px', opacity: 0.8 }}>
-                                └── Makefile
-                            </div>
-                        </div>
-                    )}
-                    {(options.vendorFiles === 'intel' || options.vendorFiles === 'both') && (
-                        <div style={{ paddingLeft: '16px' }}>
-                            <div>├── intel/</div>
-                            <div style={{ paddingLeft: '24px', opacity: 0.8 }}>
-                                └── {ipName}_hw.tcl
-                            </div>
-                        </div>
-                    )}
-                    {(options.vendorFiles === 'xilinx' || options.vendorFiles === 'both') && (
-                        <div style={{ paddingLeft: '16px' }}>
-                            <div>└── xilinx/</div>
-                            <div style={{ paddingLeft: '24px', opacity: 0.8 }}>
-                                ├── component.xml
-                            </div>
-                            <div style={{ paddingLeft: '24px', opacity: 0.8 }}>
-                                └── xgui/{ipName}_v*.tcl
-                            </div>
-                        </div>
-                    )}
+
+                    {/* VHDL Files Section */}
+                    <div style={sectionStyle}>
+                        <label style={labelStyle}>VHDL Files</label>
+                        <label style={checkboxRowStyle}>
+                            <input
+                                type="checkbox"
+                                checked={options.includeVhdl}
+                                onChange={(e) => setOptions({ ...options, includeVhdl: e.target.checked, includeRegfile: e.target.checked })}
+                            />
+                            Package, Top, Core, Bus Wrapper, Register Bank
+                        </label>
+                    </div>
+
+                    {/* Vendor Integration Section */}
+                    <div style={sectionStyle}>
+                        <label style={labelStyle}>Vendor Integration</label>
+                        <select
+                            value={options.vendorFiles}
+                            onChange={(e) =>
+                                setOptions({ ...options, vendorFiles: e.target.value as VendorType })
+                            }
+                            style={{
+                                width: '100%',
+                                padding: '6px 8px',
+                                fontSize: '12px',
+                                background: 'var(--vscode-dropdown-background)',
+                                color: 'var(--vscode-dropdown-foreground)',
+                                border: '1px solid var(--vscode-dropdown-border)',
+                                borderRadius: '2px',
+                            }}
+                        >
+                            <option value="none">None</option>
+                            <option value="intel">Intel Platform Designer (_hw.tcl)</option>
+                            <option value="xilinx">Xilinx Vivado (component.xml)</option>
+                            <option value="both">Both Intel and Xilinx</option>
+                        </select>
+                    </div>
+
+                    {/* Testbench Section */}
+                    <div style={sectionStyle}>
+                        <label style={labelStyle}>Testbench</label>
+                        <label style={checkboxRowStyle}>
+                            <input
+                                type="checkbox"
+                                checked={options.includeTestbench}
+                                onChange={(e) => setOptions({ ...options, includeTestbench: e.target.checked })}
+                            />
+                            cocotb Python tests + Makefile (GHDL)
+                        </label>
+                    </div>
                 </div>
-                <div style={{ marginTop: '8px', fontSize: '10px', opacity: 0.7 }}>
-                    {(() => {
-                        let count = 0;
-                        if (options.includeVhdl) count += 5;  // pkg, top, core, bus, regs
-                        if (options.vendorFiles === 'intel') count += 1;
-                        if (options.vendorFiles === 'xilinx') count += 2; // component.xml + xgui
-                        if (options.vendorFiles === 'both') count += 3; // intel hw.tcl + xilinx 2 files
-                        if (options.includeTestbench) count += 2;
-                        return `${count} file(s) will be generated`;
-                    })()}
+
+                {/* Right column: Preview */}
+                <div style={{ flex: isWideLayout ? '1 1 50%' : '1 1 auto', minWidth: 0 }}>
+                    {/* Preview Section */}
+                    <div style={{
+                        ...sectionStyle,
+                        background: 'var(--vscode-textBlockQuote-background)',
+                        fontFamily: 'monospace',
+                        fontSize: '11px',
+                    }}>
+                        <label style={labelStyle}>📁 Preview: Output Structure</label>
+                        <div style={{ marginTop: '8px', lineHeight: '1.6' }}>
+                            <div style={{ color: 'var(--vscode-textPreformat-foreground)' }}>
+                                {ipName}/
+                            </div>
+                            {options.includeVhdl && (
+                                <div style={{ paddingLeft: '16px' }}>
+                                    <div>├── rtl/</div>
+                                    <div style={{ paddingLeft: '24px', opacity: 0.8 }}>
+                                        ├── {ipName}_pkg.vhd
+                                    </div>
+                                    <div style={{ paddingLeft: '24px', opacity: 0.8 }}>
+                                        ├── {ipName}.vhd
+                                    </div>
+                                    <div style={{ paddingLeft: '24px', opacity: 0.8 }}>
+                                        ├── {ipName}_core.vhd
+                                    </div>
+                                    <div style={{ paddingLeft: '24px', opacity: 0.8 }}>
+                                        ├── {ipName}_{detectedBus?.busType || 'axil'}.vhd
+                                    </div>
+                                    <div style={{ paddingLeft: '24px', opacity: 0.8 }}>
+                                        └── {ipName}_regs.vhd
+                                    </div>
+                                </div>
+                            )}
+                            {options.includeTestbench && (
+                                <div style={{ paddingLeft: '16px' }}>
+                                    <div>├── tb/</div>
+                                    <div style={{ paddingLeft: '24px', opacity: 0.8 }}>
+                                        ├── {ipName}_test.py
+                                    </div>
+                                    <div style={{ paddingLeft: '24px', opacity: 0.8 }}>
+                                        └── Makefile
+                                    </div>
+                                </div>
+                            )}
+                            {(options.vendorFiles === 'intel' || options.vendorFiles === 'both') && (
+                                <div style={{ paddingLeft: '16px' }}>
+                                    <div>├── intel/</div>
+                                    <div style={{ paddingLeft: '24px', opacity: 0.8 }}>
+                                        └── {ipName}_hw.tcl
+                                    </div>
+                                </div>
+                            )}
+                            {(options.vendorFiles === 'xilinx' || options.vendorFiles === 'both') && (
+                                <div style={{ paddingLeft: '16px' }}>
+                                    <div>└── xilinx/</div>
+                                    <div style={{ paddingLeft: '24px', opacity: 0.8 }}>
+                                        ├── component.xml
+                                    </div>
+                                    <div style={{ paddingLeft: '24px', opacity: 0.8 }}>
+                                        └── xgui/{ipName}_v*.tcl
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                        <div style={{ marginTop: '8px', fontSize: '10px', opacity: 0.7 }}>
+                            {(() => {
+                                let count = 0;
+                                if (options.includeVhdl) count += 5;  // pkg, top, core, bus, regs
+                                if (options.vendorFiles === 'intel') count += 1;
+                                if (options.vendorFiles === 'xilinx') count += 2; // component.xml + xgui
+                                if (options.vendorFiles === 'both') count += 3; // intel hw.tcl + xilinx 2 files
+                                if (options.includeTestbench) count += 2;
+                                return `${count} file(s) will be generated`;
+                            })()}
+                        </div>
+                    </div>
+
+                    {/* Generate Button */}
+                    <button
+                        onClick={handleGenerate}
+                        disabled={status.status === 'generating'}
+                        style={{
+                            width: '100%',
+                            padding: '10px 16px',
+                            fontSize: '13px',
+                            fontWeight: 500,
+                            background: 'var(--vscode-button-background)',
+                            color: 'var(--vscode-button-foreground)',
+                            border: 'none',
+                            borderRadius: '4px',
+                            cursor: status.status === 'generating' ? 'wait' : 'pointer',
+                            opacity: status.status === 'generating' ? 0.7 : 1,
+                        }}
+                    >
+                        {status.status === 'generating' ? '⏳ Generating...' : '🔧 Generate Files'}
+                    </button>
+
+                    {/* Status Display */}
+                    {status.status === 'success' && (
+                        <div
+                            style={{
+                                marginTop: '16px',
+                                padding: '12px',
+                                background: 'var(--vscode-inputValidation-infoBackground)',
+                                borderRadius: '4px',
+                                fontSize: '12px',
+                            }}
+                        >
+                            <p style={{ fontWeight: 500, marginBottom: '8px' }}>✅ {status.message}</p>
+                            {status.files && (
+                                <ul style={{ margin: 0, paddingLeft: '16px' }}>
+                                    {status.files.map((file, idx) => (
+                                        <li key={idx}>{file}</li>
+                                    ))}
+                                </ul>
+                            )}
+                        </div>
+                    )}
+
+                    {status.status === 'error' && (
+                        <div
+                            style={{
+                                marginTop: '16px',
+                                padding: '12px',
+                                background: 'var(--vscode-inputValidation-errorBackground)',
+                                border: '1px solid var(--vscode-inputValidation-errorBorder)',
+                                borderRadius: '4px',
+                                fontSize: '12px',
+                                color: 'var(--vscode-errorForeground)',
+                            }}
+                        >
+                            ❌ {status.message}
+                        </div>
+                    )}
                 </div>
             </div>
-
-            {/* Generate Button */}
-            <button
-                onClick={handleGenerate}
-                disabled={status.status === 'generating'}
-                style={{
-                    width: '100%',
-                    padding: '10px 16px',
-                    fontSize: '13px',
-                    fontWeight: 500,
-                    background: 'var(--vscode-button-background)',
-                    color: 'var(--vscode-button-foreground)',
-                    border: 'none',
-                    borderRadius: '4px',
-                    cursor: status.status === 'generating' ? 'wait' : 'pointer',
-                    opacity: status.status === 'generating' ? 0.7 : 1,
-                }}
-            >
-                {status.status === 'generating' ? '⏳ Generating...' : '🔧 Generate Files'}
-            </button>
-
-            {/* Status Display */}
-            {status.status === 'success' && (
-                <div
-                    style={{
-                        marginTop: '16px',
-                        padding: '12px',
-                        background: 'var(--vscode-inputValidation-infoBackground)',
-                        borderRadius: '4px',
-                        fontSize: '12px',
-                    }}
-                >
-                    <p style={{ fontWeight: 500, marginBottom: '8px' }}>✅ {status.message}</p>
-                    {status.files && (
-                        <ul style={{ margin: 0, paddingLeft: '16px' }}>
-                            {status.files.map((file, idx) => (
-                                <li key={idx}>{file}</li>
-                            ))}
-                        </ul>
-                    )}
-                </div>
-            )}
-
-            {status.status === 'error' && (
-                <div
-                    style={{
-                        marginTop: '16px',
-                        padding: '12px',
-                        background: 'var(--vscode-inputValidation-errorBackground)',
-                        border: '1px solid var(--vscode-inputValidation-errorBorder)',
-                        borderRadius: '4px',
-                        fontSize: '12px',
-                        color: 'var(--vscode-errorForeground)',
-                    }}
-                >
-                    ❌ {status.message}
-                </div>
-            )}
         </div>
     );
 };
