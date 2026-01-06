@@ -1,0 +1,7 @@
+<testsuites name="results">
+  <testsuite name="all" package="all">
+    <property name="random_seed" value="1767698368" />
+    <testcase name="test_register_access" classname="led_controller_test" file="/home/balevision/workspace/bleviet/fpga_lib/ipcore_spec/examples/led/tb/led_controller_test.py" lineno="11" time="0.03335976600646973" sim_time_ns="380.001" ratio_time="11390.997164857312" />
+    <testcase name="test_field_access" classname="led_controller_test" file="/home/balevision/workspace/bleviet/fpga_lib/ipcore_spec/examples/led/tb/led_controller_test.py" lineno="103" time="0.007853269577026367" sim_time_ns="250.00099999999998" ratio_time="31834.002073651292" />
+  </testsuite>
+</testsuites>

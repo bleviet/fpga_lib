@@ -1,0 +1,109 @@
+#-----------------------------------------------------------
+# Vivado v2024.2 (64-bit)
+# SW Build 5239630 on Fri Nov 08 22:34:34 MST 2024
+# IP Build 5239520 on Sun Nov 10 16:12:51 MST 2024
+# SharedData Build 5239561 on Fri Nov 08 14:39:27 MST 2024
+# Start of session at: Tue Jan  6 11:52:19 2026
+# Process ID         : 100766
+# Current directory  : /home/balevision/workspace/bleviet/fpga_lib/ipcore_spec/examples/led/xilinx
+# Command line       : vivado
+# Log file           : /home/balevision/workspace/bleviet/fpga_lib/ipcore_spec/examples/led/xilinx/vivado.log
+# Journal file       : /home/balevision/workspace/bleviet/fpga_lib/ipcore_spec/examples/led/xilinx/vivado.jou
+# Running On         : DESKTOP-Ryzen5950x
+# Platform           : Ubuntu
+# Operating System   : Ubuntu 22.04.5 LTS
+# Processor Detail   : AMD Ryzen 9 5950X 16-Core Processor
+# CPU Frequency      : 3393.657 MHz
+# CPU Physical cores : 16
+# CPU Logical cores  : 32
+# Host memory        : 33604 MB
+# Swap memory        : 8589 MB
+# Total Virtual      : 42194 MB
+# Available Virtual  : 35387 MB
+#-----------------------------------------------------------
+start_gui
+open_project /home/balevision/tmp/project_2/project_2.xpr
+update_compile_order -fileset sources_1
+update_ip_catalog -rebuild
+ipx::edit_ip_in_project -upgrade true -name led_controller_v1_0_0_project -directory /home/balevision/tmp/project_2/project_2.tmp/led_controller_v1_0_0_project /home/balevision/workspace/bleviet/fpga_lib/ipcore_spec/examples/led/xilinx/component.xml
+update_compile_order -fileset sources_1
+ipx::create_xgui_files [ipx::current_core]
+ipx::unload_core /home/balevision/workspace/bleviet/fpga_lib/ipcore_spec/examples/led/xilinx/component.xml
+ipx::open_ipxact_file /home/balevision/workspace/bleviet/fpga_lib/ipcore_spec/examples/led/xilinx/component.xml
+close_project
+generate_target all [get_files  /home/balevision/tmp/project_2/project_2.srcs/sources_1/bd/design_1/design_1.bd]
+catch { config_ip_cache -export [get_ips -all design_1_led_controller_0_0] }
+export_ip_user_files -of_objects [get_files /home/balevision/tmp/project_2/project_2.srcs/sources_1/bd/design_1/design_1.bd] -no_script -sync -force -quiet
+create_ip_run [get_files -of_objects [get_fileset sources_1] /home/balevision/tmp/project_2/project_2.srcs/sources_1/bd/design_1/design_1.bd]
+launch_runs design_1_led_controller_0_0_synth_1 -jobs 16
+wait_on_run design_1_led_controller_0_0_synth_1
+export_simulation -lib_map_path [list {modelsim=/home/balevision/tmp/project_2/project_2.cache/compile_simlib/modelsim} {questa=/home/balevision/tmp/project_2/project_2.cache/compile_simlib/questa} {xcelium=/home/balevision/tmp/project_2/project_2.cache/compile_simlib/xcelium} {vcs=/home/balevision/tmp/project_2/project_2.cache/compile_simlib/vcs} {riviera=/home/balevision/tmp/project_2/project_2.cache/compile_simlib/riviera}] -of_objects [get_files /home/balevision/tmp/project_2/project_2.srcs/sources_1/bd/design_1/design_1.bd] -directory /home/balevision/tmp/project_2/project_2.ip_user_files/sim_scripts -ip_user_files_dir /home/balevision/tmp/project_2/project_2.ip_user_files -ipstatic_source_dir /home/balevision/tmp/project_2/project_2.ip_user_files/ipstatic -use_ip_compiled_libs -force -quiet
+ipx::edit_ip_in_project -upgrade true -name led_controller_v1_0_0_project -directory /home/balevision/tmp/project_2/project_2.tmp/led_controller_v1_0_0_project /home/balevision/workspace/bleviet/fpga_lib/ipcore_spec/examples/led/xilinx/component.xml
+update_compile_order -fileset sources_1
+ipx::infer_core -vendor localdomain -library user -taxonomy /UserIP /home/balevision/workspace/bleviet/fpga_lib/ipcore_spec/examples/led
+ipx::edit_ip_in_project -upgrade true -name edit_ip_project -directory /home/balevision/tmp/project_2/project_2.tmp/led_controller_v1_0_0_project/led_controller_v1_0_0_project.tmp /home/balevision/workspace/bleviet/fpga_lib/ipcore_spec/examples/led/component.xml
+ipx::current_core /home/balevision/workspace/bleviet/fpga_lib/ipcore_spec/examples/led/component.xml
+update_compile_order -fileset sources_1
+set_property core_revision 2 [ipx::current_core]
+ipx::update_source_project_archive -component [ipx::current_core]
+ipx::create_xgui_files [ipx::current_core]
+ipx::update_checksums [ipx::current_core]
+ipx::check_integrity [ipx::current_core]
+ipx::save_core [ipx::current_core]
+ipx::move_temp_component_back -component [ipx::current_core]
+close_project -delete
+update_ip_catalog -rebuild -repo_path /home/balevision/workspace/bleviet/fpga_lib/ipcore_spec
+current_project project_2
+generate_target all [get_files  /home/balevision/tmp/project_2/project_2.srcs/sources_1/bd/design_1/design_1.bd]
+catch { config_ip_cache -export [get_ips -all design_1_led_controller_0_0] }
+export_ip_user_files -of_objects [get_files /home/balevision/tmp/project_2/project_2.srcs/sources_1/bd/design_1/design_1.bd] -no_script -sync -force -quiet
+create_ip_run [get_files -of_objects [get_fileset sources_1] /home/balevision/tmp/project_2/project_2.srcs/sources_1/bd/design_1/design_1.bd]
+launch_runs design_1_led_controller_0_0_synth_1 -jobs 16
+wait_on_run design_1_led_controller_0_0_synth_1
+export_simulation -lib_map_path [list {modelsim=/home/balevision/tmp/project_2/project_2.cache/compile_simlib/modelsim} {questa=/home/balevision/tmp/project_2/project_2.cache/compile_simlib/questa} {xcelium=/home/balevision/tmp/project_2/project_2.cache/compile_simlib/xcelium} {vcs=/home/balevision/tmp/project_2/project_2.cache/compile_simlib/vcs} {riviera=/home/balevision/tmp/project_2/project_2.cache/compile_simlib/riviera}] -of_objects [get_files /home/balevision/tmp/project_2/project_2.srcs/sources_1/bd/design_1/design_1.bd] -directory /home/balevision/tmp/project_2/project_2.ip_user_files/sim_scripts -ip_user_files_dir /home/balevision/tmp/project_2/project_2.ip_user_files -ipstatic_source_dir /home/balevision/tmp/project_2/project_2.ip_user_files/ipstatic -use_ip_compiled_libs -force -quiet
+update_ip_catalog -rebuild
+open_bd_design {/home/balevision/tmp/project_2/project_2.srcs/sources_1/bd/design_1/design_1.bd}
+set_property FILE_TYPE {VHDL 2008} [get_files -all /home/balevision/tmp/project_2/project_2.srcs/sources_1/bd/design_1/ipshared/e836/aa61/led_controller.vhd]
+set_property FILE_TYPE {VHDL 2008} [get_files -all /home/balevision/tmp/project_2/project_2.srcs/sources_1/bd/design_1/ipshared/e836/aa61/led_controller.vhd]
+current_project led_controller_v1_0_0_project
+close_project
+delete_bd_objs [get_bd_nets led_controller_0_o_led] [get_bd_intf_nets S_AXI_1_1] [get_bd_nets led_controller_0_o_led_pwm] [get_bd_nets led_controller_0_o_irq] [get_bd_cells led_controller_0]
+startgroup
+create_bd_cell -type ip -vlnv localdomain:user:led_controller:1.0 led_controller_0
+endgroup
+set_property location {2 432 -774} [get_bd_cells led_controller_0]
+connect_bd_intf_net [get_bd_intf_ports S_AXI_1] [get_bd_intf_pins led_controller_0/s_axi]
+connect_bd_net [get_bd_ports clk_0] [get_bd_pins led_controller_0/i_clk]
+connect_bd_net [get_bd_pins led_controller_0/i_rst_n] [get_bd_pins util_vector_logic_0/Res]
+set_property location {0.5 277 -621} [get_bd_cells util_vector_logic_0]
+connect_bd_net [get_bd_ports rst_0] [get_bd_pins util_vector_logic_0/Op1]
+connect_bd_net [get_bd_ports o_led_0] [get_bd_pins led_controller_0/o_led]
+connect_bd_net [get_bd_ports o_led_pwm_0] [get_bd_pins led_controller_0/o_led_pwm]
+connect_bd_net [get_bd_ports o_irq_0] [get_bd_pins led_controller_0/o_irq]
+delete_bd_objs [get_bd_nets led_controller_0_o_led] [get_bd_ports o_led_0]
+delete_bd_objs [get_bd_nets led_controller_0_o_led_pwm] [get_bd_ports o_led_pwm_0]
+delete_bd_objs [get_bd_nets led_controller_0_o_irq] [get_bd_ports o_irq_0]
+set_property location {2 572 -775} [get_bd_cells led_controller_0]
+startgroup
+make_bd_pins_external  [get_bd_cells led_controller_0]
+make_bd_intf_pins_external  [get_bd_cells led_controller_0]
+endgroup
+generate_target all [get_files  /home/balevision/tmp/project_2/project_2.srcs/sources_1/bd/design_1/design_1.bd]
+catch { config_ip_cache -export [get_ips -all design_1_led_controller_0_1] }
+export_ip_user_files -of_objects [get_files /home/balevision/tmp/project_2/project_2.srcs/sources_1/bd/design_1/design_1.bd] -no_script -sync -force -quiet
+create_ip_run [get_files -of_objects [get_fileset sources_1] /home/balevision/tmp/project_2/project_2.srcs/sources_1/bd/design_1/design_1.bd]
+launch_runs design_1_led_controller_0_1_synth_1 -jobs 16
+wait_on_run design_1_led_controller_0_1_synth_1
+export_simulation -lib_map_path [list {modelsim=/home/balevision/tmp/project_2/project_2.cache/compile_simlib/modelsim} {questa=/home/balevision/tmp/project_2/project_2.cache/compile_simlib/questa} {xcelium=/home/balevision/tmp/project_2/project_2.cache/compile_simlib/xcelium} {vcs=/home/balevision/tmp/project_2/project_2.cache/compile_simlib/vcs} {riviera=/home/balevision/tmp/project_2/project_2.cache/compile_simlib/riviera}] -of_objects [get_files /home/balevision/tmp/project_2/project_2.srcs/sources_1/bd/design_1/design_1.bd] -directory /home/balevision/tmp/project_2/project_2.ip_user_files/sim_scripts -ip_user_files_dir /home/balevision/tmp/project_2/project_2.ip_user_files -ipstatic_source_dir /home/balevision/tmp/project_2/project_2.ip_user_files/ipstatic -use_ip_compiled_libs -force -quiet
+set_property FILE_TYPE {VHDL 2008} [get_files -all /home/balevision/tmp/project_2/project_2.gen/sources_1/bd/design_1/ipshared/a79b/rtl/led_controller_axil.vhd]
+update_ip_catalog -rebuild -scan_changes
+report_ip_status -name ip_status
+upgrade_ip -vlnv localdomain:user:led_controller:1.0 [get_ips  design_1_led_controller_0_1] -log ip_upgrade.log
+export_ip_user_files -of_objects [get_ips design_1_led_controller_0_1] -no_script -sync -force -quiet
+generate_target all [get_files  /home/balevision/tmp/project_2/project_2.srcs/sources_1/bd/design_1/design_1.bd]
+catch { config_ip_cache -export [get_ips -all design_1_led_controller_0_1] }
+export_ip_user_files -of_objects [get_files /home/balevision/tmp/project_2/project_2.srcs/sources_1/bd/design_1/design_1.bd] -no_script -sync -force -quiet
+create_ip_run [get_files -of_objects [get_fileset sources_1] /home/balevision/tmp/project_2/project_2.srcs/sources_1/bd/design_1/design_1.bd]
+launch_runs design_1_led_controller_0_1_synth_1 -jobs 16
+wait_on_run design_1_led_controller_0_1_synth_1
+export_simulation -lib_map_path [list {modelsim=/home/balevision/tmp/project_2/project_2.cache/compile_simlib/modelsim} {questa=/home/balevision/tmp/project_2/project_2.cache/compile_simlib/questa} {xcelium=/home/balevision/tmp/project_2/project_2.cache/compile_simlib/xcelium} {vcs=/home/balevision/tmp/project_2/project_2.cache/compile_simlib/vcs} {riviera=/home/balevision/tmp/project_2/project_2.cache/compile_simlib/riviera}] -of_objects [get_files /home/balevision/tmp/project_2/project_2.srcs/sources_1/bd/design_1/design_1.bd] -directory /home/balevision/tmp/project_2/project_2.ip_user_files/sim_scripts -ip_user_files_dir /home/balevision/tmp/project_2/project_2.ip_user_files -ipstatic_source_dir /home/balevision/tmp/project_2/project_2.ip_user_files/ipstatic -use_ip_compiled_libs -force -quiet

@@ -1,0 +1,59 @@
+- name: CSR_MAP
+  description: "LED Controller Control/Status Registers"
+  addressBlocks:
+    - name: CONTROL_STATUS_REGS
+      offset: 0
+      range: 64
+      usage: register
+      registers:
+        - name: CONTROL
+          offset: 0
+          description: "Global LED controller control register"
+          access: read-write
+          fields:
+            - name: ENABLE
+              bits: "[0:0]"
+              access: read-write
+              description: "Global enable for LED controller"
+            - name: PWM_ENABLE
+              bits: "[1:1]"
+              access: read-write
+              description: "Enable PWM brightness control"
+            - name: BLINK_ENABLE
+              bits: "[2:2]"
+              access: read-write
+              description: "Enable blink pattern generator"
+            - name: IRQ_ENABLE
+              bits: "[3:3]"
+              access: read-write
+              description: "Enable interrupt generation"
+            - name: RESERVED
+              bits: "[31:4]"
+              access: read-only
+              description: ""
+        - name: STATUS
+          offset: 4
+          description: "LED controller status register"
+          access: read-only
+          fields:
+            - name: READY
+              bits: "[0:0]"
+              access: read-only
+              description: "Controller is ready"
+            - name: ERROR
+              bits: "[1:1]"
+              access: read-only
+              description: "Error condition detected"
+            - name: RESERVED
+              bits: "[31:2]"
+              access: read-only
+              description: ""
+        - name: LED_OUTPUT
+          offset: 8
+          description: "Direct LED output control"
+          access: read-write
+          fields:
+            - name: LED_STATE
+              bits: "[31:0]"
+              access: read-write
+              description: "Direct LED on/off state (one bit per LED)"

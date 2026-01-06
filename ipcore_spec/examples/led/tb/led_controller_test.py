@@ -11,28 +11,26 @@ from fpga_lib.driver.bus import CocotbBus
 @cocotb.test()
 async def test_register_access(dut):
     """
-    Test register read/write access for {{ entity_name }}.
+    Test register read/write access for led_controller.
     Generated automatically by fpga_lib
     """
 
     # 1. Setup Clock
-    cocotb.start_soon(Clock(dut.{{ clock_port }}, 10, units="ns").start())
+    cocotb.start_soon(Clock(dut.i_clk, 10, units="ns").start())
 
     # 2. Reset
-    dut.{{ reset_port }}.value = {% if reset_active_high %}1{% else %}0{% endif %}
-
+    dut.i_rst_n.value = 0
     await Timer(100, units="ns")
-    dut.{{ reset_port }}.value = {% if reset_active_high %}0{% else %}1{% endif %}
-
-    await RisingEdge(dut.{{ clock_port }})
-    await RisingEdge(dut.{{ clock_port }})
+    dut.i_rst_n.value = 1
+    await RisingEdge(dut.i_clk)
+    await RisingEdge(dut.i_clk)
     dut._log.info("Reset complete")
 
     # 3. Initialize Bus and Driver
-    bus = CocotbBus(dut, "s_axi", dut.{{ clock_port }})
+    bus = CocotbBus(dut, "s_axi", dut.i_clk)
 
     # Locate the memmap file (use original .mm.yml from parent directory)
-    memmap_path = os.path.join(os.path.dirname(__file__), "../{{ entity_name }}.mm.yml")
+    memmap_path = os.path.join(os.path.dirname(__file__), "../led_controller.mm.yml")
     if not os.path.exists(memmap_path):
         dut._log.error(f"Memory map file not found: {memmap_path}")
         assert False, f"Missing memmap: {memmap_path}"
@@ -105,22 +103,20 @@ async def test_register_access(dut):
 @cocotb.test()
 async def test_field_access(dut):
     """
-    Test bit-field level access for {{ entity_name }}.
+    Test bit-field level access for led_controller.
     """
 
     # Setup
-    cocotb.start_soon(Clock(dut.{{ clock_port }}, 10, units="ns").start())
-    dut.{{ reset_port }}.value = {% if reset_active_high %}1{% else %}0{% endif %}
-
+    cocotb.start_soon(Clock(dut.i_clk, 10, units="ns").start())
+    dut.i_rst_n.value = 0
     await Timer(100, units="ns")
-    dut.{{ reset_port }}.value = {% if reset_active_high %}0{% else %}1{% endif %}
-
-    await RisingEdge(dut.{{ clock_port }})
-    await RisingEdge(dut.{{ clock_port }})
+    dut.i_rst_n.value = 1
+    await RisingEdge(dut.i_clk)
+    await RisingEdge(dut.i_clk)
 
     # Initialize driver
-    bus = CocotbBus(dut, "s_axi", dut.{{ clock_port }})
-    memmap_path = os.path.join(os.path.dirname(__file__), "../{{ entity_name }}.mm.yml")
+    bus = CocotbBus(dut, "s_axi", dut.i_clk)
+    memmap_path = os.path.join(os.path.dirname(__file__), "../led_controller.mm.yml")
     driver = load_driver(memmap_path, bus)
 
     dut._log.info("Testing field-level access...")

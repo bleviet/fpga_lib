@@ -7,41 +7,50 @@ from fpga_lib.runtime.register import AbstractBusInterface
 
 class CocotbBus(AbstractBusInterface):
     """Bus interface implementation for Cocotb simulations using AXI-Lite."""
-    def __init__(self, dut: Any, bus_name: str, clock: Any):
+    def __init__(self, dut: Any, bus_name: str, clock: Any, reset: Any = None):
         # delayed import to avoiding forcing cocotb dependency on standard users
-        from cocotbext.axi import AxiLiteMaster, AxiLiteBus 
-        
+        from cocotbext.axi import AxiLiteMaster, AxiLiteBus
+
         bus = AxiLiteBus.from_prefix(dut, bus_name)
-        self._axi = AxiLiteMaster(bus, clock, dut.rst)
+        # Use provided reset or try common reset names
+        if reset is None:
+            # Try common reset signal names
+            for rst_name in ['rst', 'rst_n', 'i_rst_n', 'reset', 'reset_n']:
+                if hasattr(dut, rst_name):
+                    reset = getattr(dut, rst_name)
+                    break
+            if reset is None:
+                raise AttributeError(f"No reset signal found. Please provide reset explicitly.")
+        self._axi = AxiLiteMaster(bus, clock, reset)
 
     def read_word(self, address: int) -> int:
-        # Note: Cocotb/cocotbext-axi are async. This interface is synchronous 
-        # to provide a clean user API. This means this driver CANNOT be used 
+        # Note: Cocotb/cocotbext-axi are async. This interface is synchronous
+        # to provide a clean user API. This means this driver CANNOT be used
         # directly in a standard async cocotb test function without bridging.
         #
-        # HOWEVER: To make the API "feeling" identical, we might need to expose 
+        # HOWEVER: To make the API "feeling" identical, we might need to expose
         # these as async methods if we want to await them.
         # But standard hardware drivers (PySerial, etc) are blocking.
         #
-        # If we make this async, the hardware JTAG implementation also needs to be async 
+        # If we make this async, the hardware JTAG implementation also needs to be async
         # (or just simple functions that don't await).
         #
         # Problem: 'await driver.reg.field' is syntax error.
         # 'val = await driver.reg.read_field()' works.
         # 'driver.reg.field = 1' implies immediate write.
         #
-        # For Cocotb, we MUST yield to the scheduler. 
-        # So we simply CANNOT use property setters 'reg.field = 1' in an async test 
+        # For Cocotb, we MUST yield to the scheduler.
+        # So we simply CANNOT use property setters 'reg.field = 1' in an async test
         # if the underlying bus ops are async, unless we hide the event loop.
         #
         # COMPROMISE: We will implement async methods on the interface.
         # The 'Register' class needs to handle this.
-        # 
+        #
         # BUT: The concept document showed synchronous usage:
         # driver.control.enable = 1
         #
         # For this to work in Cocotb, we need a blocking call? No, Cocotb is single threaded co-routines.
-        # We can't block. 
+        # We can't block.
         #
         # Perhaps the driver concept needs to acknowledge async?
         # Or we use a helper to run it?
@@ -67,13 +76,13 @@ class CocotbBus(AbstractBusInterface):
         # In Cocotb, `cocotb.start_soon()` can schedule a task without awaiting.
         # But for READ, we MUST await result. `val = reg.field` cannot work if it needs to fetch from sim time.
         #
-        # So for Cocotb support, the Concept of `val = reg.field` is fundamentally broken unless we cache values 
+        # So for Cocotb support, the Concept of `val = reg.field` is fundamentally broken unless we cache values
         # (shadow register) or use a non-async backdoor (simulation only).
         #
         # Let's stick to generating async-compatible API or acknowledge limitation.
         #
         # FOR NOW: I will implement `read_word` / `write_word` to return Coroutines in CocotbBus.
-        # And I will update `models.py` to handle this? 
+        # And I will update `models.py` to handle this?
         # No, `models.py` uses `self.read() & mask`. If `read()` returns a coroutine, we can't `&` it.
         #
         # CRITICAL DESIGN DECISION:
@@ -91,10 +100,10 @@ class CocotbBus(AbstractBusInterface):
         # Let's assume the user is okay with `await driver.reg.field.read()` or similar.
         # But the concept doc promised `driver.reg.field = 1`.
         #
-        # Let's implement the bus methods as async. 
-        # And I will update `models.py` to NOT use properties for fields, but methods, OR 
+        # Let's implement the bus methods as async.
+        # And I will update `models.py` to NOT use properties for fields, but methods, OR
         # properties that return objects we can await? `val = await driver.reg.field`?
-        
+
         pass
 
     async def read_word(self, address: int) -> int:

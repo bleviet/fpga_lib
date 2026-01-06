@@ -52,7 +52,7 @@ def main():
         structured=True,
         vendor='both',
         include_testbench=True,
-        include_regfile=True
+        include_regs=True
     )
 
     # Write files
@@ -62,6 +62,21 @@ def main():
         with open(full_path, 'w') as f:
             f.write(content)
         print(f"Wrote {filepath}")
+
+    # Update IP core YAML with fileSets
+    yaml_path_abs = os.path.abspath(yaml_path)
+    updated = gen.update_ipcore_filesets(
+        yaml_path_abs,
+        all_files,
+        include_regs=True,
+        vendor='both',
+        include_testbench=True
+    )
+    
+    if updated:
+        print(f"\n✓ Updated {yaml_path} with fileSets")
+    else:
+        print(f"\n✓ FileSets in {yaml_path} are already up to date")
 
     print(f"\nGeneration Complete. Files written to: {output_base}")
     print(f"Total files: {len(all_files)}")

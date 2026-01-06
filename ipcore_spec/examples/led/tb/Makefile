@@ -18,21 +18,17 @@ TOPLEVEL_LANG ?= vhdl
 
 # VHDL source files (relative to tb/ directory)
 RTL_DIR = $(CURDIR)/../rtl
-VHDL_SOURCES += $(RTL_DIR)/{{ entity_name }}_pkg.vhd
-VHDL_SOURCES += $(RTL_DIR)/{{ entity_name }}_regs.vhd
-VHDL_SOURCES += $(RTL_DIR)/{{ entity_name }}_core.vhd
-{% if bus_type == 'axil' %}
-VHDL_SOURCES += $(RTL_DIR)/{{ entity_name }}_{{ bus_type }}.vhd
-{% else %}
-VHDL_SOURCES += $(RTL_DIR)/{{ entity_name }}_avmm.vhd
-{% endif %}
-VHDL_SOURCES += $(RTL_DIR)/{{ entity_name }}.vhd
+VHDL_SOURCES += $(RTL_DIR)/led_controller_pkg.vhd
+VHDL_SOURCES += $(RTL_DIR)/led_controller_regs.vhd
+VHDL_SOURCES += $(RTL_DIR)/led_controller_core.vhd
+VHDL_SOURCES += $(RTL_DIR)/led_controller_axil.vhd
+VHDL_SOURCES += $(RTL_DIR)/led_controller.vhd
 
 # Top-level module
-TOPLEVEL = {{ entity_name }}
+TOPLEVEL = led_controller
 
 # Test module (Python file without .py extension)
-MODULE = {{ entity_name }}_test
+MODULE = led_controller_test
 
 # GHDL-specific options
 ifeq ($(SIM),ghdl)
@@ -44,7 +40,7 @@ ifeq ($(SIM),ghdl)
 
     # Generate waveforms if WAVES=1
     ifeq ($(WAVES),1)
-        SIM_ARGS += --wave={{ entity_name }}.ghw
+        SIM_ARGS += --wave=led_controller.ghw
     endif
 
     # Additional elaboration options
@@ -70,7 +66,7 @@ clean_all: clean
 	rm -rf sim_build __pycache__ results.xml *.ghw *.vcd
 
 view_waves:
-	gtkwave {{ entity_name }}.ghw &
+	gtkwave led_controller.ghw &
 
 lint:
 	@echo "Checking VHDL syntax..."
@@ -82,7 +78,7 @@ lint:
 
 # Help target
 help:
-	@echo "cocotb Testbench for {{ entity_name }}"
+	@echo "cocotb Testbench for led_controller"
 	@echo ""
 	@echo "Targets:"
 	@echo "  make            - Run all tests"

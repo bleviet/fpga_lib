@@ -11,11 +11,13 @@ Generates:
 from typing import Dict, List, Optional, Any
 from pathlib import Path
 import os
+import yaml
 
 from jinja2 import Environment, FileSystemLoader
 
 from fpga_lib.model.core import IpCore
 from fpga_lib.model.memory import MemoryMap, Register, BitField
+from fpga_lib.model.fileset import FileSet, File, FileType
 from fpga_lib.generator.base_generator import BaseGenerator
 
 
@@ -174,6 +176,12 @@ class VHDLGenerator(BaseGenerator):
         sw_registers = [r for r in registers if r['access'] in sw_access]
         hw_registers = [r for r in registers if r['access'] in hw_access]
 
+        # Extract clock and reset information
+        clock_port = ip_core.clocks[0].name if ip_core.clocks else 'clk'
+        reset_port = ip_core.resets[0].name if ip_core.resets else 'rst'
+        reset_polarity = ip_core.resets[0].polarity.value if ip_core.resets else 'activeHigh'
+        reset_active_high = 'High' in reset_polarity
+
         return {
             'entity_name': ip_core.vlnv.name.lower(),
             'registers': registers,
@@ -186,6 +194,9 @@ class VHDLGenerator(BaseGenerator):
             'addr_width': 8,
             'reg_width': 4,
             'memory_maps': ip_core.memory_maps,
+            'clock_port': clock_port,
+            'reset_port': reset_port,
+            'reset_active_high': reset_active_high,
         }
 
     def generate_package(self, ip_core: IpCore) -> str:
@@ -228,7 +239,7 @@ class VHDLGenerator(BaseGenerator):
         self,
         ip_core: IpCore,
         bus_type: str = 'axil',
-        include_regfile: bool = False,
+        include_regs: bool = False,
         structured: bool = False,
         vendor: str = 'none',
         include_testbench: bool = False
@@ -239,7 +250,7 @@ class VHDLGenerator(BaseGenerator):
         Args:
             ip_core: IP core definition
             bus_type: Bus interface type ('axil' or 'avmm')
-            include_regfile: Include standalone register file
+            include_regs: Include standalone register bank
             structured: Use organized folder structure (rtl/, tb/, intel/, xilinx/)
             vendor: Vendor files to include ('none', 'intel', 'xilinx', 'both')
             include_testbench: Include cocotb testbench files
@@ -251,7 +262,7 @@ class VHDLGenerator(BaseGenerator):
             return self.generate_all_with_structure(
                 ip_core,
                 bus_type,
-                include_regfile,
+                include_regs,
                 vendor,
                 include_testbench
             )
@@ -265,8 +276,8 @@ class VHDLGenerator(BaseGenerator):
             f"{name}_{bus_type}.vhd": self.generate_bus_wrapper(ip_core, bus_type),
         }
 
-        if include_regfile:
-            files[f"{name}_regfile.vhd"] = self.generate_register_file(ip_core)
+        if include_regs:
+            files[f"{name}_regs.vhd"] = self.generate_register_file(ip_core)
 
         return files
 
@@ -295,6 +306,12 @@ class VHDLGenerator(BaseGenerator):
         context['display_name'] = ip_core.vlnv.name.replace('_', ' ').title()
         return template.render(**context)
 
+    def generate_xilinx_xgui(self, ip_core: IpCore) -> str:
+        """Generate Xilinx Vivado XGUI TCL file."""
+        template = self.env.get_template('xilinx_xgui.j2')
+        context = self._get_template_context(ip_core, 'axil')
+        return template.render(**context)
+
     def generate_vendor_files(
         self,
         ip_core: IpCore,
@@ -320,6 +337,9 @@ class VHDLGenerator(BaseGenerator):
 
         if vendor in ['xilinx', 'both']:
             files["component.xml"] = self.generate_xilinx_component_xml(ip_core)
+            # Generate XGUI file with version in filename (e.g., component_v1_0_0.tcl)
+            version_str = ip_core.vlnv.version.replace('.', '_')
+            files[f"xgui/{name}_v{version_str}.tcl"] = self.generate_xilinx_xgui(ip_core)
 
         return files
 
@@ -327,7 +347,7 @@ class VHDLGenerator(BaseGenerator):
         self,
         ip_core: IpCore,
         bus_type: str = 'axil',
-        include_regfile: bool = False,
+        include_regs: bool = False,
         vendor: str = 'none',
         include_testbench: bool = False
     ) -> Dict[str, str]:
@@ -337,7 +357,7 @@ class VHDLGenerator(BaseGenerator):
         Args:
             ip_core: IP core definition
             bus_type: Bus interface type ('axil' or 'avmm')
-            include_regfile: Include standalone register file
+            include_regs: Include standalone register bank
             vendor: Vendor files to include ('none', 'intel', 'xilinx', 'both')
             include_testbench: Include cocotb testbench files
 
@@ -354,8 +374,8 @@ class VHDLGenerator(BaseGenerator):
         files[f"rtl/{name}_core.vhd"] = self.generate_core(ip_core)
         files[f"rtl/{name}_{bus_type}.vhd"] = self.generate_bus_wrapper(ip_core, bus_type)
 
-        if include_regfile:
-            files[f"rtl/{name}_regfile.vhd"] = self.generate_register_file(ip_core)
+        if include_regs:
+            files[f"rtl/{name}_regs.vhd"] = self.generate_register_file(ip_core)
 
         # Testbench files
         if include_testbench:
@@ -369,8 +389,180 @@ class VHDLGenerator(BaseGenerator):
 
         if vendor in ['xilinx', 'both']:
             files[f"xilinx/component.xml"] = self.generate_xilinx_component_xml(ip_core)
+            # Generate XGUI file with version in filename
+            version_str = ip_core.vlnv.version.replace('.', '_')
+            files[f"xilinx/xgui/{name}_v{version_str}.tcl"] = self.generate_xilinx_xgui(ip_core)
 
         return files
+
+    def update_ipcore_filesets(
+        self,
+        ip_core_path: str,
+        generated_files: Dict[str, str],
+        include_regs: bool = False,
+        vendor: str = 'none',
+        include_testbench: bool = False
+    ) -> bool:
+        """
+        Update the IP core YAML file with fileSets section based on generated files.
+        
+        Args:
+            ip_core_path: Path to the .ip.yml file
+            generated_files: Dictionary of generated files (from generate_all_with_structure)
+            include_regs: Whether register bank was generated
+            vendor: Vendor files included ('none', 'intel', 'xilinx', 'both')
+            include_testbench: Whether testbench files were generated
+            
+        Returns:
+            True if file was updated, False if no changes needed
+        """
+        from fpga_lib.parser.yaml.ip_core_parser import YamlIpCoreParser
+        
+        ip_path = Path(ip_core_path)
+        if not ip_path.exists():
+            return False
+            
+        # Parse existing IP core
+        parser = YamlIpCoreParser()
+        ip_core = parser.parse_file(ip_path)
+        name = ip_core.vlnv.name.lower()
+        
+        # Build expected fileSets from generated files
+        expected_filesets = self._build_filesets_from_generated(
+            name, generated_files, include_regs, vendor, include_testbench
+        )
+        
+        # Check if existing fileSets match
+        if self._filesets_match(ip_core.file_sets, expected_filesets):
+            return False  # No update needed
+            
+        # Read the YAML file
+        with open(ip_path, 'r') as f:
+            yaml_content = f.read()
+            
+        # Load as dict to preserve comments and formatting
+        yaml_data = yaml.safe_load(yaml_content)
+        
+        # Convert expected fileSets to dict format
+        filesets_dict = [
+            {
+                'name': fs.name,
+                'description': fs.description,
+                'files': [
+                    {'path': file.path, 'type': file.type.value}
+                    for file in fs.files
+                ]
+            }
+            for fs in expected_filesets
+        ]
+        
+        # Update or add fileSets
+        yaml_data['fileSets'] = filesets_dict
+        
+        # Write back to file
+        with open(ip_path, 'w') as f:
+            yaml.dump(yaml_data, f, default_flow_style=False, sort_keys=False, indent=4)
+            
+        return True
+
+    def _build_filesets_from_generated(
+        self,
+        name: str,
+        generated_files: Dict[str, str],
+        include_regs: bool,
+        vendor: str,
+        include_testbench: bool
+    ) -> List[FileSet]:
+        """Build FileSet objects from generated files."""
+        filesets = []
+        
+        # RTL Sources
+        rtl_files = []
+        rtl_files.append(File(path=f"rtl/{name}_pkg.vhd", type=FileType.VHDL))
+        if include_regs:
+            rtl_files.append(File(path=f"rtl/{name}_regs.vhd", type=FileType.VHDL))
+        rtl_files.append(File(path=f"rtl/{name}_core.vhd", type=FileType.VHDL))
+        
+        # Determine bus type from generated files
+        if f"rtl/{name}_axil.vhd" in generated_files:
+            rtl_files.append(File(path=f"rtl/{name}_axil.vhd", type=FileType.VHDL))
+        elif f"rtl/{name}_avmm.vhd" in generated_files:
+            rtl_files.append(File(path=f"rtl/{name}_avmm.vhd", type=FileType.VHDL))
+            
+        rtl_files.append(File(path=f"rtl/{name}.vhd", type=FileType.VHDL))
+        
+        filesets.append(FileSet(
+            name="RTL_Sources",
+            description="RTL Sources",
+            files=rtl_files
+        ))
+        
+        # Simulation Resources
+        if include_testbench:
+            sim_files = [
+                File(path=f"tb/{name}_test.py", type=FileType.PYTHON),
+                File(path="tb/Makefile", type=FileType.UNKNOWN),
+                File(path=f"tb/{name}_memmap.yml", type=FileType.YAML)
+            ]
+            filesets.append(FileSet(
+                name="Simulation_Resources",
+                description="Simulation Files",
+                files=sim_files
+            ))
+        
+        # Integration Files
+        if vendor != 'none':
+            integration_files = []
+            if vendor in ['intel', 'both']:
+                integration_files.append(File(path=f"intel/{name}_hw.tcl", type=FileType.TCL))
+            if vendor in ['xilinx', 'both']:
+                integration_files.append(File(path=f"xilinx/component.xml", type=FileType.XML))
+                # Add XGUI file - find it from generated_files
+                xgui_files = [f for f in generated_files.keys() if f.startswith("xilinx/xgui/") and f.endswith(".tcl")]
+                if xgui_files:
+                    integration_files.append(File(path=xgui_files[0], type=FileType.TCL))
+                
+            if integration_files:
+                filesets.append(FileSet(
+                    name="Integration",
+                    description="Platform Integration Files",
+                    files=integration_files
+                ))
+        
+        return filesets
+
+    def _filesets_match(
+        self,
+        existing: Optional[List[FileSet]],
+        expected: List[FileSet]
+    ) -> bool:
+        """Check if existing fileSets match expected ones."""
+        if not existing and not expected:
+            return True
+        if not existing or len(existing) != len(expected):
+            return False
+            
+        # Create lookup dict by name
+        existing_dict = {fs.name: fs for fs in existing}
+        
+        for exp_fs in expected:
+            if exp_fs.name not in existing_dict:
+                return False
+                
+            exist_fs = existing_dict[exp_fs.name]
+            
+            # Check file count
+            if len(exist_fs.files) != len(exp_fs.files):
+                return False
+                
+            # Check each file path and type
+            exist_files = {(f.path, f.type) for f in exist_fs.files}
+            exp_files = {(f.path, f.type) for f in exp_fs.files}
+            
+            if exist_files != exp_files:
+                return False
+                
+        return True
 
     def generate_cocotb_test(self, ip_core: IpCore, bus_type: str = 'axil') -> str:
         """Generate cocotb Python test file."""
