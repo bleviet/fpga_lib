@@ -14,132 +14,58 @@ A Python library for working with FPGA designs, including HDL parsing, generatio
 
 ### Prerequisites
 
-- Python 3.7 or higher
+- [uv](https://github.com/astral-sh/uv) (recommended) or Python 3.8+
 
 ### Install from source
 
-Clone the repository and install the package:
+Clone the repository and install the package using `uv`:
 
 ```bash
 git clone <repository-url>
 cd fpga_lib
-pip install -e .
+uv sync
 ```
 
-### Install dependencies
+Or using pip:
 
 ```bash
-pip install -r requirements.txt
+pip install -e .
 ```
 
 ## Usage
 
-### Basic Example: Creating an IP Core
+### Generating an IP Core
 
-```python
-from fpga_lib.core.ip_core import IPCore
-from fpga_lib.generator.hdl.vhdl_generator import generate_vhdl
+This project includes a CLI tool `ipcore` for generating VHDL from YAML specifications.
 
-# Create a simple IP core
-simple_core = IPCore(name="simple_ip")
-simple_core.add_port("clk", "in", "std_logic")
-simple_core.add_port("rst", "in", "std_logic")
-simple_core.add_port("data_in", "in", "std_logic_vector(7 downto 0)")
-simple_core.add_port("data_out", "out", "std_logic_vector(7 downto 0)")
-
-# Generate VHDL code
-vhdl_code = generate_vhdl(simple_core)
-print(vhdl_code)
+```bash
+# Generate VHDL for an IP core
+uv run scripts/ipcore.py generate path/to/core.ip.yml --output output_dir
 ```
 
 ### Parsing HDL Files
 
 ```python
 from fpga_lib.parser.hdl.vhdl_parser import VHDLParser
-from fpga_lib.parser.hdl.verilog_parser import VerilogParser
 
 # Parse VHDL
 vhdl_parser = VHDLParser()
 vhdl_result = vhdl_parser.parse_file("path/to/entity.vhd")
 vhdl_ip_core = vhdl_result["entity"]
-
-# Parse Verilog
-verilog_parser = VerilogParser()
-verilog_result = verilog_parser.parse_file("path/to/module.v")
-verilog_ip_core = verilog_result["module"]
 ```
 
 ## Testing
 
-This project uses pytest for testing. There are several test cases covering different components of the library.
+This project uses pytest for testing.
 
-### Using the Makefile (Recommended)
-
-The easiest way to run tests is using the provided Makefile:
+### Using uv (Recommended)
 
 ```bash
-# See all available commands
-make help
-
 # Run all tests
-make test
+uv run pytest
 
-# Run tests with verbose output
-make test-verbose
-
-# Run tests with coverage reporting
-make test-coverage
-
-# Run specific test modules
-make test-vhdl-parser      # VHDL parser tests only
-make test-verilog-parser   # Verilog parser tests only
-make test-core             # IP core tests only
-make test-generator        # Generator tests only
-make test-parser           # All parser tests
-make test-roundtrip        # HDL roundtrip tests
-```
-
-### Running Tests Manually
-
-You can also run tests directly with pytest:
-
-### Running All Tests
-
-To run all tests:
-
-```bash
-python -m pytest
-```
-
-### Running Specific Test Modules
-
-To run a specific test module:
-
-```bash
-# Run just the VHDL parser tests
-python -m pytest fpga_lib/tests/parser/hdl/test_vhdl_parser.py
-
-# Run just the Verilog parser tests
-python -m pytest fpga_lib/tests/parser/hdl/test_verilog_parser.py
-
-# Run just the IP core tests
-python -m pytest fpga_lib/tests/core/test_ip_core.py
-```
-
-### Running Tests with Verbose Output
-
-For more detailed test output:
-
-```bash
-python -m pytest -v
-```
-
-### Test Coverage
-
-To run tests with coverage reporting:
-
-```bash
-python -m pytest --cov=fpga_lib
+# Run specific test
+uv run pytest fpga_lib/tests/parser/hdl/test_vhdl_parser.py
 ```
 
 ## License

@@ -12,6 +12,23 @@ A VSCode extension providing a visual editor for FPGA memory map YAML files.
 - **Address Map View**: Visual address space visualization
 - **Bi-directional Sync**: Changes reflected in both visual editor and YAML source
 
+## Requirements
+
+This extension requires the **fpga_lib** Python package to be installed in your Python environment.
+The extension relies on the `scripts/ipcore.py` backend for VHDL generation.
+
+### Installing fpga_lib
+
+From the root of the repository:
+
+```bash
+# Using uv (recommended)
+uv sync
+
+# Or using pip
+pip install -e .
+```
+
 ## Installation
 
 ### From Source

@@ -39,6 +39,7 @@ cd vscode/ipcore_editor
 npm install
 npm run compile
 # Then: Press F5 in VSCode to launch extension development host
+# Note: Requires fpga_lib installed in your Python environment
 ```
 
 **Documentation:** See `vscode/ipcore_editor/README.md`
@@ -59,13 +60,13 @@ npm run compile
 
 **Quick Start:**
 ```bash
-cd python/memory_map_editor
-python main.py
+# From project root
+uv run ipcore_tools/python/memory_map_editor/main.py
 ```
 
 **Requirements:**
-- PyQt6
-- See `python/memory_map_editor/requirements.txt`
+- PyQt6 (managed via uv)
+- See `python/memory_map_editor/pyproject.toml` or `requirements.txt`
 
 ---
 
@@ -98,8 +99,8 @@ npm run package
 
 **Run:**
 ```bash
-cd python/memory_map_editor
-python main.py
+# From project root
+uv run ipcore_tools/python/memory_map_editor/main.py
 ```
 
 ---

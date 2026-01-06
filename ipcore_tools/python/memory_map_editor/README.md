@@ -17,22 +17,18 @@ This application provides a graphical interface for creating, editing, and manag
 
 ## Requirements
 
-```
-PySide6  # For Desktop GUI
-textual  # For Terminal UI
-rich     # For Terminal UI
-PyYAML
-fpga_lib
-```
+- Python 3.8+
+- [uv](https://github.com/astral-sh/uv) (recommended)
 
 ## Installation
 
-1. Install dependencies:
+1. Install dependencies using uv:
 ```bash
-pip install PySide6 textual rich PyYAML
+# From project root
+uv sync
 ```
 
-2. Ensure fpga_lib is available in your Python path
+2. Ensure `fpga_lib` is installed in editable mode (handled by `uv sync` if configured in pyproject.toml).
 
 ---
 
@@ -43,8 +39,8 @@ A lightweight terminal-based editor for quick edits and SSH sessions.
 ### Running the TUI
 
 ```bash
-cd ipcore_tools/python/memory_map_editor
-python tui_main.py [path/to/file.mm.yml]
+# From project root
+uv run ipcore_tools/python/memory_map_editor/tui_main.py [path/to/file.mm.yml]
 ```
 
 ### TUI Features
@@ -65,8 +61,8 @@ See [tui/README.md](tui/README.md) for detailed TUI documentation.
 A full-featured PyQt6 application for visual memory map editing.
 
 ```bash
-cd ipcore_tools/python/memory_map_editor
-python main.py
+# From project root
+uv run ipcore_tools/python/memory_map_editor/main.py
 ```
 
 ### Creating a New Memory Map
@@ -84,14 +80,13 @@ Sample memory maps are available in the `ipcore_spec/examples/` directory:
 
 **TUI:**
 ```bash
-python tui_main.py ../../../ipcore_spec/examples/timers/my_timer_core.mm.yml
-python tui_main.py ../../../ipcore_spec/examples/interfaces/gpio/gpio_controller.mm.yml
-python tui_main.py ../../../ipcore_spec/examples/interfaces/uart/uart_controller.mm.yml
+uv run ipcore_tools/python/memory_map_editor/tui_main.py ipcore_spec/examples/timers/my_timer_core.mm.yml
+uv run ipcore_tools/python/memory_map_editor/tui_main.py ipcore_spec/examples/interfaces/gpio/gpio_controller.mm.yml
 ```
 
 **GUI:**
 ```bash
-python main.py
+uv run ipcore_tools/python/memory_map_editor/main.py
 # Then use File → Open to select a .mm.yml file from ipcore_spec/examples/
 ```
 

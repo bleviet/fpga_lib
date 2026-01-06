@@ -23,20 +23,20 @@ Tests for the GPIO example and memory map loader:
 ```bash
 # Run core register tests
 cd /path/to/fpga_lib
-python fpga_lib/tests/core/test_register_rw1c.py
+uv run python fpga_lib/tests/core/test_register_rw1c.py
 
 # Run GPIO memory map loader tests  
 cd examples/gpio
-python tests/test_memory_map_rw1c.py
+uv run python tests/test_memory_map_rw1c.py
 ```
 
-### Using pytest (if available)
+### Using pytest (recommended)
 ```bash
 # Run all core tests
-python -m pytest fpga_lib/tests/core/ -v
+uv run pytest fpga_lib/tests/core/ -v
 
 # Run specific test file
-python -m pytest fpga_lib/tests/core/test_register_rw1c.py -v
+uv run pytest fpga_lib/tests/core/test_register_rw1c.py -v
 ```
 
 ## Test Coverage
