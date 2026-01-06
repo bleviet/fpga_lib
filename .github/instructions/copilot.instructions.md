@@ -1,61 +1,14 @@
-# GitHub Copilot Instructions
+# Repository Instructions
 
-**For:** VS Code Extension Development
+## ⚠️ Context Loading Protocol
+**You are strictly bound by the external rule files in this repository.**
+Because these rules are modular, you must **actively read** the relevant file before answering complex queries.
 
----
+1. **Global Logic:** Always refer to `.agent/rules/global.md` for architecture decisions.
+2. **Python/FPGA Tasks:** If the user asks about `.py` files or `fpga_lib`, you MUST read `.agent/rules/python.md`.
+3. **VS Code Tasks:** If the user asks about the extension, you MUST read `.agent/rules/vscode.md`.
 
-## Visual Styling & UI Guidelines
-
-All frontend code MUST follow the unified visual styling guidelines:
-
-**📄 See:** [visual-styling.md](./visual-styling.md)
-
-This includes:
-- VS Code theme variable usage (required)
-- 8-point grid system
-- Typography rules
-- Component patterns
-
----
-
-## Additional Copilot-Specific Context
-
-### Code Generation Rules
-
-**✅ DO:**
-- Use VS Code CSS variables for ALL colors
-- Follow 8-point grid strictly
-- Use `font-mono` for technical data (addresses, hex, bits)
-- Include proper TypeScript types
-- Use `clsx` or template literals for conditional classes
-
-**❌ DO NOT:**
-- Use hardcoded colors (#ffffff, bg-gray-50)
-- Use arbitrary pixel values (width: 250px - use w-64)
-- Forget hover/focus states
-- Use `console.log` (use VS Code OutputChannel instead)
-
-### TypeScript Standards
-
-- **Strict Mode:** Always enabled
-- **Types:** Explicit return types for functions
-- **Props:** Use TypeScript interfaces, not PropTypes
-- **Imports:** Use absolute imports where configured
-
-### React Patterns
-
-- **Hooks:** Prefer functional components with hooks
-- **State:** Use `useState` for local, context for shared
-- **Effects:** Include dependency arrays
-- **Memoization:** Use `useMemo`/`useCallback` for expensive operations
-
-### Testing
-
-- **Framework:** Jest + React Testing Library
-- **Coverage:** Aim for >80% on new code
-- **Pattern:** Arrange-Act-Assert
-
----
-
-For detailed visual styling rules, typography, color system, and component examples:
-👉 **[Read visual-styling.md](./visual-styling.md)**
+## Quick Summary (Always Active)
+* **Package Manager:** Use `uv` for Python, `npm` for TS.
+* **Style:** Snake_case for Python, camelCase for TS.
+* **Design:** Tailwind CSS with 8-point grid.

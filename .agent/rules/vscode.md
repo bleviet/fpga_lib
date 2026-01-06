@@ -37,7 +37,7 @@ trigger: always_on
 ## UI & Design System (Webviews)
 
 **All visual styling rules are centralized in:**
-📄 **[../../.github/instructions/visual-styling.md](../../.github/instructions/visual-styling.md)**
+📄 **[visual-styling.md](visual-styling.md)**
 
 This includes:
 - VS Code CSS variable usage (REQUIRED)
@@ -48,4 +48,4 @@ This includes:
 - Dark mode support
 
 For complete guidelines, examples, and component patterns:
-👉 **[Read visual-styling.md](../../.github/instructions/visual-styling.md)**
+👉 **[Read visual-styling.md](visual-styling.md)**
