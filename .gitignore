@@ -81,3 +81,5 @@ vivado*.backup.*
 
 --output-dir/
 debug_build/
+sim_build/
+results.xml
