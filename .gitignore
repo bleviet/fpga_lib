@@ -88,3 +88,7 @@ results.xml
 
 # Generated IP core outputs (regeneratable)
 ipcore_spec/examples/*/my_timer_core/
+ipcore_spec/examples/**/rtl/
+ipcore_spec/examples/**/intel/
+ipcore_spec/examples/**/xilinx/
+ipcore_spec/examples/**/tb/
