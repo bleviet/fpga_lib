@@ -22,6 +22,11 @@ trigger: always_on
 - **Schemas:** IP Core and Memory Map specifications in `/ipcore_spec/`.
 - **Tests:** All tests are in `/ipcore_lib/tests/` with subdirectories matching the source structure.
 
+## Version Control Protocol
+- **No Auto-Commit:** You are strictly FORBIDDEN from running `git commit`, `git push`, or `git merge` autonomously.
+- **Review First:** You may `git add` files to stage them, but you must ask for explicit user confirmation before committing.
+- **Commit Messages:** When requested to commit, always draft the commit message for the user to review first.
+
 ## Documentation Standards: Usage vs. Architecture
 
 ### 1. Separation of Concerns
