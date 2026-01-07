@@ -11,7 +11,7 @@ The IP Core Driver architecture is designed to provide a unified, dynamically ge
 ## Core Design Principles
 
 ### 1. Single Source of Truth
-The driver is not written manually. It is **dynamically constructed at runtime** by parsing the same YAML memory map (`*.memmap.yml`) used to generate the HDL register bank. This eliminates skew between software and hardware definitions.
+The driver is not written manually. It is **dynamically constructed at runtime** by parsing the same YAML memory map (`*.mm.yml`) used to generate the HDL register bank. This eliminates skew between software and hardware definitions.
 
 ### 2. Abstraction Layers
 

@@ -14,7 +14,7 @@ from ipcore_lib.driver.bus import CocotbBus  # or JtagBus for hardware
 bus = CocotbBus(dut, 's_axi', dut.clk)
 
 # 2. Load Driver
-driver = load_driver('my_core.memmap.yml', bus)
+driver = load_driver('my_core.mm.yml', bus)
 
 # 3. Access Registers (Simulation Pattern)
 val = await driver.CSR.CONTROL.read_async()
