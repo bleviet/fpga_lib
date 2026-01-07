@@ -24,35 +24,12 @@ entity {{ entity_name }} is
     -- Clock and reset
     {{ clock_port }} : in std_logic;
     {{ reset_port }} : in std_logic;
-{% if bus_type == 'axil' %}
-    -- AXI-Lite Slave Interface
-    s_axi_awaddr  : in  std_logic_vector(C_ADDR_WIDTH-1 downto 0);
-    s_axi_awprot  : in  std_logic_vector(2 downto 0);
-    s_axi_awvalid : in  std_logic;
-    s_axi_awready : out std_logic;
-    s_axi_wdata   : in  std_logic_vector(C_DATA_WIDTH-1 downto 0);
-    s_axi_wstrb   : in  std_logic_vector((C_DATA_WIDTH/8)-1 downto 0);
-    s_axi_wvalid  : in  std_logic;
-    s_axi_wready  : out std_logic;
-    s_axi_bresp   : out std_logic_vector(1 downto 0);
-    s_axi_bvalid  : out std_logic;
-    s_axi_bready  : in  std_logic;
-    s_axi_araddr  : in  std_logic_vector(C_ADDR_WIDTH-1 downto 0);
-    s_axi_arprot  : in  std_logic_vector(2 downto 0);
-    s_axi_arvalid : in  std_logic;
-    s_axi_arready : out std_logic;
-    s_axi_rdata   : out std_logic_vector(C_DATA_WIDTH-1 downto 0);
-    s_axi_rresp   : out std_logic_vector(1 downto 0);
-    s_axi_rvalid  : out std_logic;
-    s_axi_rready  : in  std_logic{{ ";" if user_ports else "" }}
-{% elif bus_type == 'avmm' %}
-    -- Avalon-MM Slave Interface
-    avs_address     : in  std_logic_vector(C_ADDR_WIDTH-1 downto 0);
-    avs_read        : in  std_logic;
-    avs_readdata    : out std_logic_vector(C_DATA_WIDTH-1 downto 0);
-    avs_write       : in  std_logic;
-    avs_writedata   : in  std_logic_vector(C_DATA_WIDTH-1 downto 0);
-    avs_waitrequest : out std_logic{{ ";" if user_ports else "" }}
+
+{% if bus_ports %}
+    -- {{ bus_type|upper }} Bus Interface
+{% for port in bus_ports %}
+    {{ "%-14s"|format(port.name) }} : {{ "%-3s"|format(port.direction) }} {{ port.type }}{{ ";" if not loop.last or user_ports else "" }}
+{% endfor %}
 {% endif %}
 {% if user_ports %}
     -- User ports
@@ -80,33 +57,11 @@ begin
     port map (
       clk      => {{ clock_port }},
       rst      => {% if reset_active_high %}{{ reset_port }}{% else %}not {{ reset_port }}{% endif %},
-{% if bus_type == 'axil' %}
-      s_axi_awaddr  => s_axi_awaddr,
-      s_axi_awprot  => s_axi_awprot,
-      s_axi_awvalid => s_axi_awvalid,
-      s_axi_awready => s_axi_awready,
-      s_axi_wdata   => s_axi_wdata,
-      s_axi_wstrb   => s_axi_wstrb,
-      s_axi_wvalid  => s_axi_wvalid,
-      s_axi_wready  => s_axi_wready,
-      s_axi_bresp   => s_axi_bresp,
-      s_axi_bvalid  => s_axi_bvalid,
-      s_axi_bready  => s_axi_bready,
-      s_axi_araddr  => s_axi_araddr,
-      s_axi_arprot  => s_axi_arprot,
-      s_axi_arvalid => s_axi_arvalid,
-      s_axi_arready => s_axi_arready,
-      s_axi_rdata   => s_axi_rdata,
-      s_axi_rresp   => s_axi_rresp,
-      s_axi_rvalid  => s_axi_rvalid,
-      s_axi_rready  => s_axi_rready,
-{% elif bus_type == 'avmm' %}
-      avs_address     => avs_address,
-      avs_read        => avs_read,
-      avs_readdata    => avs_readdata,
-      avs_write       => avs_write,
-      avs_writedata   => avs_writedata,
-      avs_waitrequest => avs_waitrequest,
+      
+{% if bus_ports %}
+{% for port in bus_ports %}
+      {{ "%-14s"|format(port.name) }} => {{ port.name }},
+{% endfor %}
 {% endif %}
       regs_out => regs_sw2hw,
       regs_in  => regs_hw2sw

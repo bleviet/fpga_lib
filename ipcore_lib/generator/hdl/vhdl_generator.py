@@ -34,11 +34,98 @@ class VHDLGenerator(BaseGenerator):
 
     SUPPORTED_BUS_TYPES = ['axil', 'avmm']
 
+    # Mapping from bus_definitions.yml type names to generator bus_type codes
+    BUS_TYPE_MAP = {
+        'AXI4L': 'axil',
+        'AVALON_MM': 'avmm',
+    }
+
     def __init__(self, template_dir: Optional[str] = None):
         """Initialize VHDL generator with templates."""
         if template_dir is None:
             template_dir = os.path.join(os.path.dirname(__file__), "templates")
         super().__init__(template_dir)
+        self.bus_definitions = self._load_bus_definitions()
+
+    def _load_bus_definitions(self) -> Dict[str, Any]:
+        """Load bus definitions from ipcore_spec/common/bus_definitions.yml."""
+        bus_defs_path = Path(__file__).parent.parent.parent.parent / "ipcore_spec/common/bus_definitions.yml"
+        if bus_defs_path.exists():
+            with open(bus_defs_path) as f:
+                return yaml.safe_load(f)
+        return {}
+
+    def _get_vhdl_port_type(self, width: int, logical_name: str) -> str:
+        """Get VHDL type string for a port based on width.
+
+        For address and data ports, use parameterized widths (C_ADDR_WIDTH, C_DATA_WIDTH).
+        """
+        # Parameterized ports
+        if logical_name in ['AWADDR', 'ARADDR', 'address']:
+            return 'std_logic_vector(C_ADDR_WIDTH-1 downto 0)'
+        if logical_name in ['WDATA', 'RDATA', 'writedata', 'readdata']:
+            return 'std_logic_vector(C_DATA_WIDTH-1 downto 0)'
+        if logical_name == 'WSTRB':
+            return 'std_logic_vector((C_DATA_WIDTH/8)-1 downto 0)'
+
+        # Standard widths
+        if width == 1:
+            return 'std_logic'
+        return f'std_logic_vector({width - 1} downto 0)'
+
+    def _get_active_bus_ports(
+        self,
+        bus_type_name: str,
+        use_optional_ports: List[str],
+        physical_prefix: str,
+        mode: str
+    ) -> List[Dict[str, Any]]:
+        """
+        Get list of active bus ports based on required + selected optional ports.
+
+        Args:
+            bus_type_name: Bus type name from bus_definitions (e.g., 'AXI4L')
+            use_optional_ports: List of optional port names to include
+            physical_prefix: Prefix for physical port names (e.g., 's_axi_')
+            mode: Interface mode ('master' or 'slave')
+
+        Returns:
+            List of port dictionaries for template rendering
+        """
+        bus_def = self.bus_definitions.get(bus_type_name.upper(), {})
+        ports = bus_def.get('ports', [])
+        active_ports = []
+
+        for port in ports:
+            logical_name = port['name']
+
+            # Skip clock/reset (handled separately)
+            if logical_name in ['ACLK', 'ARESETn', 'clk', 'reset']:
+                continue
+
+            presence = port.get('presence', 'required')
+            is_required = presence == 'required'
+            is_selected = logical_name in use_optional_ports
+
+            if is_required or is_selected:
+                # Get direction from bus definition
+                direction = port.get('direction', 'in')
+
+                # Flip direction for slave mode (bus def is from master perspective)
+                if mode == 'slave':
+                    direction = 'in' if direction == 'out' else 'out'
+
+                width = port.get('width', 1)
+
+                active_ports.append({
+                    'logical_name': logical_name,
+                    'name': f"{physical_prefix}{logical_name.lower()}",
+                    'direction': direction,
+                    'width': width,
+                    'type': self._get_vhdl_port_type(width, logical_name),
+                })
+
+        return active_ports
 
     def _parse_bits(self, bits: str) -> dict:
         """Parse bit string [M:N] or [N] into offset and width."""
@@ -204,6 +291,25 @@ class VHDLGenerator(BaseGenerator):
         reset_polarity = ip_core.resets[0].polarity.value if ip_core.resets else 'activeHigh'
         reset_active_high = 'High' in reset_polarity
 
+        # Build active bus ports from primary bus interface
+        bus_ports = []
+        if ip_core.bus_interfaces:
+            bus_iface = ip_core.bus_interfaces[0]  # Primary bus interface
+            # Map bus type name to bus_definitions key
+            bus_type_key = bus_iface.type.upper()
+            # Normalize common names
+            if bus_type_key in ['AXIL', 'AXI4-LITE', 'AXI4LITE']:
+                bus_type_key = 'AXI4L'
+            elif bus_type_key in ['AVMM', 'AVALON-MM']:
+                bus_type_key = 'AVALON_MM'
+
+            bus_ports = self._get_active_bus_ports(
+                bus_type_name=bus_type_key,
+                use_optional_ports=bus_iface.use_optional_ports or [],
+                physical_prefix=bus_iface.physical_prefix or 's_axi_',
+                mode=bus_iface.mode.value if hasattr(bus_iface.mode, 'value') else str(bus_iface.mode)
+            )
+
         return {
             'entity_name': ip_core.vlnv.name.lower(),
             'registers': registers,
@@ -212,6 +318,7 @@ class VHDLGenerator(BaseGenerator):
             'generics': self._prepare_generics(ip_core),
             'user_ports': self._prepare_user_ports(ip_core),
             'bus_type': bus_type,
+            'bus_ports': bus_ports,
             'data_width': 32,
             'addr_width': 8,
             'reg_width': 4,
