@@ -34,13 +34,24 @@ pip install -e .
 
 ## Usage
 
-### Generating an IP Core
+### CLI Tool
 
-This project includes a CLI tool `ipcore` for generating VHDL from YAML specifications.
+After installation, the `ipcore` command is available:
 
 ```bash
 # Generate VHDL for an IP core
-uv run scripts/ipcore.py generate path/to/core.ip.yml --output output_dir
+ipcore generate path/to/core.ip.yml --output output_dir
+
+# Parse VHDL and create IP core YAML
+ipcore parse path/to/entity.vhd
+
+# List available bus types
+ipcore list-buses
+```
+
+With uv (without installing):
+```bash
+uv run ipcore generate path/to/core.ip.yml
 ```
 
 ### Parsing HDL Files

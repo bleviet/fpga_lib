@@ -18,6 +18,9 @@ dependencies = [
     "click"
 ]
 
+[project.scripts]
+ipcore = "scripts.ipcore:main"
+
 [tool.pytest.ini_options]
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
