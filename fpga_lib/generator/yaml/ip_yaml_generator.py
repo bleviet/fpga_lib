@@ -174,12 +174,7 @@ class IpYamlGenerator:
         # Parameters (from generics)
         if ip_core.parameters:
             data["parameters"] = [
-                {
-                    "name": p.name,
-                    "value": p.value,
-                    "description": p.description or ""
-                }
-                for p in ip_core.parameters
+                self._parameter_to_dict(p) for p in ip_core.parameters
             ]
 
         # Memory maps reference
@@ -188,26 +183,111 @@ class IpYamlGenerator:
             data["memoryMaps"] = {"import": relative_path}
 
         # File sets with the source VHDL file
-        data["fileSets"] = {
-            "rtl": {
-                "files": [str(vhdl_path.name)]
+        data["fileSets"] = [
+            {
+                "name": "RTL_Sources",
+                "description": "RTL source files",
+                "files": [
+                    {
+                        "path": str(vhdl_path.name),
+                        "type": "vhdl"
+                    }
+                ]
             }
-        }
+        ]
 
         return data
 
     def _port_to_dict(self, port: Port) -> Dict[str, Any]:
         """Convert Port to dictionary."""
-        d = {
+        import re
+
+        d: Dict[str, Any] = {
             "name": port.name,
-            "direction": port.direction.value,
         }
-        if port.width > 1:
+
+        # Generate logicalName from port name (remove common prefixes, uppercase)
+        logical_name = port.name.upper()
+        for prefix in ['I_', 'O_', 'IO_']:
+            if logical_name.startswith(prefix):
+                logical_name = logical_name[len(prefix):]
+                break
+        d["logicalName"] = logical_name
+
+        d["direction"] = port.direction.value
+
+        # Extract width - try to get parameterized width from type string
+        width_value = self._extract_width_from_type(port.type) if port.type else None
+
+        if width_value:
+            d["width"] = width_value
+        elif port.width > 1:
             d["width"] = port.width
-        if port.type:
-            d["type"] = port.type
+
         if port.description:
             d["description"] = port.description
+
+        return d
+
+    def _extract_width_from_type(self, type_str: str) -> Optional[str]:
+        """
+        Extract width from VHDL type string.
+
+        Handles:
+        - std_logic_vector(NUM_LEDS-1 downto 0) -> "NUM_LEDS"
+        - std_logic_vector(7 downto 0) -> None (use port.width instead)
+        - std_logic_vector(WIDTH-1 downto 0) -> "WIDTH"
+        """
+        import re
+
+        if not type_str:
+            return None
+
+        # Match pattern: (PARAM-1 downto 0) or (PARAM downto 0)
+        match = re.search(r'\((\w+)(?:\s*-\s*1)?\s+downto\s+0\)', type_str, re.IGNORECASE)
+        if match:
+            param = match.group(1)
+            # If it's a number, return None (let caller use port.width)
+            if param.isdigit():
+                return None
+            return param
+
+        return None
+
+    def _parameter_to_dict(self, param) -> Dict[str, Any]:
+        """Convert Parameter to dictionary with proper formatting."""
+        d: Dict[str, Any] = {
+            "name": param.name,
+        }
+
+        # Convert value to appropriate type
+        value = param.value
+        if isinstance(value, str):
+            # Try to convert string to int or float
+            try:
+                if '.' in value:
+                    value = float(value)
+                else:
+                    value = int(value)
+            except (ValueError, TypeError):
+                pass  # Keep as string
+        d["value"] = value
+
+        # Extract dataType from description if present
+        # Format is "VHDL Type: integer" or similar
+        description = param.description or ""
+        data_type = None
+        if description.startswith("VHDL Type:"):
+            data_type = description.replace("VHDL Type:", "").strip().lower()
+            description = ""  # Clear description since we extracted the type
+
+        if data_type:
+            d["dataType"] = data_type
+
+        # Only include description if not empty
+        if description:
+            d["description"] = description
+
         return d
 
     def _bus_interface_to_dict(self, bus: BusInterface) -> Dict[str, Any]:

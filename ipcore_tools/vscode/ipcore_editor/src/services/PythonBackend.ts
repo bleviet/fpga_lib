@@ -24,6 +24,20 @@ export interface GenerateOptions {
     updateYaml?: boolean;
 }
 
+export interface ParseResult {
+    success: boolean;
+    output?: string;
+    error?: string;
+}
+
+export interface ParseOptions {
+    vendor?: string;
+    library?: string;
+    version?: string;
+    detectBus?: boolean;
+    memmap?: string;
+}
+
 export class PythonBackend {
     private pythonPath: string;
     private projectRoot: string;
@@ -142,6 +156,69 @@ export class PythonBackend {
 
             const parsed = JSON.parse(result.stdout);
             this.outputChannel.appendLine(`✓ Generated ${parsed.count} files (bus: ${parsed.busType})`);
+            return parsed;
+        } catch (error) {
+            this.outputChannel.appendLine(`✗ Error: ${error}`);
+            return {
+                success: false,
+                error: `Python backend error: ${error}`
+            };
+        }
+    }
+    /**
+     * Parse VHDL file and generate IP core YAML
+     */
+    async parseVHDL(
+        vhdlPath: string,
+        outputPath?: string,
+        options: ParseOptions = {},
+        progress?: vscode.Progress<{ message?: string; increment?: number }>
+    ): Promise<ParseResult> {
+        const scriptPath = path.join(this.projectRoot, 'scripts', 'ipcore.py');
+        const args = [
+            scriptPath,
+            'parse',
+            vhdlPath,
+            '--json',
+            '--force',
+        ];
+
+        if (outputPath) {
+            args.push('--output', outputPath);
+        }
+        if (options.vendor) {
+            args.push('--vendor', options.vendor);
+        }
+        if (options.library) {
+            args.push('--library', options.library);
+        }
+        if (options.version) {
+            args.push('--version', options.version);
+        }
+        if (options.detectBus === false) {
+            args.push('--no-detect-bus');
+        }
+        if (options.memmap) {
+            args.push('--memmap', options.memmap);
+        }
+
+        const timestamp = new Date().toISOString();
+        this.outputChannel.appendLine(`[${timestamp}] Running: ${this.pythonPath} ${args.join(' ')}`);
+        this.outputChannel.show(true);
+
+        try {
+            progress?.report({ message: 'Parsing VHDL file...' });
+            const result = await this.runPython(args);
+
+            if (result.stderr) {
+                this.outputChannel.appendLine('--- STDERR ---');
+                this.outputChannel.appendLine(result.stderr);
+            }
+
+            const parsed = JSON.parse(result.stdout);
+            if (parsed.success) {
+                this.outputChannel.appendLine(`✓ Created ${parsed.output}`);
+            }
             return parsed;
         } catch (error) {
             this.outputChannel.appendLine(`✗ Error: ${error}`);

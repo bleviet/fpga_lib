@@ -37,8 +37,30 @@
                 "command": "fpga-ip-core.generateVHDLWithBus",
                 "title": "Generate VHDL (Select Bus Type)",
                 "category": "FPGA IP Core"
+            },
+            {
+                "command": "fpga-ip-core.parseVHDL",
+                "title": "Create IP YAML from VHDL",
+                "category": "FPGA IP Core",
+                "icon": "$(file-code)"
             }
         ],
+        "menus": {
+            "explorer/context": [
+                {
+                    "command": "fpga-ip-core.parseVHDL",
+                    "when": "resourceExtname == .vhd || resourceExtname == .vhdl",
+                    "group": "fpga@1"
+                }
+            ],
+            "editor/title": [
+                {
+                    "command": "fpga-ip-core.parseVHDL",
+                    "when": "resourceExtname == .vhd || resourceExtname == .vhdl",
+                    "group": "navigation"
+                }
+            ]
+        },
         "customEditors": [
             {
                 "viewType": "fpgaMemoryMap.editor",
