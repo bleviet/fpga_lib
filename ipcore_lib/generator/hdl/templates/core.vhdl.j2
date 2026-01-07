@@ -22,12 +22,19 @@ entity {{ entity_name }}_core is
 {% endif %}
   port (
     -- Clock and reset
-    clk      : in  std_logic;
-    rst      : in  std_logic;
+    clk : in std_logic;
+    rst : in std_logic;
 
     -- Register interface (record-based)
-    regs_in  : in  t_regs_sw2hw;   -- SW-writable registers (from bus wrapper)
-    regs_out : out t_regs_hw2sw{{ ";" if user_ports else "" }}    -- HW-writable registers (to bus wrapper)
+    regs_in : in t_regs_sw2hw; -- SW-writable registers (from bus wrapper)
+    regs_out : out t_regs_hw2sw{{ ";" if secondary_bus_ports or user_ports else "" }} -- HW-writable registers (to bus wrapper)
+{% if secondary_bus_ports %}
+
+    -- Secondary Bus Interfaces
+{% for port in secondary_bus_ports %}
+    {{ "%-14s"|format(port.name) }} : {{ "%-3s"|format(port.direction) }} {{ port.type }}{{ ";" if not loop.last or user_ports else "" }}
+{% endfor %}
+{% endif %}
 {% if user_ports %}
 
     -- User ports
@@ -35,7 +42,7 @@ entity {{ entity_name }}_core is
     {{ port.name }} : {{ port.direction }} {{ port.type }}{{ ";" if not loop.last else "" }}
 {% endfor %}
 {% endif %}
-  );
+    );
 end entity {{ entity_name }}_core;
 
 architecture rtl of {{ entity_name }}_core is
@@ -59,7 +66,7 @@ begin
       else
         -- Example: Access SW-writable register fields
         -- if regs_in.control.enable = '1' then
-        --   -- Do something
+        --     -- Do something
         -- end if;
 
         -- Example: Update HW-writable register fields

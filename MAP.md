@@ -2,7 +2,9 @@
 
 ## [Backend] - Python (uv)
 
-* **Entry Point:** `scripts/generate_vhdl.py` - CLI tool that parses IP Core YAML and generates VHDL/testbench files.
+* **### Entry Points
+* `scripts/ipcore.py`: CLI tool for IP Core generation and management.
+* `pyproject.toml`: Dependency definitions and project configuration.
 * **Schema Models:** `ipcore_lib/model/` - Pydantic models for IP cores, memory maps, buses, clocks, resets, ports, and file sets (YAML validation).
 * **Runtime I/O:** `ipcore_lib/runtime/` - Hardware register access classes (Register, BitField, RegisterArrayAccessor) for drivers and testbenches.
 * **Parsers:** `ipcore_lib/parser/yaml/` - `YamlIpCoreParser` for IP core YAML; `ipcore_lib/parser/hdl/` - VHDL/Verilog parsers (deprecated).

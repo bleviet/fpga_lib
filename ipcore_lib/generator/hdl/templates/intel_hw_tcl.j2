@@ -5,7 +5,7 @@
 # with Avalon-MM slave interface for register access.
 #
 # Usage: Place this file in the same directory as your VHDL files and
-#        add the directory to Platform Designer's IP search path.
+# add the directory to Platform Designer's IP search path.
 
 # -----------------------------------------------------------------------------
 # Package Definition
@@ -16,126 +16,96 @@ package require qsys
 # Validation Callback
 # -----------------------------------------------------------------------------
 proc validate {} {
-    # Add parameter validation here if needed
+# Add parameter validation here if needed
 }
 
 # -----------------------------------------------------------------------------
 # Elaboration Callback
 # -----------------------------------------------------------------------------
 proc elaborate {} {
-    # -----------------------------------------------------------------------------
-    # Clock Interface
-    # -----------------------------------------------------------------------------
-    add_interface clk clock end
-    set_interface_property clk clockRate 0
-    set_interface_property clk ENABLED true
-    set_interface_property clk EXPORT_OF ""
-    set_interface_property clk PORT_NAME_MAP ""
-    set_interface_property clk CMSIS_SVD_VARIABLES ""
-    set_interface_property clk SVD_ADDRESS_GROUP ""
+# -----------------------------------------------------------------------------
+# Clock Interface
+# -----------------------------------------------------------------------------
+add_interface clk clock end
+set_interface_property clk clockRate 0
+set_interface_property clk ENABLED true
+set_interface_property clk EXPORT_OF ""
+set_interface_property clk PORT_NAME_MAP ""
+set_interface_property clk CMSIS_SVD_VARIABLES ""
+set_interface_property clk SVD_ADDRESS_GROUP ""
 
-    add_interface_port clk clk clk Input 1
+add_interface_port clk clk clk Input 1
 
-    # -----------------------------------------------------------------------------
-    # Reset Interface
-    # -----------------------------------------------------------------------------
-    add_interface reset reset end
-    set_interface_property reset associatedClock clk
-    set_interface_property reset synchronousEdges DEASSERT
-    set_interface_property reset ENABLED true
-    set_interface_property reset EXPORT_OF ""
-    set_interface_property reset PORT_NAME_MAP ""
-    set_interface_property reset CMSIS_SVD_VARIABLES ""
-    set_interface_property reset SVD_ADDRESS_GROUP ""
+# -----------------------------------------------------------------------------
+# Reset Interface
+# -----------------------------------------------------------------------------
+add_interface reset reset end
+set_interface_property reset associatedClock clk
+set_interface_property reset synchronousEdges DEASSERT
+set_interface_property reset ENABLED true
+set_interface_property reset EXPORT_OF ""
+set_interface_property reset PORT_NAME_MAP ""
+set_interface_property reset CMSIS_SVD_VARIABLES ""
+set_interface_property reset SVD_ADDRESS_GROUP ""
 
-    add_interface_port reset rst reset Input 1
+add_interface_port reset rst reset Input 1
 
-    # -----------------------------------------------------------------------------
-    # Slave Interface
-    # -----------------------------------------------------------------------------
-{% if bus_type == 'axil' %}
-    add_interface s0 axi4lite end
-    set_interface_property s0 associatedClock clk
-    set_interface_property s0 associatedReset reset
-    set_interface_property s0 readAcceptanceCapability 1
-    set_interface_property s0 writeAcceptanceCapability 1
-    set_interface_property s0 combinedAcceptanceCapability 1
-    set_interface_property s0 readDataReorderingDepth 1
-    set_interface_property s0 bridgesToMaster ""
-    set_interface_property s0 ENABLED true
-    set_interface_property s0 EXPORT_OF ""
-    set_interface_property s0 PORT_NAME_MAP ""
-    set_interface_property s0 CMSIS_SVD_VARIABLES ""
-    set_interface_property s0 SVD_ADDRESS_GROUP ""
+# -----------------------------------------------------------------------------
+# Slave Interface
+# -----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
+# Bus Interfaces (Generic)
+# -----------------------------------------------------------------------------
+{% for iface in expanded_bus_interfaces %}
+{% set intel_type = 'axi4lite' if iface.type == 'AXI4L' else
+'avalon' if iface.type == 'AVALON_MM' else
+'axi4stream' if iface.type == 'AXIS' else
+'avalon_streaming' if iface.type == 'AVALON_ST' else 'unknown' %}
+{% set end_type = 'end' if iface.mode in ['slave', 'sink'] else 'start' %}
 
-    add_interface_port s0 s0_awaddr awaddr Input {{ addr_width }}
-    add_interface_port s0 s0_awprot awprot Input 3
-    add_interface_port s0 s0_awvalid awvalid Input 1
-    add_interface_port s0 s0_awready awready Output 1
-    add_interface_port s0 s0_wdata wdata Input {{ data_width }}
-    add_interface_port s0 s0_wstrb wstrb Input {{ data_width // 8 }}
-    add_interface_port s0 s0_wvalid wvalid Input 1
-    add_interface_port s0 s0_wready wready Output 1
-    add_interface_port s0 s0_bresp bresp Output 2
-    add_interface_port s0 s0_bvalid bvalid Output 1
-    add_interface_port s0 s0_bready bready Input 1
-    add_interface_port s0 s0_araddr araddr Input {{ addr_width }}
-    add_interface_port s0 s0_arprot arprot Input 3
-    add_interface_port s0 s0_arvalid arvalid Input 1
-    add_interface_port s0 s0_arready arready Output 1
-    add_interface_port s0 s0_rdata rdata Output {{ data_width }}
-    add_interface_port s0 s0_rresp rresp Output 2
-    add_interface_port s0 s0_rvalid rvalid Output 1
-    add_interface_port s0 s0_rready rready Input 1
-{% else %}
-    add_interface avs avalon end
-    set_interface_property avs addressUnits WORDS
-    set_interface_property avs associatedClock clk
-    set_interface_property avs associatedReset reset
-    set_interface_property avs bitsPerSymbol 8
-    set_interface_property avs burstOnBurstBoundariesOnly false
-    set_interface_property avs burstcountUnits WORDS
-    set_interface_property avs explicitAddressSpan 0
-    set_interface_property avs holdTime 0
-    set_interface_property avs linewrapBursts false
-    set_interface_property avs maximumPendingReadTransactions 1
-    set_interface_property avs maximumPendingWriteTransactions 0
-    set_interface_property avs readLatency 1
-    set_interface_property avs readWaitTime 0
-    set_interface_property avs setupTime 0
-    set_interface_property avs timingUnits Cycles
-    set_interface_property avs writeWaitTime 0
-    set_interface_property avs ENABLED true
-    set_interface_property avs EXPORT_OF ""
-    set_interface_property avs PORT_NAME_MAP ""
-    set_interface_property avs CMSIS_SVD_VARIABLES ""
-    set_interface_property avs SVD_ADDRESS_GROUP ""
+# Interface: {{ iface.name }} ({{ iface.type }})
+add_interface {{ iface.name }} {{ intel_type }} {{ end_type }}
+set_interface_property {{ iface.name }} associatedClock clk
+set_interface_property {{ iface.name }} associatedReset reset
+set_interface_property {{ iface.name }} ENABLED true
+set_interface_property {{ iface.name }} EXPORT_OF ""
+set_interface_property {{ iface.name }} PORT_NAME_MAP ""
+set_interface_property {{ iface.name }} CMSIS_SVD_VARIABLES ""
+set_interface_property {{ iface.name }} SVD_ADDRESS_GROUP ""
 
-    add_interface_port avs avs_address address Input {{ addr_width }}
-    add_interface_port avs avs_read read Input 1
-    add_interface_port avs avs_readdata readdata Output {{ data_width }}
-    add_interface_port avs avs_readdatavalid readdatavalid Output 1
-    add_interface_port avs avs_write write Input 1
-    add_interface_port avs avs_writedata writedata Input {{ data_width }}
-    add_interface_port avs avs_byteenable byteenable Input {{ data_width // 8 }}
-    add_interface_port avs avs_waitrequest waitrequest Output 1
+# Type-specific properties
+{% if intel_type == 'axi4lite' %}
+set_interface_property {{ iface.name }} readAcceptanceCapability 1
+set_interface_property {{ iface.name }} writeAcceptanceCapability 1
+{% elif intel_type == 'avalon' %}
+set_interface_property {{ iface.name }} addressUnits WORDS
+set_interface_property {{ iface.name }} maximumPendingReadTransactions 1
 {% endif %}
 
+# Ports
+{% for port in iface.ports %}
+add_interface_port {{ iface.name }} {{ port.name }} {{ port.logical_name | lower }} {{ 'Input' if port.direction == 'in'
+else 'Output' }} {{ port.width }}
+{% endfor %}
+
+{% endfor %}
+
 {% if user_ports %}
-    # -----------------------------------------------------------------------------
-    # Conduit Interface (User Ports)
-    # -----------------------------------------------------------------------------
-    add_interface conduit conduit end
-    set_interface_property conduit associatedClock clk
-    set_interface_property conduit associatedReset reset
-    set_interface_property conduit ENABLED true
-    set_interface_property conduit EXPORT_OF ""
-    set_interface_property conduit PORT_NAME_MAP ""
-    set_interface_property conduit CMSIS_SVD_VARIABLES ""
-    set_interface_property conduit SVD_ADDRESS_GROUP ""
+# -----------------------------------------------------------------------------
+# Conduit Interface (User Ports)
+# -----------------------------------------------------------------------------
+add_interface conduit conduit end
+set_interface_property conduit associatedClock clk
+set_interface_property conduit associatedReset reset
+set_interface_property conduit ENABLED true
+set_interface_property conduit EXPORT_OF ""
+set_interface_property conduit PORT_NAME_MAP ""
+set_interface_property conduit CMSIS_SVD_VARIABLES ""
+set_interface_property conduit SVD_ADDRESS_GROUP ""
 
 {% for port in user_ports %}
-    add_interface_port conduit {{ port.name }} {{ port.name }} {{ 'Output' if port.direction == 'out' else 'Input' }} {% if port.is_parameterized %}{{ port.width_expr }}{% else %}{{ port.width | default(1) }}{% endif %}
+add_interface_port conduit {{ port.name }} {{ port.name }} {{ 'Output' if port.direction == 'out' else 'Input' }} {% if
+port.is_parameterized %}{{ port.width_expr }}{% else %}{{ port.width | default(1) }}{% endif %}
 
 {% endfor %}
 {% endif %}

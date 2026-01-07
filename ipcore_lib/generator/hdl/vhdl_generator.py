@@ -78,7 +78,8 @@ class VHDLGenerator(BaseGenerator):
         bus_type_name: str,
         use_optional_ports: List[str],
         physical_prefix: str,
-        mode: str
+        mode: str,
+        port_width_overrides: Optional[Dict[str, int]] = None
     ) -> List[Dict[str, Any]]:
         """
         Get list of active bus ports based on required + selected optional ports.
@@ -116,6 +117,10 @@ class VHDLGenerator(BaseGenerator):
                     direction = 'in' if direction == 'out' else 'out'
 
                 width = port.get('width', 1)
+                
+                # Apply width overrides
+                if port_width_overrides and logical_name in port_width_overrides:
+                    width = port_width_overrides[logical_name]
 
                 active_ports.append({
                     'logical_name': logical_name,
@@ -271,6 +276,52 @@ class VHDLGenerator(BaseGenerator):
             })
         return ports
 
+    def _expand_bus_interfaces(self, ip_core: IpCore) -> List[Dict[str, Any]]:
+        """
+        Expand bus interfaces (including arrays) into a flat list of interface dictionaries.
+        """
+        expanded = []
+        if not ip_core.bus_interfaces:
+            return []
+
+        for iface in ip_core.bus_interfaces:
+            array_def = getattr(iface, 'array', None)
+            
+            if array_def:
+                count = getattr(array_def, 'count', 1)
+                start = getattr(array_def, 'index_start', 0)
+                
+                for i in range(count):
+                    idx = start + i
+                    name_pattern = getattr(array_def, 'naming_pattern', f"{iface.name}_{{index}}")
+                    name = name_pattern.format(index=idx)
+                    
+                    prefix_pattern = getattr(array_def, 'physical_prefix_pattern', f"{iface.physical_prefix}{{index}}_")
+                    prefix = prefix_pattern.format(index=idx)
+                    
+                    expanded.append({
+                        'name': name,
+                        'type': iface.type,
+                        'mode': iface.mode.value if hasattr(iface.mode, 'value') else str(iface.mode),
+                        'physical_prefix': prefix,
+                        'use_optional_ports': iface.use_optional_ports or [],
+                        'port_width_overrides': iface.port_width_overrides or {},
+                        'associated_clock': iface.associated_clock,
+                        'associated_reset': iface.associated_reset,
+                    })
+            else:
+                expanded.append({
+                    'name': iface.name,
+                    'type': iface.type,
+                    'mode': iface.mode.value if hasattr(iface.mode, 'value') else str(iface.mode),
+                    'physical_prefix': iface.physical_prefix or 's_axi_',
+                    'use_optional_ports': iface.use_optional_ports or [],
+                    'port_width_overrides': iface.port_width_overrides or {},
+                    'associated_clock': iface.associated_clock,
+                    'associated_reset': iface.associated_reset,
+                })
+        return expanded
+
     def _get_template_context(
         self,
         ip_core: IpCore,
@@ -291,26 +342,47 @@ class VHDLGenerator(BaseGenerator):
         reset_polarity = ip_core.resets[0].polarity.value if ip_core.resets else 'activeHigh'
         reset_active_high = 'High' in reset_polarity
 
-        # Build active bus ports from primary bus interface
+        # Generic expansion of ALL bus interfaces
+        all_ifaces = self._expand_bus_interfaces(ip_core)
+        expanded_bus_interfaces = []
+        secondary_bus_ports = []
         bus_ports = []
-        if ip_core.bus_interfaces:
-            bus_iface = ip_core.bus_interfaces[0]  # Primary bus interface
-            # Map bus type name to bus_definitions key
-            bus_type_key = bus_iface.type.upper()
-            # Normalize common names
-            if bus_type_key in ['AXIL', 'AXI4-LITE', 'AXI4LITE']:
-                bus_type_key = 'AXI4L'
-            elif bus_type_key in ['AVMM', 'AVALON-MM']:
-                bus_type_key = 'AVALON_MM'
+        bus_prefix = 's_axi'
 
-            physical_prefix = bus_iface.physical_prefix or 's_axi_'
-            bus_ports = self._get_active_bus_ports(
-                bus_type_name=bus_type_key,
-                use_optional_ports=bus_iface.use_optional_ports or [],
-                physical_prefix=physical_prefix,
-                mode=bus_iface.mode.value if hasattr(bus_iface.mode, 'value') else str(bus_iface.mode)
-            )
-            bus_prefix = physical_prefix[:-1] if physical_prefix.endswith('_') else physical_prefix
+        if all_ifaces:
+             # Primary bus is assumed to be the first one (index 0)
+             # This aligns with the 'bus_type' argument which typically controls the Wrapper generation for the Primary bus.
+             primary_iface = all_ifaces[0]
+             bus_prefix = primary_iface['physical_prefix'][:-1] if primary_iface['physical_prefix'].endswith('_') else primary_iface['physical_prefix']
+
+             for i, iface in enumerate(all_ifaces):
+                 # Map type name
+                 bus_type_key = iface['type']
+                 if hasattr(bus_type_key, 'upper'): bus_type_key = bus_type_key.upper()
+                 
+                 if bus_type_key in ['AXIL', 'AXI4-LITE', 'AXI4LITE']: bus_type_key = 'AXI4L'
+                 elif bus_type_key in ['AVMM', 'AVALON-MM']: bus_type_key = 'AVALON_MM'
+                 elif bus_type_key == 'AXIS': bus_type_key = 'AXIS'
+                 elif bus_type_key == 'AVALON_ST': bus_type_key = 'AVALON_ST'
+
+                 active_ports = self._get_active_bus_ports(
+                     bus_type_name=bus_type_key,
+                     use_optional_ports=iface['use_optional_ports'],
+                     physical_prefix=iface['physical_prefix'],
+                     mode=iface['mode'],
+                     port_width_overrides=iface['port_width_overrides']
+                 )
+                 
+                 # Store ports in the interface dict for templates
+                 iface['ports'] = active_ports
+                 expanded_bus_interfaces.append(iface)
+
+                 if i == 0:
+                     # Primary bus ports (for wrapper)
+                     bus_ports = active_ports
+                 else:
+                     # Secondary bus ports (for core entity)
+                     secondary_bus_ports.extend(active_ports)
 
         return {
             'entity_name': ip_core.vlnv.name.lower(),
@@ -321,7 +393,9 @@ class VHDLGenerator(BaseGenerator):
             'user_ports': self._prepare_user_ports(ip_core),
             'bus_type': bus_type,
             'bus_ports': bus_ports,
-        'bus_prefix': bus_prefix if ip_core.bus_interfaces else 's_axi',
+            'secondary_bus_ports': secondary_bus_ports,
+            'expanded_bus_interfaces': expanded_bus_interfaces,
+            'bus_prefix': bus_prefix if ip_core.bus_interfaces else 's_axi',
             'data_width': 32,
             'addr_width': 8,
             'reg_width': 4,
