@@ -31,8 +31,8 @@ async def test_register_access(dut):
     # 3. Initialize Bus and Driver
     bus = CocotbBus(dut, "s_axi", dut.{{ clock_port }}, dut.{{ reset_port }})
 
-    # Locate the memmap file (use original .mm.yml from parent directory)
-    memmap_path = os.path.join(os.path.dirname(__file__), "../{{ entity_name }}.mm.yml")
+    # Locate the memmap file (relative path from test file to memmap)
+    memmap_path = os.path.join(os.path.dirname(__file__), "{{ memmap_relpath }}")
     if not os.path.exists(memmap_path):
         dut._log.error(f"Memory map file not found: {memmap_path}")
         assert False, f"Missing memmap: {memmap_path}"
@@ -120,7 +120,7 @@ async def test_field_access(dut):
 
     # Initialize driver
     bus = CocotbBus(dut, "s_axi", dut.{{ clock_port }}, dut.{{ reset_port }})
-    memmap_path = os.path.join(os.path.dirname(__file__), "../{{ entity_name }}.mm.yml")
+    memmap_path = os.path.join(os.path.dirname(__file__), "{{ memmap_relpath }}")
     driver = load_driver(memmap_path, bus)
 
     dut._log.info("Testing field-level access...")

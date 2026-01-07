@@ -219,6 +219,8 @@ class VHDLGenerator(BaseGenerator):
             'clock_port': clock_port,
             'reset_port': reset_port,
             'reset_active_high': reset_active_high,
+            # Relative path from tb/ directory to memmap file (2 levels up for structured output)
+            'memmap_relpath': f"../../{ip_core.vlnv.name.lower()}.mm.yml",
         }
 
     def generate_package(self, ip_core: IpCore) -> str:
