@@ -303,12 +303,14 @@ class VHDLGenerator(BaseGenerator):
             elif bus_type_key in ['AVMM', 'AVALON-MM']:
                 bus_type_key = 'AVALON_MM'
 
+            physical_prefix = bus_iface.physical_prefix or 's_axi_'
             bus_ports = self._get_active_bus_ports(
                 bus_type_name=bus_type_key,
                 use_optional_ports=bus_iface.use_optional_ports or [],
-                physical_prefix=bus_iface.physical_prefix or 's_axi_',
+                physical_prefix=physical_prefix,
                 mode=bus_iface.mode.value if hasattr(bus_iface.mode, 'value') else str(bus_iface.mode)
             )
+            bus_prefix = physical_prefix[:-1] if physical_prefix.endswith('_') else physical_prefix
 
         return {
             'entity_name': ip_core.vlnv.name.lower(),
@@ -319,6 +321,7 @@ class VHDLGenerator(BaseGenerator):
             'user_ports': self._prepare_user_ports(ip_core),
             'bus_type': bus_type,
             'bus_ports': bus_ports,
+        'bus_prefix': bus_prefix if ip_core.bus_interfaces else 's_axi',
             'data_width': 32,
             'addr_width': 8,
             'reg_width': 4,
