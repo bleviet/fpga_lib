@@ -21,3 +21,19 @@ trigger: always_on
 - **Tools:** Standalone tools in `/ipcore_tools/` (Python GUI/TUI editors, VSCode extension).
 - **Schemas:** IP Core and Memory Map specifications in `/ipcore_spec/`.
 - **Tests:** All tests are in `/fpga_lib/tests/` with subdirectories matching the source structure.
+
+## Documentation Standards: Usage vs. Architecture
+
+### 1. Separation of Concerns
+Documentation must be split into two distinct categories:
+- **Usage (The "How"):** Instructions for end-users or developers on running code (e.g., CLI commands, function arguments).
+- **Architecture (The "Why"):** Explanations of design choices, trade-offs, and technology selection.
+
+### 2. Location of Documentation
+- **Usage Docs:** Go into `README.md` files and standard function/class **Docstrings**.
+- **Architecture Docs:** MUST be placed in a dedicated `docs/ARCHITECTURE.md` file (or a distinct `## Architecture & Design` section at the bottom of the root README).
+
+### 3. The "Rationale" Requirement
+When documenting architecture, you must explicitly answer "Why?" for major decisions.
+- **Bad:** "We use Pydantic." (Statement of fact)
+- **Good:** "We chose **Pydantic** over standard `dataclasses` because we require strict **runtime validation** and type coercion for the user-provided YAML files, which dataclasses do not provide natively."
