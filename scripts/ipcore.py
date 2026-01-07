@@ -5,9 +5,11 @@ ipcore - IP Core scaffolding and generation tool.
 Usage:
     python scripts/ipcore.py generate my_core.ip.yml --output ./generated
     python scripts/ipcore.py generate my_core.ip.yml --json --progress  # VS Code mode
+    python scripts/ipcore.py parse my_core.vhd --output my_core.ip.yml
 
 Subcommands:
     generate    Generate VHDL/testbench from IP core YAML
+    parse       Parse VHDL file and generate IP core YAML
     validate    Validate IP core YAML (future)
     new         Create new IP core from template (future)
 """
@@ -23,6 +25,7 @@ sys.path.insert(0, str(project_root))
 
 from fpga_lib.generator.hdl.vhdl_generator import VHDLGenerator
 from fpga_lib.parser.yaml.ip_yaml_parser import YamlIpCoreParser
+from fpga_lib.generator.yaml.ip_yaml_generator import IpYamlGenerator
 
 # Map YAML bus types to generator templates
 BUS_TYPE_MAP = {
@@ -132,6 +135,62 @@ def cmd_generate(args):
         sys.exit(1)
 
 
+def cmd_parse(args):
+    """Parse VHDL file and generate IP core YAML."""
+    vhdl_path = Path(args.input)
+
+    if not vhdl_path.exists():
+        print(f"Error: VHDL file not found: {vhdl_path}")
+        sys.exit(1)
+
+    try:
+        generator = IpYamlGenerator(detect_bus=not args.no_detect_bus)
+
+        yaml_content = generator.generate(
+            vhdl_path=vhdl_path,
+            vendor=args.vendor,
+            library=args.library,
+            version=args.version,
+            memmap_path=Path(args.memmap) if args.memmap else None,
+        )
+
+        # Determine output path
+        if args.output:
+            output_path = Path(args.output)
+        else:
+            # Extract entity name from YAML content
+            import yaml as yaml_lib
+            data = yaml_lib.safe_load(yaml_content)
+            entity_name = data.get('vlnv', {}).get('name', 'output')
+            output_path = vhdl_path.parent / f"{entity_name}.ip.yml"
+
+        # Check if output exists
+        if output_path.exists() and not args.force:
+            print(f"Error: Output file exists: {output_path}")
+            print("Use --force to overwrite")
+            sys.exit(1)
+
+        # Write output
+        output_path.write_text(yaml_content)
+
+        if args.json:
+            print(json.dumps({
+                'success': True,
+                'output': str(output_path),
+            }))
+        else:
+            print(f"✓ Generated: {output_path}")
+
+    except Exception as e:
+        if args.json:
+            print(json.dumps({'success': False, 'error': str(e)}))
+        else:
+            print(f"Error: {e}")
+            import traceback
+            traceback.print_exc()
+        sys.exit(1)
+
+
 def main():
     parser = argparse.ArgumentParser(
         prog='ipcore',
@@ -161,9 +220,26 @@ def main():
                             help='Enable progress output')
     gen_parser.set_defaults(func=cmd_generate)
 
+    # parse subcommand
+    parse_parser = subparsers.add_parser('parse', help='Parse VHDL file and generate IP core YAML')
+    parse_parser.add_argument('input', help='VHDL source file')
+    parse_parser.add_argument('--output', '-o', help='Output .ip.yml path (default: {entity}.ip.yml)')
+    parse_parser.add_argument('--vendor', default='user', help='VLNV vendor name (default: user)')
+    parse_parser.add_argument('--library', default='ip', help='VLNV library name (default: ip)')
+    parse_parser.add_argument('--version', default='1.0', help='VLNV version (default: 1.0)')
+    parse_parser.add_argument('--no-detect-bus', action='store_true',
+                              help='Disable automatic bus interface detection')
+    parse_parser.add_argument('--memmap', help='Path to memory map file to reference')
+    parse_parser.add_argument('--force', '-f', action='store_true',
+                              help='Overwrite existing output file')
+    parse_parser.add_argument('--json', action='store_true',
+                              help='JSON output (for VS Code integration)')
+    parse_parser.set_defaults(func=cmd_parse)
+
     args = parser.parse_args()
     args.func(args)
 
 
 if __name__ == "__main__":
     main()
+
