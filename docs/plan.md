@@ -96,9 +96,9 @@ ip_core = parser.parse("timer.vhd")  # Pure LLM parsing
 **Goal:** Establish the single source of truth
 
 **Tasks:**
-1. **Define Pydantic models** in `fpga_lib/model/`:
+1. **Define Pydantic models** in `ipcore_lib/model/`:
    ```python
-   # fpga_lib/model/core.py
+   # ipcore_lib/model/core.py
    class IpCore(BaseModel):
        vlnv: VLNV
        description: str
@@ -107,7 +107,7 @@ ip_core = parser.parse("timer.vhd")  # Pure LLM parsing
        bus_interfaces: List[BusInterface] = []
        memory_maps: List[MemoryMap] = []
    
-   # fpga_lib/model/bus.py
+   # ipcore_lib/model/bus.py
    class BusInterface(BaseModel):
        name: str
        bus_type: BusType  # Enum: AXI4L, AXIS, Avalon, etc.
@@ -115,7 +115,7 @@ ip_core = parser.parse("timer.vhd")  # Pure LLM parsing
        port_maps: Dict[str, str]
        memory_map: Optional[MemoryMapReference]
    
-   # fpga_lib/model/memory.py
+   # ipcore_lib/model/memory.py
    class MemoryMap(BaseModel):
        name: str
        address_blocks: List[AddressBlock]
@@ -129,13 +129,13 @@ ip_core = parser.parse("timer.vhd")  # Pure LLM parsing
        register_arrays: List[RegisterArray] = []
    ```
 
-2. **Integrate existing register models** from `fpga_lib/core/register.py`:
+2. **Integrate existing register models** from `ipcore_lib/core/register.py`:
    - Ensure `Register` and `BitField` classes work seamlessly with new `MemoryMap` model
    - Add Pydantic `model_validate` support to existing dataclasses
 
 3. **Create validation rules**:
    ```python
-   # fpga_lib/model/validators.py
+   # ipcore_lib/model/validators.py
    def validate_address_alignment(register: Register) -> List[ValidationError]:
        """Registers must be aligned to their width."""
        if register.offset % (register.width // 8) != 0:
@@ -170,12 +170,12 @@ ip_core = parser.parse("timer.vhd")  # Pure LLM parsing
 
 **Tasks:**
 1. **YAML Parser** (already exists, enhance):
-   - Move `examples/gpio/memory_map_loader.py` → `fpga_lib/parser/yaml/memory_map_parser.py`
+   - Move `examples/gpio/memory_map_loader.py` → `ipcore_lib/parser/yaml/memory_map_parser.py`
    - Extend to parse full IP core definitions (not just memory maps)
    - Support the enhanced YAML schema from `docs/notes.md`
 
 2. **Pure LLM VHDL Parser** (replace existing):
-   - Build on `fpga_lib/parser/hdl/vhdl_ai_parser.py` (already implemented)
+   - Build on `ipcore_lib/parser/hdl/vhdl_ai_parser.py` (already implemented)
    - **LLM-Powered Parsing**: Complete analysis in single pass
      - Integrate `llm_core` providers for AI-powered parsing
      - Extract entity name, description, ports, generics
@@ -218,7 +218,7 @@ ip_core = parser.parse("timer.vhd")  # Pure LLM parsing
 
 3. **Create Parser Registry**:
    ```python
-   # fpga_lib/parser/registry.py
+   # ipcore_lib/parser/registry.py
    class ParserFactory:
        _parsers: Dict[str, Type[IIpParser]] = {}
        
@@ -244,10 +244,10 @@ ip_core = parser.parse("timer.vhd")  # Pure LLM parsing
    - Option to parse with warnings vs strict mode
 
 5. **LLM Integration Setup**:
-   - Add `llm_core` as dependency to `fpga_lib`
+   - Add `llm_core` as dependency to `ipcore_lib`
    - Create configuration for LLM provider selection:
      ```python
-     # fpga_lib/config.py
+     # ipcore_lib/config.py
      class ParserConfig(BaseModel):
          llm_provider: str = "ollama"               # Default to local
          llm_model: str = "gemma3:12b"         # Default model
@@ -266,13 +266,13 @@ ip_core = parser.parse("timer.vhd")  # Pure LLM parsing
 
 **Tasks:**
 1. **VHDL Generator** (enhance existing):
-   - Move existing generator to `fpga_lib/generator/hdl/vhdl_generator.py`
+   - Move existing generator to `ipcore_lib/generator/hdl/vhdl_generator.py`
    - Use Jinja2 templates (already done)
    - Template simplification: remove logic, use `@property` from models
 
 2. **YAML Generator**:
    ```python
-   # fpga_lib/generator/yaml/yaml_generator.py
+   # ipcore_lib/generator/yaml/yaml_generator.py
    class YamlGenerator(IIpGenerator):
        def generate(self, ip_core: IpCore, output_path: Path) -> None:
            data = ip_core.model_dump(exclude_none=True)
@@ -282,7 +282,7 @@ ip_core = parser.parse("timer.vhd")  # Pure LLM parsing
 
 3. **Documentation Generator** (new):
    ```python
-   # fpga_lib/generator/docs/markdown_generator.py
+   # ipcore_lib/generator/docs/markdown_generator.py
    class MarkdownGenerator(IIpGenerator):
        def generate(self, ip_core: IpCore, output_path: Path) -> None:
            template = self.env.get_template("memory_map.md.j2")
@@ -292,7 +292,7 @@ ip_core = parser.parse("timer.vhd")  # Pure LLM parsing
 
 4. **C Header Generator** (new):
    ```python
-   # fpga_lib/generator/sw/c_header_generator.py
+   # ipcore_lib/generator/sw/c_header_generator.py
    class CHeaderGenerator(IIpGenerator):
        def generate(self, ip_core: IpCore, output_path: Path) -> None:
            # Generate #define CTRL_REG_OFFSET 0x00
@@ -302,7 +302,7 @@ ip_core = parser.parse("timer.vhd")  # Pure LLM parsing
 
 5. **Generator Registry** (mirrors parser registry):
    ```python
-   # fpga_lib/generator/registry.py
+   # ipcore_lib/generator/registry.py
    class GeneratorFactory:
        # Same pattern as ParserFactory
        pass
@@ -320,7 +320,7 @@ ip_core = parser.parse("timer.vhd")  # Pure LLM parsing
 **Tasks:**
 1. **IpCoreManager facade**:
    ```python
-   # fpga_lib/manager.py
+   # ipcore_lib/manager.py
    class IpCoreManager:
        def __init__(self):
            self.parser_factory = ParserFactory()
@@ -356,7 +356,7 @@ ip_core = parser.parse("timer.vhd")  # Pure LLM parsing
 
 2. **CLI tool**:
    ```python
-   # fpga_lib/cli.py
+   # ipcore_lib/cli.py
    import click
    
    @click.group()
@@ -391,10 +391,10 @@ ip_core = parser.parse("timer.vhd")  # Pure LLM parsing
    ```python
    # setup.py
    setup(
-       name='fpga_lib',
+       name='ipcore_lib',
        entry_points={
            'console_scripts': [
-               'fpga-tool=fpga_lib.cli:cli',
+               'fpga-tool=ipcore_lib.cli:cli',
            ],
        },
    )
@@ -454,7 +454,7 @@ ip_core = parser.parse("timer.vhd")  # Pure LLM parsing
 
 ### Current Implementation Status
 
-The pure LLM parser has been **successfully implemented** in `fpga_lib/parser/hdl/vhdl_ai_parser.py`.
+The pure LLM parser has been **successfully implemented** in `ipcore_lib/parser/hdl/vhdl_ai_parser.py`.
 
 **Key Features:**
 1. ✅ Single-phase LLM parsing (no pyparsing dependency)
@@ -476,7 +476,7 @@ VHDLAiParser
 
 **Example Usage:**
 ```python
-from fpga_lib.parser.hdl.vhdl_ai_parser import VHDLAiParser, ParserConfig
+from ipcore_lib.parser.hdl.vhdl_ai_parser import VHDLAiParser, ParserConfig
 
 # Configure parser
 config = ParserConfig(
@@ -553,7 +553,7 @@ ip_core = parser.parse_file(Path("timer.vhd"))
 **Tasks:**
 1. **SQLite index schema**:
    ```sql
-   -- fpga_lib/library/schema.sql
+   -- ipcore_lib/library/schema.sql
    CREATE TABLE ip_cores ( ... );  -- As defined in notes.md
    CREATE VIRTUAL TABLE ip_cores_fts USING fts5( ... );
    CREATE TABLE dependencies ( ... );
@@ -568,7 +568,7 @@ ip_core = parser.parse_file(Path("timer.vhd"))
 
 2. **Parallel indexer implementation**:
    ```python
-   # fpga_lib/library/indexer.py
+   # ipcore_lib/library/indexer.py
    from concurrent.futures import ProcessPoolExecutor, as_completed
    import multiprocessing
    
@@ -610,7 +610,7 @@ ip_core = parser.parse_file(Path("timer.vhd"))
 
 3. **File system watcher**:
    ```python
-   # fpga_lib/library/watcher.py
+   # ipcore_lib/library/watcher.py
    from watchdog.observers import Observer
    
    class FileSystemWatcher:
@@ -621,7 +621,7 @@ ip_core = parser.parse_file(Path("timer.vhd"))
 
 4. **AI-powered query engine with LLM fallback**:
    ```python
-   # fpga_lib/library/query.py
+   # ipcore_lib/library/query.py
    import numpy as np
    from sentence_transformers import SentenceTransformer
    from typing import Optional
@@ -716,10 +716,10 @@ ip_core = parser.parse_file(Path("timer.vhd"))
 **Tasks:**
 1. **Library manager facade**:
    ```python
-   # fpga_lib/library/manager.py
+   # ipcore_lib/library/manager.py
    class LibraryManager:
        def __init__(self, project_root: Path):
-           self.indexer = IpCoreIndexer(project_root, project_root / ".fpga_lib" / "index.db")
+           self.indexer = IpCoreIndexer(project_root, project_root / ".ipcore_lib" / "index.db")
            self.watcher = FileSystemWatcher(project_root, self.indexer)
            self.query = IpCoreQuery(self.indexer.db)
        
@@ -750,7 +750,7 @@ ip_core = parser.parse_file(Path("timer.vhd"))
 **Tasks:**
 1. **Build dependency graph**:
    ```python
-   # fpga_lib/library/dependency_graph.py
+   # ipcore_lib/library/dependency_graph.py
    import networkx as nx
    
    class DependencyGraph:
@@ -794,7 +794,7 @@ ip_core = parser.parse_file(Path("timer.vhd"))
 **Tasks:**
 1. **Plugin contract**:
    ```python
-   # fpga_lib/gui/plugin_api.py
+   # ipcore_lib/gui/plugin_api.py
    from abc import ABC, abstractmethod
    
    class IPlugin(ABC):
@@ -821,7 +821,7 @@ ip_core = parser.parse_file(Path("timer.vhd"))
 
 2. **Event bus**:
    ```python
-   # fpga_lib/gui/event_bus.py
+   # ipcore_lib/gui/event_bus.py
    class Event(BaseModel):
        event_type: str
        timestamp: datetime = Field(default_factory=datetime.now)
@@ -841,7 +841,7 @@ ip_core = parser.parse_file(Path("timer.vhd"))
 
 3. **Service registry**:
    ```python
-   # fpga_lib/gui/service_registry.py
+   # ipcore_lib/gui/service_registry.py
    class IService(ABC): pass
    
    class ServiceRegistry:
@@ -861,7 +861,7 @@ ip_core = parser.parse_file(Path("timer.vhd"))
 
 4. **Plugin manager**:
    ```python
-   # fpga_lib/gui/plugin_manager.py
+   # ipcore_lib/gui/plugin_manager.py
    class PluginManager:
        def __init__(self, event_bus: EventBus, service_registry: ServiceRegistry):
            self.event_bus = event_bus
@@ -870,7 +870,7 @@ ip_core = parser.parse_file(Path("timer.vhd"))
        
        def discover_plugins(self) -> None:
            """Find plugins via entry points."""
-           for entry_point in importlib.metadata.entry_points(group='fpga_lib.plugins'):
+           for entry_point in importlib.metadata.entry_points(group='ipcore_lib.plugins'):
                plugin_class = entry_point.load()
                plugin = plugin_class()
                self.plugins[plugin.name] = plugin
@@ -884,7 +884,7 @@ ip_core = parser.parse_file(Path("timer.vhd"))
 
 5. **Main application window**:
    ```python
-   # fpga_lib/gui/main_window.py
+   # ipcore_lib/gui/main_window.py
    class MainWindow(QMainWindow):
        def __init__(self):
            super().__init__()
@@ -952,9 +952,9 @@ ip_core = parser.parse_file(Path("timer.vhd"))
    ```python
    # plugins/memory_map_editor/setup.py
    setup(
-       name='fpga_lib_memory_map_editor',
+       name='ipcore_lib_memory_map_editor',
        entry_points={
-           'fpga_lib.plugins': [
+           'ipcore_lib.plugins': [
                'memory_map_editor = plugins.memory_map_editor:MemoryMapEditorPlugin'
            ]
        }
@@ -1201,7 +1201,7 @@ ip_core = parser.parse_file(Path("timer.vhd"))
 **Tasks:**
 1. **Similarity search on GPU**:
    ```python
-   # fpga_lib/library/gpu_search.py
+   # ipcore_lib/library/gpu_search.py
    import torch
    import cupy as cp  # CUDA-accelerated NumPy
    
@@ -1234,7 +1234,7 @@ ip_core = parser.parse_file(Path("timer.vhd"))
 
 2. **Parallel validation on GPU**:
    ```python
-   # fpga_lib/validator/gpu_validator.py
+   # ipcore_lib/validator/gpu_validator.py
    class GpuValidator:
        def validate_address_alignment_batch(self, registers: List[Register]) -> List[bool]:
            """Check alignment for thousands of registers in parallel."""
@@ -1250,7 +1250,7 @@ ip_core = parser.parse_file(Path("timer.vhd"))
 
 3. **Configuration**:
    ```python
-   # fpga_lib/config.py
+   # ipcore_lib/config.py
    @dataclass
    class PerformanceConfig:
        use_gpu: bool = True  # Auto-detect CUDA
@@ -1278,7 +1278,7 @@ ip_core = parser.parse_file(Path("timer.vhd"))
 **Tasks:**
 1. **Distributed indexing with Ray**:
    ```python
-   # fpga_lib/library/distributed_indexer.py
+   # ipcore_lib/library/distributed_indexer.py
    import ray
    
    @ray.remote
@@ -1324,7 +1324,7 @@ ip_core = parser.parse_file(Path("timer.vhd"))
 2. **Cloud deployment support**:
    ```python
    # Support for AWS Lambda, Google Cloud Functions for massive projects
-   # fpga_lib/cloud/lambda_indexer.py
+   # ipcore_lib/cloud/lambda_indexer.py
    def lambda_parse_handler(event, context):
        """AWS Lambda function to parse single file."""
        s3_path = event['s3_path']
@@ -1345,7 +1345,7 @@ ip_core = parser.parse_file(Path("timer.vhd"))
 **Tasks:**
 1. **AI-powered command palette** (VS Code style with suggestions):
    ```python
-   # fpga_lib/gui/command_palette.py
+   # ipcore_lib/gui/command_palette.py
    class CommandPalette(QDialog):
        def __init__(self, plugin_manager: PluginManager, ai_assistant: AiAssistantPlugin):
            super().__init__()
@@ -1386,7 +1386,7 @@ ip_core = parser.parse_file(Path("timer.vhd"))
 
 3. **Theme support**:
    ```python
-   # fpga_lib/gui/themes.py
+   # ipcore_lib/gui/themes.py
    class ThemeManager:
        def apply_theme(self, theme_name: str):
            if theme_name == "dark":
@@ -1443,7 +1443,7 @@ ip_core = parser.parse_file(Path("timer.vhd"))
 
 5. **Adaptive performance**:
    ```python
-   # fpga_lib/perf/adaptive.py
+   # ipcore_lib/perf/adaptive.py
    class AdaptivePerformanceManager:
        def __init__(self):
            self.config = PerformanceConfig.auto_detect()
@@ -1571,7 +1571,7 @@ ip_core = parser.parse_file(Path("timer.vhd"))
 
 ## Next Steps (Immediate Actions)
 
-1. **Week 1, Day 1**: Define `IpCore` Pydantic model in `fpga_lib/model/core.py`
+1. **Week 1, Day 1**: Define `IpCore` Pydantic model in `ipcore_lib/model/core.py`
 2. **Week 1, Day 2**: Integrate with existing `Register` class
 3. **Week 1, Day 3**: Add validation methods
 4. **Week 1, Day 4-5**: Create test suite for models
@@ -1606,23 +1606,23 @@ distributed = [
 
 # Full installation (all features)
 full = [
-    "fpga_lib[gpu,ai,distributed]",
+    "ipcore_lib[gpu,ai,distributed]",
 ]
 ```
 
 **Installation Examples:**
 ```bash
 # Basic (CPU only, multiprocessing)
-pip install fpga_lib
+pip install ipcore_lib
 
 # With AI features (CPU-based embeddings)
-pip install fpga_lib[ai]
+pip install ipcore_lib[ai]
 
 # With GPU acceleration
-pip install fpga_lib[gpu,ai]
+pip install ipcore_lib[gpu,ai]
 
 # Enterprise (all features)
-pip install fpga_lib[full]
+pip install ipcore_lib[full]
 ```
 
 This plan builds incrementally, allowing you to ship useful tools early (CLI) while working toward the full vision (AI-enhanced, GPU-accelerated, plugin-based GUI). Each phase has clear deliverables and can be validated independently. Performance optimizations (multiprocessing, GPU, distributed) are designed as opt-in enhancements that don't break the core functionality.

@@ -222,7 +222,7 @@ Each plugin is a self-contained package that provides specific functionality:
       * Has its own entry point in `setup.py`:
         ```python
         entry_points={
-            'fpga_lib.plugins': [
+            'ipcore_lib.plugins': [
                 'memory_map_editor = plugins.memory_map_editor:MemoryMapEditorPlugin'
             ]
         }
@@ -560,7 +560,7 @@ class TimingGeneratorPlugin(IPlugin):
 3. Register in `setup.py`:
 ```python
 entry_points={
-    'fpga_lib.plugins': [
+    'ipcore_lib.plugins': [
         'timing_generator = plugins.timing_generator:TimingGeneratorPlugin'
     ]
 }

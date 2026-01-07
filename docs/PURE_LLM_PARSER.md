@@ -290,4 +290,4 @@ The migration to pure LLM parsing is a success:
 
 **Date:** December 7, 2025  
 **Status:** ✅ Complete and validated  
-**Version:** fpga_lib 1.0.0 (LLM parser)
+**Version:** ipcore_lib 1.0.0 (LLM parser)

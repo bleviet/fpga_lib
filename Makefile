@@ -1,4 +1,4 @@
-# fpga_lib Makefile
+# ipcore_lib Makefile
 # Provides convenient commands for testing and development
 
 # Default target
@@ -12,7 +12,7 @@
 .PHONY: workspace-info test-collect examples-gpio examples-register
 
 help:
-	@echo "fpga_lib Makefile Commands:"
+	@echo "ipcore_lib Makefile Commands:"
 	@echo ""
 	@echo "Testing Commands:"
 	@echo "  make test              - Run all tests"
@@ -78,35 +78,35 @@ test-verbose:
 	python -m pytest -v
 
 test-coverage:
-	python -m pytest --cov=fpga_lib --cov-report=term-missing
+	python -m pytest --cov=ipcore_lib --cov-report=term-missing
 
 # Individual test modules
 test-core:
-	python -m pytest fpga_lib/tests/core/ -v
+	python -m pytest ipcore_lib/tests/core/ -v
 
 test-parser:
-	python -m pytest fpga_lib/tests/parser/ -v
+	python -m pytest ipcore_lib/tests/parser/ -v
 
 test-generator:
-	python -m pytest fpga_lib/tests/generator/ -v
+	python -m pytest ipcore_lib/tests/generator/ -v
 
 test-roundtrip:
-	python -m pytest fpga_lib/tests/parser/hdl/test_hdl_roundtrip.py -v
+	python -m pytest ipcore_lib/tests/parser/hdl/test_hdl_roundtrip.py -v
 
 # Specific parser tests
 test-vhdl-parser:
-	python -m pytest fpga_lib/tests/parser/hdl/test_vhdl_parser.py -v
+	python -m pytest ipcore_lib/tests/parser/hdl/test_vhdl_parser.py -v
 
 test-verilog-parser:
-	python -m pytest fpga_lib/tests/parser/hdl/test_verilog_parser.py -v
+	python -m pytest ipcore_lib/tests/parser/hdl/test_verilog_parser.py -v
 
 # Specific generator tests
 test-vhdl-generator:
-	python -m pytest fpga_lib/tests/generator/hdl/test_vhdl_generator.py -v
+	python -m pytest ipcore_lib/tests/generator/hdl/test_vhdl_generator.py -v
 
 # Specific core tests
 test-ip-core:
-	python -m pytest fpga_lib/tests/core/test_ip_core.py -v
+	python -m pytest ipcore_lib/tests/core/test_ip_core.py -v
 
 # Development commands
 install:
@@ -126,7 +126,7 @@ clean:
 # Advanced test commands
 test-specific:
 	@echo "Usage: make test-file FILE=path/to/test_file.py"
-	@echo "Example: make test-file FILE=fpga_lib/tests/core/test_ip_core.py"
+	@echo "Example: make test-file FILE=ipcore_lib/tests/core/test_ip_core.py"
 
 test-file:
 	@if [ -z "$(FILE)" ]; then \
@@ -138,7 +138,7 @@ test-file:
 
 test-method:
 	@echo "Usage: make test-method FILE=path/to/test_file.py METHOD=TestClass::test_method"
-	@echo "Example: make test-method FILE=fpga_lib/tests/core/test_ip_core.py METHOD=TestIPCore::test_ipcore_creation"
+	@echo "Example: make test-method FILE=ipcore_lib/tests/core/test_ip_core.py METHOD=TestIPCore::test_ipcore_creation"
 
 test-method-run:
 	@if [ -z "$(FILE)" ] || [ -z "$(METHOD)" ]; then \
@@ -151,29 +151,29 @@ test-method-run:
 # Quick status check
 status:
 	@echo "Running quick test to check if everything is working..."
-	python -m pytest fpga_lib/tests/core/test_ip_core.py::TestIPCore::test_ipcore_creation -v
+	python -m pytest ipcore_lib/tests/core/test_ip_core.py::TestIPCore::test_ipcore_creation -v
 
 # NEORV32 specific tests (based on your recent work)
 test-neorv32:
-	python -m pytest fpga_lib/tests/parser/hdl/test_vhdl_parser.py::TestVHDLParser::test_parse_neorv32_cfs_with_generics -v
-	python -m pytest fpga_lib/tests/parser/hdl/test_hdl_roundtrip.py -k "neorv32_top" -v
+	python -m pytest ipcore_lib/tests/parser/hdl/test_vhdl_parser.py::TestVHDLParser::test_parse_neorv32_cfs_with_generics -v
+	python -m pytest ipcore_lib/tests/parser/hdl/test_hdl_roundtrip.py -k "neorv32_top" -v
 
 test-generics:
-	python -m pytest fpga_lib/tests/parser/hdl/test_vhdl_parser.py::TestVHDLParser::test_parse_entity_with_generics -v
-	python -m pytest fpga_lib/tests/parser/hdl/test_vhdl_parser.py::TestVHDLParser::test_parse_neorv32_cfs_with_generics -v
+	python -m pytest ipcore_lib/tests/parser/hdl/test_vhdl_parser.py::TestVHDLParser::test_parse_entity_with_generics -v
+	python -m pytest ipcore_lib/tests/parser/hdl/test_vhdl_parser.py::TestVHDLParser::test_parse_neorv32_cfs_with_generics -v
 
 # Code quality commands
 lint:
-	flake8 fpga_lib
+	flake8 ipcore_lib
 
 format:
-	black fpga_lib
+	black ipcore_lib
 
 format-check:
-	black --check fpga_lib
+	black --check ipcore_lib
 
 type-check:
-	mypy fpga_lib
+	mypy ipcore_lib
 
 quality: lint format-check type-check
 	@echo "All quality checks passed!"
@@ -190,9 +190,9 @@ discover:
 	@echo "=== FPGA_LIB WORKSPACE DISCOVERY ==="
 	@echo ""
 	@echo "📁 DIRECTORY STRUCTURE:"
-	@echo "  Core Library:     fpga_lib/"
+	@echo "  Core Library:     ipcore_lib/"
 	@echo "  Examples:         examples/"
-	@echo "  Tests:            fpga_lib/tests/"
+	@echo "  Tests:            ipcore_lib/tests/"
 	@echo "  Documentation:    docs/"
 	@echo ""
 	@echo "🐍 EXECUTABLE SCRIPTS:"
@@ -232,12 +232,12 @@ workspace-info:
 	@echo "  Total Python files: $$(find . -name '*.py' -not -path './.pytest_cache/*' -not -path './__pycache__/*' -not -path '*/.venv/*' | wc -l)"
 	@echo "  Test files:         $$(find . -name 'test_*.py' -not -path '*/.venv/*' | wc -l)"
 	@echo "  Example scripts:    $$(find ./examples -name '*.py' -type f -not -path '*/.venv/*' | wc -l)"
-	@echo "  Core modules:       $$(find ./fpga_lib -name '*.py' -not -name 'test_*' -not -path '*/.venv/*' | wc -l)"
+	@echo "  Core modules:       $$(find ./ipcore_lib -name '*.py' -not -name 'test_*' -not -path '*/.venv/*' | wc -l)"
 	@echo ""
 	@echo "📁 MODULE BREAKDOWN:"
-	@echo "  Core tests:         $$(find ./fpga_lib/tests/core -name 'test_*.py' -not -path '*/.venv/*' | wc -l) files"
-	@echo "  Parser tests:       $$(find ./fpga_lib/tests/parser -name 'test_*.py' -not -path '*/.venv/*' | wc -l) files"
-	@echo "  Generator tests:    $$(find ./fpga_lib/tests/generator -name 'test_*.py' -not -path '*/.venv/*' | wc -l) files"
+	@echo "  Core tests:         $$(find ./ipcore_lib/tests/core -name 'test_*.py' -not -path '*/.venv/*' | wc -l) files"
+	@echo "  Parser tests:       $$(find ./ipcore_lib/tests/parser -name 'test_*.py' -not -path '*/.venv/*' | wc -l) files"
+	@echo "  Generator tests:    $$(find ./ipcore_lib/tests/generator -name 'test_*.py' -not -path '*/.venv/*' | wc -l) files"
 	@echo "  GPIO examples:      $$(find ./examples/gpio -name '*.py' -not -path '*/.venv/*' | wc -l) files"
 	@echo "  Register examples:  $$(find ./examples/register -name '*.py' -not -path '*/.venv/*' | wc -l) files"
 
@@ -248,9 +248,9 @@ test-collect:
 test-summary:
 	@echo "=== TEST SUMMARY ==="
 	@echo "Total test files: $$(find . -name 'test_*.py' | wc -l)"
-	@echo "Core tests:       $$(find ./fpga_lib/tests/core -name 'test_*.py' | wc -l)"
-	@echo "Parser tests:     $$(find ./fpga_lib/tests/parser -name 'test_*.py' | wc -l)"
-	@echo "Generator tests:  $$(find ./fpga_lib/tests/generator -name 'test_*.py' | wc -l)"
+	@echo "Core tests:       $$(find ./ipcore_lib/tests/core -name 'test_*.py' | wc -l)"
+	@echo "Parser tests:     $$(find ./ipcore_lib/tests/parser -name 'test_*.py' | wc -l)"
+	@echo "Generator tests:  $$(find ./ipcore_lib/tests/generator -name 'test_*.py' | wc -l)"
 	@echo ""
 	@echo "Running quick test collection..."
 	@python -m pytest --collect-only 2>/dev/null | grep -E "(test_[a-zA-Z0-9_]*|collected [0-9]+ item)" | tail -1

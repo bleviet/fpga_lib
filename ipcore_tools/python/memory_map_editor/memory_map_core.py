@@ -2,7 +2,7 @@
 Memory Map Core - Model Layer
 
 Pure Python implementation of memory map data structures and business logic.
-Integrates with fpga_lib.core register abstractions.
+Integrates with ipcore_lib.core register abstractions.
 """
 
 import yaml
@@ -12,11 +12,11 @@ from pathlib import Path
 import sys
 import os
 
-# Add fpga_lib to path
+# Add ipcore_lib to path
 project_root = Path(__file__).parent.parent.parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-from fpga_lib.runtime.register import BitField, Register, AbstractBusInterface, RegisterArrayAccessor
+from ipcore_lib.runtime.register import BitField, Register, AbstractBusInterface, RegisterArrayAccessor
 
 
 class MockBusInterface(AbstractBusInterface):
@@ -147,7 +147,7 @@ class MemoryMapProject:
 
 def _normalize_access(access_str: str) -> str:
     """
-    Normalize access string to fpga_lib format.
+    Normalize access string to ipcore_lib format.
 
     Maps:
     - 'read-write' -> 'rw'

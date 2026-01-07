@@ -8,7 +8,7 @@ from typing import Optional, List, Any
 
 # Add parent directory to path if running directly
 if __name__ == "__main__":
-    # Get the fpga_lib package root (two levels up from this file)
+    # Get the ipcore_lib package root (two levels up from this file)
     package_root = Path(__file__).resolve().parent.parent.parent
     if str(package_root) not in sys.path:
         sys.path.insert(0, str(package_root))
@@ -22,8 +22,8 @@ from textual.widgets.tree import TreeNode
 from textual.coordinate import Coordinate
 from textual.geometry import Offset
 
-from fpga_lib.parser.yaml import YamlIpCoreParser
-from fpga_lib.model import MemoryMap, AddressBlock, Register, AccessType, BitField
+from ipcore_lib.parser.yaml import YamlIpCoreParser
+from ipcore_lib.model import MemoryMap, AddressBlock, Register, AccessType, BitField
 
 class EditFieldScreen(ModalScreen):
     """Screen for editing a bit field."""

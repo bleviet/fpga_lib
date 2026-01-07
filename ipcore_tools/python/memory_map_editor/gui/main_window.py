@@ -19,7 +19,7 @@ from .memory_map_outline import MemoryMapOutline
 from .register_detail_form import RegisterDetailForm
 from .bit_field_visualizer import BitFieldVisualizer
 from memory_map_core import MemoryMapProject, load_from_yaml, save_to_yaml, create_new_project
-from fpga_lib.runtime.register import Register, RegisterArrayAccessor
+from ipcore_lib.runtime.register import Register, RegisterArrayAccessor
 
 
 class ScalingDialog(QDialog):
@@ -1075,7 +1075,7 @@ class MainWindow(QMainWindow):
             "About Memory Map Editor",
             "<h3>FPGA Memory Map Editor</h3>"
             "<p>A visual editor for FPGA memory maps using Python/Qt.</p>"
-            "<p>Integrates with fpga_lib.core register abstractions.</p>"
+            "<p>Integrates with ipcore_lib.core register abstractions.</p>"
             "<p>Version 1.0.0</p>"
         )
 

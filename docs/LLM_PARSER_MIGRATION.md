@@ -148,7 +148,7 @@ end entity;
 
 **Old usage:**
 ```python
-from fpga_lib.parser.hdl.vhdl_ai_parser import VHDLAiParser, ParserConfig
+from ipcore_lib.parser.hdl.vhdl_ai_parser import VHDLAiParser, ParserConfig
 
 config = ParserConfig(
     enable_llm=True,  # Enable AI
@@ -159,7 +159,7 @@ parser = VHDLAiParser(config)
 
 **New usage:**
 ```python
-from fpga_lib.parser.hdl.vhdl_ai_parser import VHDLAiParser, ParserConfig
+from ipcore_lib.parser.hdl.vhdl_ai_parser import VHDLAiParser, ParserConfig
 
 config = ParserConfig(
     llm_provider="ollama"  # LLM always enabled

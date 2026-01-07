@@ -13,7 +13,7 @@ from PySide6.QtCore import Qt, Signal, QSize
 from PySide6.QtGui import QFont, QShortcut, QKeySequence, QColor, QBrush
 
 from memory_map_core import MemoryMapProject
-from fpga_lib.runtime.register import Register, RegisterArrayAccessor
+from ipcore_lib.runtime.register import Register, RegisterArrayAccessor
 
 
 class MemoryMapOutline(QWidget):

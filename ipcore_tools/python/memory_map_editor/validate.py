@@ -7,11 +7,11 @@ import sys
 import os
 from pathlib import Path
 
-# Add current directory and fpga_lib to Python path
+# Add current directory and ipcore_lib to Python path
 current_dir = Path(__file__).resolve().parent
-fpga_lib_dir = current_dir.parent.parent.parent
+ipcore_lib_dir = current_dir.parent.parent.parent
 sys.path.insert(0, str(current_dir))
-sys.path.insert(0, str(fpga_lib_dir))
+sys.path.insert(0, str(ipcore_lib_dir))
 
 def main():
     print("Memory Map Editor - Validation Test")
@@ -21,7 +21,7 @@ def main():
         # Test core imports
         print("Testing core imports...")
         from memory_map_core import MemoryMapProject, load_from_yaml, save_to_yaml
-        from fpga_lib.runtime.register import Register, BitField, RegisterArrayAccessor
+        from ipcore_lib.runtime.register import Register, BitField, RegisterArrayAccessor
         print("✓ Core modules imported successfully")
         
         # Test loading a sample memory map

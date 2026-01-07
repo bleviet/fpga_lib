@@ -3,7 +3,7 @@
 import sys
 from pathlib import Path
 
-# Add fpga_lib to path
+# Add ipcore_lib to path
 repo_root = Path(__file__).resolve().parent.parent.parent.parent
 sys.path.insert(0, str(repo_root))
 

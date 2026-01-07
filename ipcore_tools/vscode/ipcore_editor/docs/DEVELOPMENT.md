@@ -12,7 +12,7 @@
 
 ```bash
 # Clone repository
-cd fpga_lib/vscode-extension
+cd ipcore_lib/vscode-extension
 
 # Install dependencies
 npm install

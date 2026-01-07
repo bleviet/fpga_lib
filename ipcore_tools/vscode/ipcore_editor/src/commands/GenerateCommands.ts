@@ -2,7 +2,7 @@
  * VS Code Commands for VHDL Code Generation
  *
  * Provides commands to generate VHDL files from IP core definitions.
- * Requires Python backend (ipcore.py) with fpga_lib installed.
+ * Requires Python backend (ipcore.py) with ipcore_lib installed.
  */
 
 import * as vscode from 'vscode';
@@ -80,11 +80,11 @@ async function generateVHDL(): Promise<void> {
     const isAvailable = await pythonBackend.isAvailable();
     if (!isAvailable) {
         const action = await vscode.window.showErrorMessage(
-            'Python backend not available. Please ensure Python and fpga_lib are installed.',
+            'Python backend not available. Please ensure Python and ipcore_lib are installed.',
             'Show Setup Instructions'
         );
         if (action === 'Show Setup Instructions') {
-            vscode.env.openExternal(vscode.Uri.parse('https://github.com/bleviet/fpga_lib#installation'));
+            vscode.env.openExternal(vscode.Uri.parse('https://github.com/bleviet/ipcore_lib#installation'));
         }
         return;
     }
@@ -173,11 +173,11 @@ async function parseVHDL(resourceUri?: vscode.Uri): Promise<void> {
     const isAvailable = await pythonBackend.isAvailable();
     if (!isAvailable) {
         const action = await vscode.window.showErrorMessage(
-            'Python backend not available. Please ensure Python and fpga_lib are installed.',
+            'Python backend not available. Please ensure Python and ipcore_lib are installed.',
             'Show Setup Instructions'
         );
         if (action === 'Show Setup Instructions') {
-            vscode.env.openExternal(vscode.Uri.parse('https://github.com/bleviet/fpga_lib#installation'));
+            vscode.env.openExternal(vscode.Uri.parse('https://github.com/bleviet/ipcore_lib#installation'));
         }
         return;
     }

@@ -17,10 +17,10 @@ trigger: always_on
 - **Documentation:** Keep README files up-to-date when changing functionality.
 
 ## 3. Project Structure Awareness
-- **Python Backend:** Core library is in `/fpga_lib/` with models, parsers, generators, runtime, and drivers.
+- **Python Backend:** Core library is in `/ipcore_lib/` with models, parsers, generators, runtime, and drivers.
 - **Tools:** Standalone tools in `/ipcore_tools/` (Python GUI/TUI editors, VSCode extension).
 - **Schemas:** IP Core and Memory Map specifications in `/ipcore_spec/`.
-- **Tests:** All tests are in `/fpga_lib/tests/` with subdirectories matching the source structure.
+- **Tests:** All tests are in `/ipcore_lib/tests/` with subdirectories matching the source structure.
 
 ## Documentation Standards: Usage vs. Architecture
 

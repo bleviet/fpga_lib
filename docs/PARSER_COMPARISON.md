@@ -69,7 +69,7 @@ Return validated IpCore
 
 ```python
 # Old parser
-from fpga_lib.parser.hdl.vhdl_parser import VHDLParser
+from ipcore_lib.parser.hdl.vhdl_parser import VHDLParser
 
 parser = VHDLParser()
 result = parser.parse_file("design.vhd")
@@ -83,7 +83,7 @@ ports = ip_core.interfaces[0].ports
 
 ```python
 # AI parser
-from fpga_lib.parser.hdl.vhdl_ai_parser import VHDLAiParser
+from ipcore_lib.parser.hdl.vhdl_ai_parser import VHDLAiParser
 
 parser = VHDLAiParser()
 ip_core = parser.parse_file("design.vhd")
@@ -156,7 +156,7 @@ for param in ip_core.parameters:
 
 **New:**
 ```python
-from fpga_lib.parser.hdl.vhdl_ai_parser import VHDLAiParser, ParserConfig
+from ipcore_lib.parser.hdl.vhdl_ai_parser import VHDLAiParser, ParserConfig
 
 config = ParserConfig(enable_llm=True)
 parser = VHDLAiParser(config=config)
@@ -234,7 +234,7 @@ def process_entity(entity):  # No type hint
 
 **New:**
 ```python
-from fpga_lib.model.core import IpCore
+from ipcore_lib.model.core import IpCore
 
 def process_entity(ip_core: IpCore) -> None:
     for port in ip_core.ports:
@@ -252,16 +252,16 @@ def process_entity(ip_core: IpCore) -> None:
 
 **Old:**
 ```python
-from fpga_lib.parser.hdl.vhdl_parser import VHDLParser
-from fpga_lib.core.ip_core import IPCore
-from fpga_lib.core.port import Port, Direction
+from ipcore_lib.parser.hdl.vhdl_parser import VHDLParser
+from ipcore_lib.core.ip_core import IPCore
+from ipcore_lib.core.port import Port, Direction
 ```
 
 **New:**
 ```python
-from fpga_lib.parser.hdl.vhdl_ai_parser import VHDLAiParser, ParserConfig
-from fpga_lib.model.core import IpCore
-from fpga_lib.model.port import Port, PortDirection
+from ipcore_lib.parser.hdl.vhdl_ai_parser import VHDLAiParser, ParserConfig
+from ipcore_lib.model.core import IpCore
+from ipcore_lib.model.port import Port, PortDirection
 ```
 
 #### Step 2: Update Parser Initialization

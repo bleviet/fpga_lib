@@ -6,37 +6,37 @@ This document provides instructions for testing the pure LLM-based VHDL parser.
 
 ### Run All Tests (Excluding Integration)
 ```bash
-cd /home/balevision/workspace/bleviet/fpga_lib
-pytest fpga_lib/tests/test_vhdl_ai_parser.py -v -m "not integration and not slow"
+cd /home/balevision/workspace/bleviet/ipcore_lib
+pytest ipcore_lib/tests/test_vhdl_ai_parser.py -v -m "not integration and not slow"
 ```
 
 ### Run All Tests (Including Integration, Requires Ollama)
 ```bash
-pytest fpga_lib/tests/test_vhdl_ai_parser.py -v -m "not slow"
+pytest ipcore_lib/tests/test_vhdl_ai_parser.py -v -m "not slow"
 ```
 
 ### Run Specific Test Categories
 ```bash
 # Basic entity parsing
-pytest fpga_lib/tests/test_vhdl_ai_parser.py::TestBasicEntityParsing -v
+pytest ipcore_lib/tests/test_vhdl_ai_parser.py::TestBasicEntityParsing -v
 
 # Port parsing
-pytest fpga_lib/tests/test_vhdl_ai_parser.py::TestPortParsing -v
+pytest ipcore_lib/tests/test_vhdl_ai_parser.py::TestPortParsing -v
 
 # Generic/parameter extraction
-pytest fpga_lib/tests/test_vhdl_ai_parser.py::TestGenericParsing -v
+pytest ipcore_lib/tests/test_vhdl_ai_parser.py::TestGenericParsing -v
 
 # Complex expressions
-pytest fpga_lib/tests/test_vhdl_ai_parser.py::TestComplexExpressions -v
+pytest ipcore_lib/tests/test_vhdl_ai_parser.py::TestComplexExpressions -v
 
 # Bus interface detection
-pytest fpga_lib/tests/test_vhdl_ai_parser.py::TestBusInterfaceDetection -v
+pytest ipcore_lib/tests/test_vhdl_ai_parser.py::TestBusInterfaceDetection -v
 
 # Error handling
-pytest fpga_lib/tests/test_vhdl_ai_parser.py::TestErrorHandling -v
+pytest ipcore_lib/tests/test_vhdl_ai_parser.py::TestErrorHandling -v
 
 # Model validation
-pytest fpga_lib/tests/test_vhdl_ai_parser.py::TestModelValidation -v
+pytest ipcore_lib/tests/test_vhdl_ai_parser.py::TestModelValidation -v
 ```
 
 ## Test Structure
@@ -112,7 +112,7 @@ Tests use VHDL files from `examples/test_vhdl/`:
 ### Basic Tests
 - Python 3.11+
 - `pytest`
-- `fpga_lib` package installed
+- `ipcore_lib` package installed
 - Ollama running locally (for default tests)
 
 ### Performance Tests
@@ -148,27 +148,27 @@ export GEMINI_API_KEY=your-key-here
 
 ### Run a Single Test
 ```bash
-pytest fpga_lib/tests/test_vhdl_ai_parser.py::TestBasicEntityParsing::test_simple_counter_parsing -v
+pytest ipcore_lib/tests/test_vhdl_ai_parser.py::TestBasicEntityParsing::test_simple_counter_parsing -v
 ```
 
 ### Run Tests with Coverage
 ```bash
-pytest fpga_lib/tests/test_vhdl_ai_parser.py --cov=fpga_lib.parser.hdl --cov-report=html
+pytest ipcore_lib/tests/test_vhdl_ai_parser.py --cov=ipcore_lib.parser.hdl --cov-report=html
 ```
 
 ### Run Only Fast Tests
 ```bash
-pytest fpga_lib/tests/test_vhdl_ai_parser.py -v -m "not slow and not integration"
+pytest ipcore_lib/tests/test_vhdl_ai_parser.py -v -m "not slow and not integration"
 ```
 
 ### Run Only Integration Tests
 ```bash
-pytest fpga_lib/tests/test_vhdl_ai_parser.py -v -m integration
+pytest ipcore_lib/tests/test_vhdl_ai_parser.py -v -m integration
 ```
 
 ### Run Performance Benchmarks
 ```bash
-pytest fpga_lib/tests/test_vhdl_ai_parser.py -v -m slow --benchmark-only
+pytest ipcore_lib/tests/test_vhdl_ai_parser.py -v -m slow --benchmark-only
 ```
 
 ## Expected Results
@@ -178,31 +178,31 @@ pytest fpga_lib/tests/test_vhdl_ai_parser.py -v -m slow --benchmark-only
 ========================== test session starts ==========================
 collected 30 items / 3 deselected / 27 selected
 
-fpga_lib/tests/test_vhdl_ai_parser.py::TestBasicEntityParsing::test_simple_counter_parsing PASSED
-fpga_lib/tests/test_vhdl_ai_parser.py::TestBasicEntityParsing::test_entity_name_extraction PASSED
-fpga_lib/tests/test_vhdl_ai_parser.py::TestBasicEntityParsing::test_description_generation PASSED
-fpga_lib/tests/test_vhdl_ai_parser.py::TestPortParsing::test_simple_counter_ports PASSED
-fpga_lib/tests/test_vhdl_ai_parser.py::TestPortParsing::test_port_directions PASSED
-fpga_lib/tests/test_vhdl_ai_parser.py::TestPortParsing::test_port_widths PASSED
-fpga_lib/tests/test_vhdl_ai_parser.py::TestPortParsing::test_uart_transmitter_ports PASSED
-fpga_lib/tests/test_vhdl_ai_parser.py::TestGenericParsing::test_simple_counter_generic PASSED
-fpga_lib/tests/test_vhdl_ai_parser.py::TestGenericParsing::test_uart_transmitter_generics PASSED
-fpga_lib/tests/test_vhdl_ai_parser.py::TestGenericParsing::test_fifo_buffer_generics PASSED
-fpga_lib/tests/test_vhdl_ai_parser.py::TestComplexExpressions::test_simple_subtraction PASSED
-fpga_lib/tests/test_vhdl_ai_parser.py::TestComplexExpressions::test_power_of_two PASSED
-fpga_lib/tests/test_vhdl_ai_parser.py::TestComplexExpressions::test_division_expression PASSED
-fpga_lib/tests/test_vhdl_ai_parser.py::TestComplexExpressions::test_axi_division_expression PASSED
-fpga_lib/tests/test_vhdl_ai_parser.py::TestBusInterfaceDetection::test_axi4_lite_detection PASSED
-fpga_lib/tests/test_vhdl_ai_parser.py::TestBusInterfaceDetection::test_axi_stream_detection PASSED
-fpga_lib/tests/test_vhdl_ai_parser.py::TestBusInterfaceDetection::test_spi_detection PASSED
-fpga_lib/tests/test_vhdl_ai_parser.py::TestBusInterfaceDetection::test_wishbone_detection PASSED
-fpga_lib/tests/test_vhdl_ai_parser.py::TestBusInterfaceDetection::test_no_bus_interface PASSED
-fpga_lib/tests/test_vhdl_ai_parser.py::TestErrorHandling::test_nonexistent_file PASSED
-fpga_lib/tests/test_vhdl_ai_parser.py::TestErrorHandling::test_strict_mode_on_failure PASSED
-fpga_lib/tests/test_vhdl_ai_parser.py::TestErrorHandling::test_graceful_degradation_on_failure PASSED
-fpga_lib/tests/test_vhdl_ai_parser.py::TestModelValidation::test_valid_ip_core_model PASSED
-fpga_lib/tests/test_vhdl_ai_parser.py::TestModelValidation::test_vlnv_structure PASSED
-fpga_lib/tests/test_vhdl_ai_parser.py::TestModelValidation::test_port_model_validation PASSED
+ipcore_lib/tests/test_vhdl_ai_parser.py::TestBasicEntityParsing::test_simple_counter_parsing PASSED
+ipcore_lib/tests/test_vhdl_ai_parser.py::TestBasicEntityParsing::test_entity_name_extraction PASSED
+ipcore_lib/tests/test_vhdl_ai_parser.py::TestBasicEntityParsing::test_description_generation PASSED
+ipcore_lib/tests/test_vhdl_ai_parser.py::TestPortParsing::test_simple_counter_ports PASSED
+ipcore_lib/tests/test_vhdl_ai_parser.py::TestPortParsing::test_port_directions PASSED
+ipcore_lib/tests/test_vhdl_ai_parser.py::TestPortParsing::test_port_widths PASSED
+ipcore_lib/tests/test_vhdl_ai_parser.py::TestPortParsing::test_uart_transmitter_ports PASSED
+ipcore_lib/tests/test_vhdl_ai_parser.py::TestGenericParsing::test_simple_counter_generic PASSED
+ipcore_lib/tests/test_vhdl_ai_parser.py::TestGenericParsing::test_uart_transmitter_generics PASSED
+ipcore_lib/tests/test_vhdl_ai_parser.py::TestGenericParsing::test_fifo_buffer_generics PASSED
+ipcore_lib/tests/test_vhdl_ai_parser.py::TestComplexExpressions::test_simple_subtraction PASSED
+ipcore_lib/tests/test_vhdl_ai_parser.py::TestComplexExpressions::test_power_of_two PASSED
+ipcore_lib/tests/test_vhdl_ai_parser.py::TestComplexExpressions::test_division_expression PASSED
+ipcore_lib/tests/test_vhdl_ai_parser.py::TestComplexExpressions::test_axi_division_expression PASSED
+ipcore_lib/tests/test_vhdl_ai_parser.py::TestBusInterfaceDetection::test_axi4_lite_detection PASSED
+ipcore_lib/tests/test_vhdl_ai_parser.py::TestBusInterfaceDetection::test_axi_stream_detection PASSED
+ipcore_lib/tests/test_vhdl_ai_parser.py::TestBusInterfaceDetection::test_spi_detection PASSED
+ipcore_lib/tests/test_vhdl_ai_parser.py::TestBusInterfaceDetection::test_wishbone_detection PASSED
+ipcore_lib/tests/test_vhdl_ai_parser.py::TestBusInterfaceDetection::test_no_bus_interface PASSED
+ipcore_lib/tests/test_vhdl_ai_parser.py::TestErrorHandling::test_nonexistent_file PASSED
+ipcore_lib/tests/test_vhdl_ai_parser.py::TestErrorHandling::test_strict_mode_on_failure PASSED
+ipcore_lib/tests/test_vhdl_ai_parser.py::TestErrorHandling::test_graceful_degradation_on_failure PASSED
+ipcore_lib/tests/test_vhdl_ai_parser.py::TestModelValidation::test_valid_ip_core_model PASSED
+ipcore_lib/tests/test_vhdl_ai_parser.py::TestModelValidation::test_vlnv_structure PASSED
+ipcore_lib/tests/test_vhdl_ai_parser.py::TestModelValidation::test_port_model_validation PASSED
 
 ========================== 25 passed, 5 skipped in 180.45s ==========================
 ```
@@ -227,7 +227,7 @@ ollama pull gemma3:12b
 ls -la examples/test_vhdl/*.vhd
 
 # Check from project root
-cd /home/balevision/workspace/bleviet/fpga_lib
+cd /home/balevision/workspace/bleviet/ipcore_lib
 ```
 
 ### Slow Test Execution
@@ -237,7 +237,7 @@ cd /home/balevision/workspace/bleviet/fpga_lib
 
 ### Import Errors
 ```bash
-# Reinstall fpga_lib in development mode
+# Reinstall ipcore_lib in development mode
 pip install -e .
 ```
 
@@ -247,7 +247,7 @@ pip install -e .
 ```yaml
 - name: Run VHDL Parser Tests
   run: |
-    pytest fpga_lib/tests/test_vhdl_ai_parser.py -v \
+    pytest ipcore_lib/tests/test_vhdl_ai_parser.py -v \
       -m "not integration and not slow" \
       --junitxml=test-results.xml
 ```
@@ -257,7 +257,7 @@ pip install -e .
 test:
   script:
     - pip install -e .
-    - pytest fpga_lib/tests/test_vhdl_ai_parser.py -v \
+    - pytest ipcore_lib/tests/test_vhdl_ai_parser.py -v \
         -m "not integration and not slow"
   artifacts:
     when: always
@@ -307,8 +307,8 @@ def test_with_real_api(self, test_vhdl_dir):
 
 ### Generate Coverage Report
 ```bash
-pytest fpga_lib/tests/test_vhdl_ai_parser.py \
-    --cov=fpga_lib.parser.hdl.vhdl_ai_parser \
+pytest ipcore_lib/tests/test_vhdl_ai_parser.py \
+    --cov=ipcore_lib.parser.hdl.vhdl_ai_parser \
     --cov-report=html \
     --cov-report=term
 ```
@@ -322,27 +322,27 @@ open htmlcov/index.html
 
 ### Verbose Output
 ```bash
-pytest fpga_lib/tests/test_vhdl_ai_parser.py -vv
+pytest ipcore_lib/tests/test_vhdl_ai_parser.py -vv
 ```
 
 ### Show Print Statements
 ```bash
-pytest fpga_lib/tests/test_vhdl_ai_parser.py -s
+pytest ipcore_lib/tests/test_vhdl_ai_parser.py -s
 ```
 
 ### Stop on First Failure
 ```bash
-pytest fpga_lib/tests/test_vhdl_ai_parser.py -x
+pytest ipcore_lib/tests/test_vhdl_ai_parser.py -x
 ```
 
 ### Run Failed Tests
 ```bash
-pytest fpga_lib/tests/test_vhdl_ai_parser.py --lf
+pytest ipcore_lib/tests/test_vhdl_ai_parser.py --lf
 ```
 
 ### Debug with pdb
 ```bash
-pytest fpga_lib/tests/test_vhdl_ai_parser.py --pdb
+pytest ipcore_lib/tests/test_vhdl_ai_parser.py --pdb
 ```
 
 ## Related Documentation

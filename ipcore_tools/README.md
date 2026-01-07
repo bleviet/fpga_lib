@@ -39,7 +39,7 @@ cd vscode/ipcore_editor
 npm install
 npm run compile
 # Then: Press F5 in VSCode to launch extension development host
-# Note: Requires fpga_lib installed in your Python environment
+# Note: Requires ipcore_lib installed in your Python environment
 ```
 
 **Documentation:** See `vscode/ipcore_editor/README.md`
@@ -108,7 +108,7 @@ uv run ipcore_tools/python/memory_map_editor/main.py
 ## Related Directories
 
 - **`../ipcore_spec/`** - YAML specifications, templates, examples, and schemas
-- **`../fpga_lib/`** - Core Python library for IP core parsing and generation
+- **`../ipcore_lib/`** - Core Python library for IP core parsing and generation
 - **`../docs/`** - General documentation
 
 ---

@@ -78,10 +78,10 @@ YAML was chosen because it strikes the best balance between **human readability*
 
 ## 3. Implementation Architecture
 
-The driver is structured into layers, each with a specific responsibility. The implementation is split across several modules in `fpga_lib`:
+The driver is structured into layers, each with a specific responsibility. The implementation is split across several modules in `ipcore_lib`:
 
 ```
-fpga_lib/
+ipcore_lib/
 ├── core/
 │   └── register.py          # Runtime register classes (AccessType, BitField, Register, RegisterArrayAccessor)
 ├── model/
@@ -93,10 +93,10 @@ fpga_lib/
 
 ### Layer 1: Pydantic Models for YAML Parsing
 
-The `fpga_lib.model.memory` module provides Pydantic models for parsing and validating YAML files:
+The `ipcore_lib.model.memory` module provides Pydantic models for parsing and validating YAML files:
 
 ```python
-from fpga_lib.model import (
+from ipcore_lib.model import (
     MemoryMap,
     AddressBlock,
     RegisterDef,    # Pydantic model for YAML
@@ -110,10 +110,10 @@ from fpga_lib.model import (
 
 ### Layer 2: Runtime Register Classes
 
-The `fpga_lib.core.register` module provides runtime register classes for hardware access:
+The `ipcore_lib.core.register` module provides runtime register classes for hardware access:
 
 ```python
-from fpga_lib.core.register import (
+from ipcore_lib.core.register import (
     AccessType,             # Enum: RO, WO, RW, RW1C
     BitField,               # Runtime bit field with offset, width, access
     Register,               # Runtime register with bus I/O
@@ -217,7 +217,7 @@ class AbstractBusInterface(ABC):
 #### Simulation Backend (CocotbBus)
 
 ```python
-from fpga_lib.core.register import AbstractBusInterface
+from ipcore_lib.core.register import AbstractBusInterface
 
 class CocotbBus(AbstractBusInterface):
     """Bus interface for cocotb simulations using AXI-Lite."""
@@ -345,8 +345,8 @@ await shadow.commit()  # Single bus transaction
 The `load_driver` function creates a complete driver from a YAML memory map:
 
 ```python
-from fpga_lib.driver import load_driver, CocotbBus
-from fpga_lib.core.register import AbstractBusInterface
+from ipcore_lib.driver import load_driver, CocotbBus
+from ipcore_lib.core.register import AbstractBusInterface
 
 # For simulation
 bus = CocotbBus(dut, 's_axi', dut.clk)
@@ -369,8 +369,8 @@ await driver.GLOBAL_REGS.CONTROL.write_field('ENABLE', 1)
 ```python
 import cocotb
 from cocotb.clock import Clock
-from fpga_lib.driver import load_driver
-from fpga_lib.driver.bus import CocotbBus
+from ipcore_lib.driver import load_driver
+from ipcore_lib.driver.bus import CocotbBus
 
 @cocotb.test()
 async def test_ip_core(dut):
@@ -411,7 +411,7 @@ async def test_ip_core(dut):
 ### Hardware Test Script
 
 ```python
-from fpga_lib.driver import load_driver
+from ipcore_lib.driver import load_driver
 from my_jtag_lib import JtagBus, connect_xsdb
 
 # Connect to hardware
@@ -449,7 +449,7 @@ for i in range(64):
 
 | Module | Purpose |
 |--------|---------|
-| `fpga_lib.core.register` | Runtime register classes (`Register`, `BitField`, `AccessType`, `RegisterArrayAccessor`) |
-| `fpga_lib.model.memory` | Pydantic models for YAML parsing (`RegisterDef`, `BitFieldDef`, `MemoryMap`) |
-| `fpga_lib.driver.loader` | `load_driver()` function, `IpCoreDriver` class |
-| `fpga_lib.driver.bus` | `AbstractBusInterface`, `CocotbBus` |
+| `ipcore_lib.core.register` | Runtime register classes (`Register`, `BitField`, `AccessType`, `RegisterArrayAccessor`) |
+| `ipcore_lib.model.memory` | Pydantic models for YAML parsing (`RegisterDef`, `BitFieldDef`, `MemoryMap`) |
+| `ipcore_lib.driver.loader` | `load_driver()` function, `IpCoreDriver` class |
+| `ipcore_lib.driver.bus` | `AbstractBusInterface`, `CocotbBus` |

@@ -1,15 +1,15 @@
 # IP YAML format and Pydantic model mapping
 
-This document describes the **IP core YAML format** used by `fpga_lib`, and how it is parsed into the canonical **Pydantic models** under `fpga_lib.model.*`.
+This document describes the **IP core YAML format** used by `ipcore_lib`, and how it is parsed into the canonical **Pydantic models** under `ipcore_lib.model.*`.
 
-It is intentionally grounded in the actual implementation in `fpga_lib.parser.yaml.YamlIpCoreParser`.
+It is intentionally grounded in the actual implementation in `ipcore_lib.parser.yaml.YamlIpCoreParser`.
 
 ## Big picture
 
 - The "root" YAML file (example: `examples/ip/my_timer_core.yml`) describes an IP core: metadata, clocks/resets/ports, bus interfaces, parameters, file sets, and (optionally) memory maps.
 - Memory maps are usually kept in a separate YAML file (example: `examples/ip/my_timer_core.memmap.yml`) and referenced via `memoryMaps: { import: "..." }`.
-- Parsing is performed by `fpga_lib/parser/yaml/ip_yaml_parser.py`.
-- The output is always an `fpga_lib.model.core.IpCore` instance.
+- Parsing is performed by `ipcore_lib/parser/yaml/ip_yaml_parser.py`.
+- The output is always an `ipcore_lib.model.core.IpCore` instance.
 
 ## Parser entry point
 
@@ -17,7 +17,7 @@ It is intentionally grounded in the actual implementation in `fpga_lib.parser.ya
 
 The primary API is:
 
-- `fpga_lib.parser.yaml.YamlIpCoreParser.parse_file(path) -> fpga_lib.model.core.IpCore`
+- `ipcore_lib.parser.yaml.YamlIpCoreParser.parse_file(path) -> ipcore_lib.model.core.IpCore`
 
 Parsing is strict:
 
@@ -142,7 +142,7 @@ clocks:
     description: "..."   # optional
 ```
 
-### Model mapping (`fpga_lib.model.clock_reset.Clock`)
+### Model mapping (`ipcore_lib.model.clock_reset.Clock`)
 
 The parser constructs `Clock(...)` with:
 
@@ -172,7 +172,7 @@ resets:
     description: "..."        # optional
 ```
 
-### Model mapping (`fpga_lib.model.clock_reset.Reset`)
+### Model mapping (`ipcore_lib.model.clock_reset.Reset`)
 
 The parser constructs `Reset(...)` with:
 
@@ -202,7 +202,7 @@ ports:
     description: "..."   # optional
 ```
 
-### Model mapping (`fpga_lib.model.port.Port`)
+### Model mapping (`ipcore_lib.model.port.Port`)
 
 - `name` ← YAML `name`
 - `physical_port` ← YAML `physicalPort`
@@ -273,7 +273,7 @@ Important terms in `busInterfaces`:
 - `portWidthOverrides`: per-signal width overrides (see below).
 - `array`: a compact way to describe multiple similar interfaces (e.g. one AXI Stream per timer channel) without copy/paste.
 
-### Model mapping (`fpga_lib.model.bus.BusInterface`)
+### Model mapping (`ipcore_lib.model.bus.BusInterface`)
 
 - `name` ← YAML `name`
 - `type` ← YAML `type`
@@ -353,7 +353,7 @@ Current parser behavior (important):
 - Instead it stores `BusInterface.array: ArrayConfig` as metadata. Downstream tooling (generators / editors) is expected to expand the array if needed.
 - The `ArrayConfig` model provides helpers like `indices`, `get_instance_name(index)`, and `get_instance_prefix(index)`.
 
-Array mapping (`fpga_lib.model.bus.ArrayConfig`):
+Array mapping (`ipcore_lib.model.bus.ArrayConfig`):
 
 - `count` ← YAML `count`
 - `index_start` ← YAML `indexStart` (default: `0`)
@@ -376,7 +376,7 @@ parameters:
     description: "..."      # optional
 ```
 
-### Model mapping (`fpga_lib.model.base.Parameter`)
+### Model mapping (`ipcore_lib.model.base.Parameter`)
 
 - `name` ← YAML `name`
 - `value` ← YAML `value` (any YAML scalar/structure; stored as `Any`)
@@ -414,7 +414,7 @@ The `Parameter.data_type` field is an enum (`ParameterType`) and normalizes stri
 - The imported YAML may be a single mapping or a list; it is normalized to a list.
 - Imported file sets are parsed using the same `_parse_file_sets` logic.
 
-### Model mapping (`fpga_lib.model.fileset.FileSet`, `fpga_lib.model.fileset.File`)
+### Model mapping (`ipcore_lib.model.fileset.FileSet`, `ipcore_lib.model.fileset.File`)
 
 `FileSet` fields:
 
@@ -480,7 +480,7 @@ The parser also supports a "legacy" multi-document format:
 
 ### Mapping: memory map → model
 
-A memory map becomes `fpga_lib.model.memory.MemoryMap`:
+A memory map becomes `ipcore_lib.model.memory.MemoryMap`:
 
 - YAML `name` → `MemoryMap.name`
 - YAML `description` → `MemoryMap.description`
@@ -488,7 +488,7 @@ A memory map becomes `fpga_lib.model.memory.MemoryMap`:
 
 ### Address blocks
 
-Address blocks become `fpga_lib.model.memory.AddressBlock`.
+Address blocks become `ipcore_lib.model.memory.AddressBlock`.
 
 What is an `addressBlocks` entry?
 
@@ -526,7 +526,7 @@ Important current limitation:
 
 ### Registers
 
-Registers become `fpga_lib.model.memory.Register`.
+Registers become `ipcore_lib.model.memory.Register`.
 
 Supported YAML keys (new and legacy):
 
@@ -594,7 +594,7 @@ The template comes from `registerTemplates` loaded from the memory map YAML.
 
 ### Bit fields
 
-Bit fields become `fpga_lib.model.memory.BitField`.
+Bit fields become `ipcore_lib.model.memory.BitField`.
 
 Supported YAML keys:
 
@@ -648,10 +648,10 @@ memoryMaps:
 
 ## Where to look in code
 
-- Parser: `fpga_lib/parser/yaml/ip_yaml_parser.py`
-- Root model: `fpga_lib/model/core.py`
-- Memory map models: `fpga_lib/model/memory.py`
-- Bus models: `fpga_lib/model/bus.py`
-- Fileset models: `fpga_lib/model/fileset.py`
-- Clock/reset models: `fpga_lib/model/clock_reset.py`
+- Parser: `ipcore_lib/parser/yaml/ip_yaml_parser.py`
+- Root model: `ipcore_lib/model/core.py`
+- Memory map models: `ipcore_lib/model/memory.py`
+- Bus models: `ipcore_lib/model/bus.py`
+- Fileset models: `ipcore_lib/model/fileset.py`
+- Clock/reset models: `ipcore_lib/model/clock_reset.py`
 

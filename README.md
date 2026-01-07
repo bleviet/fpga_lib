@@ -1,4 +1,4 @@
-# fpga_lib
+# ipcore_lib
 
 A Python library for working with FPGA designs, including HDL parsing, generation, and manipulation.
 
@@ -22,7 +22,7 @@ Clone the repository and install the package using `uv`:
 
 ```bash
 git clone <repository-url>
-cd fpga_lib
+cd ipcore_lib
 uv sync
 ```
 
@@ -46,7 +46,7 @@ uv run scripts/ipcore.py generate path/to/core.ip.yml --output output_dir
 ### Parsing HDL Files
 
 ```python
-from fpga_lib.parser.hdl.vhdl_parser import VHDLParser
+from ipcore_lib.parser.hdl.vhdl_parser import VHDLParser
 
 # Parse VHDL
 vhdl_parser = VHDLParser()
@@ -65,7 +65,7 @@ This project uses pytest for testing.
 uv run pytest
 
 # Run specific test
-uv run pytest fpga_lib/tests/parser/hdl/test_vhdl_parser.py
+uv run pytest ipcore_lib/tests/parser/hdl/test_vhdl_parser.py
 ```
 
 ## License

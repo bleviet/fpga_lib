@@ -24,10 +24,10 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from fpga_lib.generator.hdl.vhdl_generator import VHDLGenerator
-from fpga_lib.parser.yaml.ip_yaml_parser import YamlIpCoreParser
-from fpga_lib.generator.yaml.ip_yaml_generator import IpYamlGenerator
-from fpga_lib.model.bus_library import BusLibrary, get_bus_library
+from ipcore_lib.generator.hdl.vhdl_generator import VHDLGenerator
+from ipcore_lib.parser.yaml.ip_yaml_parser import YamlIpCoreParser
+from ipcore_lib.generator.yaml.ip_yaml_generator import IpYamlGenerator
+from ipcore_lib.model.bus_library import BusLibrary, get_bus_library
 
 # Map YAML bus types to generator templates
 BUS_TYPE_MAP = {
@@ -195,7 +195,7 @@ def cmd_parse(args):
 
 def cmd_list_buses(args):
     """List available bus types from the bus library."""
-    from fpga_lib.model.bus_library import SUGGESTED_PREFIXES
+    from ipcore_lib.model.bus_library import SUGGESTED_PREFIXES
 
     try:
         library = get_bus_library()

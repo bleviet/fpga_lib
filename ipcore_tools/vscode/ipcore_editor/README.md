@@ -14,10 +14,10 @@ A VSCode extension providing a visual editor for FPGA memory map YAML files.
 
 ## Requirements
 
-This extension requires the **fpga_lib** Python package to be installed in your Python environment.
+This extension requires the **ipcore_lib** Python package to be installed in your Python environment.
 The extension relies on the `scripts/ipcore.py` backend for VHDL generation.
 
-### Installing fpga_lib
+### Installing ipcore_lib
 
 From the root of the repository:
 

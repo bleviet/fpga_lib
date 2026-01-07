@@ -3,17 +3,17 @@
 Memory Map Editor - Main Application Entry Point
 
 A visual editor for FPGA memory maps using Python/Qt.
-Integrates with fpga_lib.core register abstractions.
+Integrates with ipcore_lib.core register abstractions.
 """
 
 import sys
 import os
 from pathlib import Path
 
-# Get absolute path to this file and calculate fpga_lib root
+# Get absolute path to this file and calculate ipcore_lib root
 current_file = Path(__file__).resolve()  # Get absolute path
-fpga_lib_root = current_file.parent.parent.parent.parent
-sys.path.insert(0, str(fpga_lib_root))
+ipcore_lib_root = current_file.parent.parent.parent.parent
+sys.path.insert(0, str(ipcore_lib_root))
 
 # Also add current directory to path for local imports
 current_dir = current_file.parent

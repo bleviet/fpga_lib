@@ -4,15 +4,15 @@ from cocotb.clock import Clock
 from cocotb.triggers import RisingEdge, Timer
 
 # Import the driver library
-from fpga_lib.driver import load_driver
-from fpga_lib.driver.bus import CocotbBus
+from ipcore_lib.driver import load_driver
+from ipcore_lib.driver.bus import CocotbBus
 
 
 @cocotb.test()
 async def test_register_access(dut):
     """
     Test register read/write access for led_controller.
-    Generated automatically by fpga_lib
+    Generated automatically by ipcore_lib
     """
 
     # 1. Setup Clock

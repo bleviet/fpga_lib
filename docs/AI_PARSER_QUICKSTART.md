@@ -7,7 +7,7 @@ A new AI-enhanced VHDL parser that combines deterministic pyparsing with optiona
 ### Files Created
 
 ```
-fpga_lib/
+ipcore_lib/
 ├── parser/hdl/
 │   ├── vhdl_ai_parser.py           # Main AI parser (780+ lines)
 │   └── README_AI_PARSER.md         # Comprehensive documentation
@@ -26,7 +26,7 @@ fpga_lib/
 ## Quick Test (Without AI)
 
 ```bash
-cd /home/balevision/workspace/bleviet/fpga_lib
+cd /home/balevision/workspace/bleviet/ipcore_lib
 
 # Test with the example AXI peripheral
 python examples/ai_parser_demo.py examples/test_vhdl/axi_example_peripheral.vhd
@@ -65,7 +65,7 @@ python examples/ai_parser_demo.py \
 
 ### Without AI
 ```python
-from fpga_lib.parser.hdl.vhdl_ai_parser import VHDLAiParser
+from ipcore_lib.parser.hdl.vhdl_ai_parser import VHDLAiParser
 
 parser = VHDLAiParser()
 ip_core = parser.parse_file("design.vhd")
@@ -77,7 +77,7 @@ print(f"Parameters: {len(ip_core.parameters)}")
 
 ### With AI Enhancement
 ```python
-from fpga_lib.parser.hdl.vhdl_ai_parser import VHDLAiParser, ParserConfig
+from ipcore_lib.parser.hdl.vhdl_ai_parser import VHDLAiParser, ParserConfig
 
 config = ParserConfig(enable_llm=True)  # Enable AI
 parser = VHDLAiParser(config=config)
@@ -200,11 +200,11 @@ pip install -e .
 
 ```bash
 # Run unit tests
-cd /home/balevision/workspace/bleviet/fpga_lib
-python -m pytest fpga_lib/tests/test_vhdl_ai_parser.py -v
+cd /home/balevision/workspace/bleviet/ipcore_lib
+python -m pytest ipcore_lib/tests/test_vhdl_ai_parser.py -v
 
 # Run with AI integration tests (requires Ollama)
-python -m pytest fpga_lib/tests/test_vhdl_ai_parser.py -v -m integration
+python -m pytest ipcore_lib/tests/test_vhdl_ai_parser.py -v -m integration
 ```
 
 ---
@@ -234,7 +234,7 @@ python -m pytest fpga_lib/tests/test_vhdl_ai_parser.py -v -m integration
 
 ### AI Not Working?
 ```python
-from fpga_lib.parser.hdl.vhdl_ai_parser import VhdlAiAnalyzer
+from ipcore_lib.parser.hdl.vhdl_ai_parser import VhdlAiAnalyzer
 
 analyzer = VhdlAiAnalyzer(provider_name="ollama")
 if analyzer.is_available():
@@ -245,8 +245,8 @@ else:
 
 ### Import Errors?
 ```bash
-# Ensure fpga_lib is in path
-export PYTHONPATH="/home/balevision/workspace/bleviet/fpga_lib:$PYTHONPATH"
+# Ensure ipcore_lib is in path
+export PYTHONPATH="/home/balevision/workspace/bleviet/ipcore_lib:$PYTHONPATH"
 
 # Ensure llm_core is in path
 export PYTHONPATH="/home/balevision/workspace/bleviet/llm-playground/llm_core:$PYTHONPATH"
@@ -262,7 +262,7 @@ python examples/ai_parser_demo.py yourfile.vhd --verbose
 
 ## Documentation
 
-- **Full Documentation**: `fpga_lib/parser/hdl/README_AI_PARSER.md`
+- **Full Documentation**: `ipcore_lib/parser/hdl/README_AI_PARSER.md`
 - **Comparison**: `docs/PARSER_COMPARISON.md`
 - **Implementation Plan**: `docs/plan.md` (updated with LLM integration)
 

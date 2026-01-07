@@ -3,13 +3,13 @@
 ## [Backend] - Python (uv)
 
 * **Entry Point:** `scripts/generate_vhdl.py` - CLI tool that parses IP Core YAML and generates VHDL/testbench files.
-* **Schema Models:** `fpga_lib/model/` - Pydantic models for IP cores, memory maps, buses, clocks, resets, ports, and file sets (YAML validation).
-* **Runtime I/O:** `fpga_lib/runtime/` - Hardware register access classes (Register, BitField, RegisterArrayAccessor) for drivers and testbenches.
-* **Parsers:** `fpga_lib/parser/yaml/` - `YamlIpCoreParser` for IP core YAML; `fpga_lib/parser/hdl/` - VHDL/Verilog parsers (deprecated).
-* **Generators:** `fpga_lib/generator/hdl/vhdl_generator.py` - Jinja2-based VHDL code generator for packages, cores, bus wrappers, testbenches.
-* **Drivers:** `fpga_lib/driver/` - Runtime drivers for Cocotb simulation with AXI-Lite bus interface.
-* **Converters:** `fpga_lib/converter/` - Format conversion utilities.
-* **Tests:** `fpga_lib/tests/` - Test suite with core, generator, model, and parser tests.
+* **Schema Models:** `ipcore_lib/model/` - Pydantic models for IP cores, memory maps, buses, clocks, resets, ports, and file sets (YAML validation).
+* **Runtime I/O:** `ipcore_lib/runtime/` - Hardware register access classes (Register, BitField, RegisterArrayAccessor) for drivers and testbenches.
+* **Parsers:** `ipcore_lib/parser/yaml/` - `YamlIpCoreParser` for IP core YAML; `ipcore_lib/parser/hdl/` - VHDL/Verilog parsers (deprecated).
+* **Generators:** `ipcore_lib/generator/hdl/vhdl_generator.py` - Jinja2-based VHDL code generator for packages, cores, bus wrappers, testbenches.
+* **Drivers:** `ipcore_lib/driver/` - Runtime drivers for Cocotb simulation with AXI-Lite bus interface.
+* **Converters:** `ipcore_lib/converter/` - Format conversion utilities.
+* **Tests:** `ipcore_lib/tests/` - Test suite with core, generator, model, and parser tests.
 * **Dependencies:** pydantic, jinja2, pyyaml, pyparsing, textual, PySide6 (see `pyproject.toml`).
 
 ---
@@ -52,8 +52,8 @@
 
 **No direct runtime bridge exists.** The VSCode extension and Python backend are independent implementations sharing:
 
-1. **Templates:** `npm run sync-templates` copies Jinja2 templates from `fpga_lib/generator/hdl/templates/` to `ipcore_tools/vscode/ipcore_editor/src/generator/templates/`.
+1. **Templates:** `npm run sync-templates` copies Jinja2 templates from `ipcore_lib/generator/hdl/templates/` to `ipcore_tools/vscode/ipcore_editor/src/generator/templates/`.
 2. **YAML Schema:** Both use the same IP Core and Memory Map YAML format defined in `ipcore_spec/schemas/`.
-3. **Dual Implementation:** VHDL generation exists in both Python (`fpga_lib/generator/hdl/vhdl_generator.py`) and TypeScript (`ipcore_tools/vscode/ipcore_editor/src/generator/`).
+3. **Dual Implementation:** VHDL generation exists in both Python (`ipcore_lib/generator/hdl/vhdl_generator.py`) and TypeScript (`ipcore_tools/vscode/ipcore_editor/src/generator/`).
 
 The extension operates standalone without calling the Python backend at runtime.

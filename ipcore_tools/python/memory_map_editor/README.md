@@ -4,7 +4,7 @@ A complete visual editor for FPGA memory map definitions using Python and Qt.
 
 ## Overview
 
-This application provides a graphical interface for creating, editing, and managing memory map definitions for FPGA IP cores. It integrates with the fpga_lib.core system to provide a seamless development experience.
+This application provides a graphical interface for creating, editing, and managing memory map definitions for FPGA IP cores. It integrates with the ipcore_lib.core system to provide a seamless development experience.
 
 ## Features
 
@@ -13,7 +13,7 @@ This application provides a graphical interface for creating, editing, and manag
 - **Detailed Register Editing**: Form-based editing of register properties and bit fields
 - **Bit Field Visualization**: Visual representation of register bit layouts
 - **YAML Import/Export**: Human-readable configuration file format
-- **Integration**: Works with existing fpga_lib.core Register and BitField classes
+- **Integration**: Works with existing ipcore_lib.core Register and BitField classes
 
 ## Requirements
 
@@ -28,7 +28,7 @@ This application provides a graphical interface for creating, editing, and manag
 uv sync
 ```
 
-2. Ensure `fpga_lib` is installed in editable mode (handled by `uv sync` if configured in pyproject.toml).
+2. Ensure `ipcore_lib` is installed in editable mode (handled by `uv sync` if configured in pyproject.toml).
 
 ---
 
@@ -162,7 +162,7 @@ The application follows the Model-View-Controller (MVC) pattern:
 ### Model Layer (`memory_map_core.py`)
 - `MemoryMapProject`: Core data model for memory map projects
 - YAML serialization/deserialization functions
-- Integration with fpga_lib.core classes
+- Integration with ipcore_lib.core classes
 
 ### View Layer (`gui/` package)
 - `MainWindow`: Primary application window with menus and layout
@@ -256,9 +256,9 @@ When contributing to this application:
 
 ### Common Issues
 
-**Import Error**: Ensure fpga_lib is in your Python path
+**Import Error**: Ensure ipcore_lib is in your Python path
 ```bash
-export PYTHONPATH="${PYTHONPATH}:/path/to/fpga_lib"
+export PYTHONPATH="${PYTHONPATH}:/path/to/ipcore_lib"
 ```
 
 **Qt Application Not Starting**: Verify PySide6 installation

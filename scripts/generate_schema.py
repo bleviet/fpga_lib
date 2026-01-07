@@ -6,8 +6,8 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from fpga_lib.model.core import IpCore
-from fpga_lib.model.memory import MemoryMap
+from ipcore_lib.model.core import IpCore
+from ipcore_lib.model.memory import MemoryMap
 
 def generate_schema():
     output_dir = project_root / "vscode-extension" / "schemas"

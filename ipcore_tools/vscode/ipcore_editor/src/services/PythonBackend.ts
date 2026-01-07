@@ -80,18 +80,18 @@ export class PythonBackend {
     }
 
     /**
-     * Find the fpga_lib project root by looking for fpga_lib/ directory
+     * Find the ipcore_lib project root by looking for ipcore_lib/ directory
      */
     private findProjectRoot(): string {
         const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || '';
 
-        // Try to find fpga_lib directory by walking up from workspace root
+        // Try to find ipcore_lib directory by walking up from workspace root
         let current = workspaceRoot;
         for (let i = 0; i < 5; i++) {
-            const fpgaLibDir = path.join(current, 'fpga_lib');
+            const fpgaLibDir = path.join(current, 'ipcore_lib');
             const scriptsDir = path.join(current, 'scripts');
             try {
-                // Check if both fpga_lib and scripts directories exist
+                // Check if both ipcore_lib and scripts directories exist
                 const fs = require('fs');
                 if (fs.existsSync(fpgaLibDir) && fs.existsSync(scriptsDir)) {
                     return current;
@@ -116,11 +116,11 @@ export class PythonBackend {
             this.outputChannel.appendLine(`[DEBUG] Python: ${this.pythonPath}`);
             this.outputChannel.appendLine(`[DEBUG] Project root: ${this.projectRoot}`);
 
-            const result = await this.runPython(['-c', 'import fpga_lib; print("ok")']);
+            const result = await this.runPython(['-c', 'import ipcore_lib; print("ok")']);
             const available = result.stdout.includes('ok');
 
             if (!available) {
-                this.outputChannel.appendLine(`[DEBUG] fpga_lib import failed. stdout: ${result.stdout}, stderr: ${result.stderr}`);
+                this.outputChannel.appendLine(`[DEBUG] ipcore_lib import failed. stdout: ${result.stdout}, stderr: ${result.stderr}`);
             }
 
             return available;

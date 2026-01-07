@@ -4,7 +4,7 @@
 Please strictly follow the rules defined in the `.agent/rules/` directory:
 1. **Global Rules:** `.agent/rules/global.md` (Apply always)
 2. **Contextual Rules:**
-   - If working in `/fpga_lib` -> Apply `.agent/rules/python.md`
+   - If working in `/ipcore_lib` -> Apply `.agent/rules/python.md`
    - If working in `/ipcore_tools/vscode/ipcore_editor` -> Apply `.agent/rules/vscode.md`
 
 ## Quick Start

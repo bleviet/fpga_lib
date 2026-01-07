@@ -286,7 +286,7 @@ export class IpCoreEditorProvider implements vscode.CustomTextEditorProvider {
             webviewPanel.webview.postMessage({
               type: 'generateResult',
               success: false,
-              error: 'Python backend not available. Please ensure Python and fpga_lib are installed.'
+              error: 'Python backend not available. Please ensure Python and ipcore_lib are installed.'
             });
             pythonBackend.dispose();
             return;

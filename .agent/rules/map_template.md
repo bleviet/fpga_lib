@@ -10,7 +10,7 @@ trigger: always_on
 * `scripts/generate_vhdl.py`: CLI tool for IP Core YAML parsing and VHDL/testbench generation.
 * `pyproject.toml`: Dependency definitions and project configuration.
 
-### Core Library (`fpga_lib/`)
+### Core Library (`ipcore_lib/`)
 * **Models** (`model/`): Pydantic schemas (base, bus, clock_reset, core, fileset, memory, port, validators).
 * **Parsers** (`parser/`): YAML IP Core parser, VHDL/Verilog parsers (deprecated).
 * **Generators** (`generator/`): Base generator, VHDL generator with Jinja2 templates.
