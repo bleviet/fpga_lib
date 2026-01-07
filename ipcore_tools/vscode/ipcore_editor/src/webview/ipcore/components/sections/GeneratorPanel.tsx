@@ -40,13 +40,21 @@ interface DetectedBusInfo {
  * Map bus interface type to generator bus type
  */
 function mapBusType(interfaceType: string): BusType | null {
-    const type = interfaceType.toLowerCase();
-    if (type.includes('axi') || type === 'axi4l' || type === 'axi4lite') {
-        return 'axil';
+    if (!interfaceType) {
+        return null;
     }
+    const type = interfaceType.toLowerCase();
+
+    // Check Avalon first (prioritize specific matches)
     if (type.includes('avalon') || type === 'avmm' || type.includes('avalon-mm')) {
         return 'avmm';
     }
+
+    // Check AXI
+    if (type.includes('axi') || type === 'axi4l' || type === 'axi4lite') {
+        return 'axil';
+    }
+
     return null;
 }
 

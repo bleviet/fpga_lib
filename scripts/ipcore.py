@@ -36,6 +36,8 @@ BUS_TYPE_MAP = {
     'AXILITE': 'axil',
     'AVALONMM': 'avmm',
     'AVMM': 'avmm',
+    'AVALON_MM': 'avmm',
+    'AVALON-MM': 'avmm',
 }
 
 
