@@ -38,6 +38,25 @@ export interface ParseOptions {
     memmap?: string;
 }
 
+export interface BusInfo {
+    key: string;
+    vlnv: string;
+    vendor: string;
+    library: string;
+    name: string;
+    version: string;
+    requiredPorts: number;
+    optionalPorts: number;
+    suggestedPrefixes: Record<string, string>;
+}
+
+export interface BusListResult {
+    success: boolean;
+    buses?: BusInfo[];
+    library?: Record<string, { ports: Array<{ name: string; direction?: string; width?: number; presence?: string }> }>;
+    error?: string;
+}
+
 export class PythonBackend {
     private pythonPath: string;
     private projectRoot: string;
@@ -222,6 +241,29 @@ export class PythonBackend {
             return parsed;
         } catch (error) {
             this.outputChannel.appendLine(`✗ Error: ${error}`);
+            return {
+                success: false,
+                error: `Python backend error: ${error}`
+            };
+        }
+    }
+
+    /**
+     * List available bus types from the bus library
+     */
+    async listBuses(): Promise<BusListResult> {
+        const scriptPath = path.join(this.projectRoot, 'scripts', 'ipcore.py');
+        const args = [
+            scriptPath,
+            'list-buses',
+            '--json',
+        ];
+
+        try {
+            const result = await this.runPython(args);
+            return JSON.parse(result.stdout);
+        } catch (error) {
+            this.outputChannel.appendLine(`✗ Error listing buses: ${error}`);
             return {
                 success: false,
                 error: `Python backend error: ${error}`

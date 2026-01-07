@@ -10,6 +10,7 @@ Usage:
 Subcommands:
     generate    Generate VHDL/testbench from IP core YAML
     parse       Parse VHDL file and generate IP core YAML
+    list-buses  List available bus types from library
     validate    Validate IP core YAML (future)
     new         Create new IP core from template (future)
 """
@@ -26,6 +27,7 @@ sys.path.insert(0, str(project_root))
 from fpga_lib.generator.hdl.vhdl_generator import VHDLGenerator
 from fpga_lib.parser.yaml.ip_yaml_parser import YamlIpCoreParser
 from fpga_lib.generator.yaml.ip_yaml_generator import IpYamlGenerator
+from fpga_lib.model.bus_library import BusLibrary, get_bus_library
 
 # Map YAML bus types to generator templates
 BUS_TYPE_MAP = {
@@ -191,6 +193,65 @@ def cmd_parse(args):
         sys.exit(1)
 
 
+def cmd_list_buses(args):
+    """List available bus types from the bus library."""
+    from fpga_lib.model.bus_library import SUGGESTED_PREFIXES
+
+    try:
+        library = get_bus_library()
+        bus_types = library.list_bus_types()
+
+        if args.json:
+            # JSON output for VS Code integration - include full library format
+            print(json.dumps({
+                'success': True,
+                'buses': library.get_all_bus_info(include_ports=True),
+                'library': library.get_bus_library_dict(),
+            }))
+        else:
+            if args.bus_type:
+                # Show details for specific bus type
+                defn = library.get_bus_definition(args.bus_type)
+                if not defn:
+                    print(f"Error: Unknown bus type: {args.bus_type}")
+                    print(f"Available: {', '.join(bus_types)}")
+                    sys.exit(1)
+
+                print(f"\n{defn.key} - {defn.bus_type.vlnv_string}")
+                print(f"\nSuggested prefixes:")
+                prefixes = SUGGESTED_PREFIXES.get(defn.key, {})
+                for mode, prefix in prefixes.items():
+                    print(f"  {mode:8} {prefix}")
+
+                if args.ports:
+                    print(f"\nRequired ports ({len(defn.required_ports)}):")
+                    for port in defn.required_ports:
+                        width = f"[{port.width}]" if port.width else ""
+                        direction = port.direction or "clk/rst"
+                        print(f"  {port.name:20} {direction:6} {width}")
+
+                    if defn.optional_ports:
+                        print(f"\nOptional ports ({len(defn.optional_ports)}):")
+                        for port in defn.optional_ports:
+                            width = f"[{port.width}]" if port.width else ""
+                            direction = port.direction or "clk/rst"
+                            print(f"  {port.name:20} {direction:6} {width}")
+            else:
+                # List all bus types
+                print("\nAvailable bus types:")
+                for key in bus_types:
+                    info = library.get_bus_info(key)
+                    print(f"  {key:12} - {info['vlnv']}")
+                print("\nUse 'list-buses <TYPE>' for details, add --ports for port list")
+
+    except Exception as e:
+        if args.json:
+            print(json.dumps({'success': False, 'error': str(e)}))
+        else:
+            print(f"Error: {e}")
+        sys.exit(1)
+
+
 def main():
     parser = argparse.ArgumentParser(
         prog='ipcore',
@@ -235,6 +296,13 @@ def main():
     parse_parser.add_argument('--json', action='store_true',
                               help='JSON output (for VS Code integration)')
     parse_parser.set_defaults(func=cmd_parse)
+
+    # list-buses subcommand
+    buses_parser = subparsers.add_parser('list-buses', help='List available bus types')
+    buses_parser.add_argument('bus_type', nargs='?', help='Bus type to show details for')
+    buses_parser.add_argument('--ports', action='store_true', help='Show port details')
+    buses_parser.add_argument('--json', action='store_true', help='JSON output')
+    buses_parser.set_defaults(func=cmd_list_buses)
 
     args = parser.parse_args()
     args.func(args)

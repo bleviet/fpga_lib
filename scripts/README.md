@@ -140,6 +140,61 @@ output/
 
 ---
 
+### `list-buses` - Available Bus Types
+
+List available bus types from the bus library with their port definitions.
+
+```bash
+uv run python scripts/ipcore.py list-buses [bus_type] [options]
+```
+
+**Examples:**
+
+```bash
+# List all available bus types
+uv run python scripts/ipcore.py list-buses
+
+# Show details for specific bus type
+uv run python scripts/ipcore.py list-buses AXI4L
+
+# Show port list for a bus type
+uv run python scripts/ipcore.py list-buses AXI4L --ports
+
+# JSON output for VS Code integration
+uv run python scripts/ipcore.py list-buses --json
+```
+
+**Options:**
+
+| Option | Description |
+|--------|-------------|
+| `bus_type` | Optional bus type to show details for |
+| `--ports` | Show port details when viewing a specific bus |
+| `--json` | JSON output for VS Code integration |
+
+**Example output:**
+
+```
+Available bus types:
+  AXI4L        - arm.com/amba/axi4l/r0p0_0
+  AXIS         - arm.com/amba/axis/1.0
+  AVALON_MM    - intel.com/avalon/avalon_mm/1.0
+  AVALON_ST    - intel.com/avalon/avalon_st/1.0
+
+Use 'list-buses <TYPE>' for details, add --ports for port list
+```
+
+**Suggested prefixes:**
+
+| Bus Type | Slave/Sink | Master/Source |
+|----------|------------|---------------|
+| AXI4L | `s_axil_` | `m_axil_` |
+| AXIS | `s_axis_` | `m_axis_` |
+| AVALON_MM | `avs_` | `avm_` |
+| AVALON_ST | `asi_` | `aso_` |
+
+---
+
 ## Workflow Examples
 
 ### 1. Create IP from existing VHDL
@@ -177,6 +232,9 @@ uv run python scripts/ipcore.py parse my_core.vhd --json
 
 uv run python scripts/ipcore.py generate my_core.ip.yml --json --progress
 # Output: {"success": true, "files": {...}, "count": 10, "busType": "axil"}
+
+uv run python scripts/ipcore.py list-buses --json
+# Output: {"success": true, "buses": [...]}
 ```
 
 ---
