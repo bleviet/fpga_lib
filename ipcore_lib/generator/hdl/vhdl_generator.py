@@ -16,6 +16,8 @@ import yaml
 from jinja2 import Environment, FileSystemLoader
 
 from ipcore_lib.model.core import IpCore
+from ipcore_lib.model.bus import BusInterface
+from ipcore_lib.model.bus_library import get_bus_library, BusLibrary
 from ipcore_lib.model.memory import MemoryMap, Register, BitField
 from ipcore_lib.model.fileset import FileSet, File, FileType
 from ipcore_lib.generator.base_generator import BaseGenerator
@@ -39,6 +41,7 @@ class VHDLGenerator(BaseGenerator):
         if template_dir is None:
             template_dir = os.path.join(os.path.dirname(__file__), "templates")
         super().__init__(template_dir)
+        self.bus_library: BusLibrary = get_bus_library()
 
     def _parse_bits(self, bits: str) -> dict:
         """Parse bit string [M:N] or [N] into offset and width."""
@@ -184,6 +187,63 @@ class VHDLGenerator(BaseGenerator):
             })
         return ports
 
+    def _get_filtered_bus_ports(
+        self,
+        bus_interface: BusInterface,
+        is_slave: bool = True
+    ) -> List[Dict[str, Any]]:
+        """
+        Get filtered bus ports based on use_optional_ports selection.
+
+        Includes all required ports and only those optional ports that are
+        explicitly listed in the bus interface's use_optional_ports field.
+
+        Args:
+            bus_interface: The bus interface configuration
+            is_slave: True for slave interface (inverts directions)
+
+        Returns:
+            List of port dictionaries with name, direction, type, width
+        """
+        bus_def = self.bus_library.get_bus_definition(bus_interface.type)
+        if not bus_def:
+            return []
+
+        filtered_ports = []
+        for port_def in bus_def.ports:
+            # Skip clock/reset ports (handled separately)
+            if port_def.name in ('ACLK', 'ARESETn', 'clk', 'reset'):
+                continue
+
+            # Include required ports always
+            # Include optional ports only if in use_optional_ports list
+            if port_def.is_required or port_def.name in bus_interface.use_optional_ports:
+                # Determine direction (invert for slave)
+                direction = port_def.direction or 'in'
+                if is_slave:
+                    direction = 'in' if direction == 'out' else 'out'
+
+                # Build physical port name
+                physical_name = f"{bus_interface.physical_prefix}{port_def.name.lower()}"
+
+                # Determine width and type
+                width = bus_interface.get_port_width(port_def.name, port_def.width or 1)
+                if width == 1:
+                    port_type = 'std_logic'
+                else:
+                    port_type = f'std_logic_vector({width-1} downto 0)'
+
+                filtered_ports.append({
+                    'name': physical_name,
+                    'logical_name': port_def.name,
+                    'direction': direction,
+                    'type': port_type,
+                    'width': width,
+                    'presence': port_def.presence,
+                })
+
+        return filtered_ports
+
     def _get_template_context(
         self,
         ip_core: IpCore,
@@ -204,6 +264,15 @@ class VHDLGenerator(BaseGenerator):
         reset_polarity = ip_core.resets[0].polarity.value if ip_core.resets else 'activeHigh'
         reset_active_high = 'High' in reset_polarity
 
+        # Build filtered bus ports for all bus interfaces
+        # Maps bus type key (e.g., 'AXI4L') to internal key (e.g., 'axil')
+        bus_type_map = {'AXI4L': 'axil', 'AVALON_MM': 'avmm'}
+        all_bus_ports = []
+        for bus_interface in ip_core.bus_interfaces:
+            is_slave = bus_interface.mode.value in ('slave', 'sink')
+            ports = self._get_filtered_bus_ports(bus_interface, is_slave=is_slave)
+            all_bus_ports.extend(ports)
+
         return {
             'entity_name': ip_core.vlnv.name.lower(),
             'registers': registers,
@@ -212,6 +281,7 @@ class VHDLGenerator(BaseGenerator):
             'generics': self._prepare_generics(ip_core),
             'user_ports': self._prepare_user_ports(ip_core),
             'bus_type': bus_type,
+            'bus_ports': all_bus_ports,  # NEW: Filtered bus ports
             'data_width': 32,
             'addr_width': 8,
             'reg_width': 4,

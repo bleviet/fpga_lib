@@ -14,125 +14,142 @@ use work.{{ entity_name }}_pkg.all;
 
 entity {{ entity_name }} is
 {% if generics %}
-  generic (
+generic (
 {% for generic in generics %}
-    {{ generic.name }} : {{ generic.type }}{{ " := " ~ generic.default_value if generic.default_value is not none else "" }}{{ ";" if not loop.last else "" }}
+{{ generic.name }} : {{ generic.type }}{{ " := " ~ generic.default_value if generic.default_value is not none else ""
+}}{{ ";" if not loop.last else "" }}
 {% endfor %}
-  );
+);
 {% endif %}
-  port (
-    -- Clock and reset
-    {{ clock_port }} : in std_logic;
-    {{ reset_port }} : in std_logic;
-{% if bus_type == 'axil' %}
-    -- AXI-Lite Slave Interface
-    s_axi_awaddr  : in  std_logic_vector(C_ADDR_WIDTH-1 downto 0);
-    s_axi_awprot  : in  std_logic_vector(2 downto 0);
-    s_axi_awvalid : in  std_logic;
-    s_axi_awready : out std_logic;
-    s_axi_wdata   : in  std_logic_vector(C_DATA_WIDTH-1 downto 0);
-    s_axi_wstrb   : in  std_logic_vector((C_DATA_WIDTH/8)-1 downto 0);
-    s_axi_wvalid  : in  std_logic;
-    s_axi_wready  : out std_logic;
-    s_axi_bresp   : out std_logic_vector(1 downto 0);
-    s_axi_bvalid  : out std_logic;
-    s_axi_bready  : in  std_logic;
-    s_axi_araddr  : in  std_logic_vector(C_ADDR_WIDTH-1 downto 0);
-    s_axi_arprot  : in  std_logic_vector(2 downto 0);
-    s_axi_arvalid : in  std_logic;
-    s_axi_arready : out std_logic;
-    s_axi_rdata   : out std_logic_vector(C_DATA_WIDTH-1 downto 0);
-    s_axi_rresp   : out std_logic_vector(1 downto 0);
-    s_axi_rvalid  : out std_logic;
-    s_axi_rready  : in  std_logic{{ ";" if user_ports else "" }}
+port (
+-- Clock and reset
+{{ clock_port }} : in std_logic;
+{{ reset_port }} : in std_logic;
+{% if bus_ports %}
+-- Bus Interface Ports
+{% for port in bus_ports %}
+{# Handle parameterized widths for specific signals #}
+{% if port.logical_name == 'AWADDR' or port.logical_name == 'ARADDR' or port.logical_name == 'address' %}
+{{ port.name }} : {{ port.direction }} std_logic_vector(C_ADDR_WIDTH-1 downto 0);
+{% elif port.logical_name == 'WDATA' or port.logical_name == 'RDATA' or port.logical_name == 'writedata' or
+port.logical_name == 'readdata' %}
+{{ port.name }} : {{ port.direction }} std_logic_vector(C_DATA_WIDTH-1 downto 0);
+{% elif port.logical_name == 'WSTRB' %}
+{{ port.name }} : {{ port.direction }} std_logic_vector((C_DATA_WIDTH/8)-1 downto 0);
+{% else %}
+{{ port.name }} : {{ port.direction }} {{ port.type }};
+{% endif %}
+{% endfor %}
+{# Remove trailing semicolon from last port #}
+{% elif bus_type == 'axil' %}
+-- AXI-Lite Slave Interface
+s_axi_awaddr : in std_logic_vector(C_ADDR_WIDTH-1 downto 0);
+s_axi_awprot : in std_logic_vector(2 downto 0);
+s_axi_awvalid : in std_logic;
+s_axi_awready : out std_logic;
+s_axi_wdata : in std_logic_vector(C_DATA_WIDTH-1 downto 0);
+s_axi_wstrb : in std_logic_vector((C_DATA_WIDTH/8)-1 downto 0);
+s_axi_wvalid : in std_logic;
+s_axi_wready : out std_logic;
+s_axi_bresp : out std_logic_vector(1 downto 0);
+s_axi_bvalid : out std_logic;
+s_axi_bready : in std_logic;
+s_axi_araddr : in std_logic_vector(C_ADDR_WIDTH-1 downto 0);
+s_axi_arprot : in std_logic_vector(2 downto 0);
+s_axi_arvalid : in std_logic;
+s_axi_arready : out std_logic;
+s_axi_rdata : out std_logic_vector(C_DATA_WIDTH-1 downto 0);
+s_axi_rresp : out std_logic_vector(1 downto 0);
+s_axi_rvalid : out std_logic;
+s_axi_rready : in std_logic{{ ";" if user_ports else "" }}
 {% elif bus_type == 'avmm' %}
-    -- Avalon-MM Slave Interface
-    avs_address     : in  std_logic_vector(C_ADDR_WIDTH-1 downto 0);
-    avs_read        : in  std_logic;
-    avs_readdata    : out std_logic_vector(C_DATA_WIDTH-1 downto 0);
-    avs_write       : in  std_logic;
-    avs_writedata   : in  std_logic_vector(C_DATA_WIDTH-1 downto 0);
-    avs_waitrequest : out std_logic{{ ";" if user_ports else "" }}
+-- Avalon-MM Slave Interface
+avs_address : in std_logic_vector(C_ADDR_WIDTH-1 downto 0);
+avs_read : in std_logic;
+avs_readdata : out std_logic_vector(C_DATA_WIDTH-1 downto 0);
+avs_write : in std_logic;
+avs_writedata : in std_logic_vector(C_DATA_WIDTH-1 downto 0);
+avs_waitrequest : out std_logic{{ ";" if user_ports else "" }}
 {% endif %}
 {% if user_ports %}
-    -- User ports
+-- User ports
 {% for port in user_ports %}
-    {{ port.name }} : {{ port.direction }} {{ port.type }}{{ ";" if not loop.last else "" }}
+{{ port.name }} : {{ port.direction }} {{ port.type }}{{ ";" if not loop.last else "" }}
 {% endfor %}
 {% endif %}
-  );
+);
 end entity {{ entity_name }};
 
 architecture rtl of {{ entity_name }} is
 
 {% if registers %}
-  -- Internal register signals
-  signal regs_sw2hw : t_regs_sw2hw;
-  signal regs_hw2sw : t_regs_hw2sw;
+-- Internal register signals
+signal regs_sw2hw : t_regs_sw2hw;
+signal regs_hw2sw : t_regs_hw2sw;
 {% endif %}
 
 begin
 
-  ----------------------------------------------------------------------------
-  -- Bus Wrapper Instance
-  ----------------------------------------------------------------------------
-  u_{{ bus_type }} : entity work.{{ entity_name }}_{{ bus_type }}
-    port map (
-      clk      => {{ clock_port }},
-      rst      => {% if reset_active_high %}{{ reset_port }}{% else %}not {{ reset_port }}{% endif %},
+----------------------------------------------------------------------------
+-- Bus Wrapper Instance
+----------------------------------------------------------------------------
+u_{{ bus_type }} : entity work.{{ entity_name }}_{{ bus_type }}
+port map (
+clk => {{ clock_port }},
+rst => {% if reset_active_high %}{{ reset_port }}{% else %}not {{ reset_port }}{% endif %},
 {% if bus_type == 'axil' %}
-      s_axi_awaddr  => s_axi_awaddr,
-      s_axi_awprot  => s_axi_awprot,
-      s_axi_awvalid => s_axi_awvalid,
-      s_axi_awready => s_axi_awready,
-      s_axi_wdata   => s_axi_wdata,
-      s_axi_wstrb   => s_axi_wstrb,
-      s_axi_wvalid  => s_axi_wvalid,
-      s_axi_wready  => s_axi_wready,
-      s_axi_bresp   => s_axi_bresp,
-      s_axi_bvalid  => s_axi_bvalid,
-      s_axi_bready  => s_axi_bready,
-      s_axi_araddr  => s_axi_araddr,
-      s_axi_arprot  => s_axi_arprot,
-      s_axi_arvalid => s_axi_arvalid,
-      s_axi_arready => s_axi_arready,
-      s_axi_rdata   => s_axi_rdata,
-      s_axi_rresp   => s_axi_rresp,
-      s_axi_rvalid  => s_axi_rvalid,
-      s_axi_rready  => s_axi_rready,
+s_axi_awaddr => s_axi_awaddr,
+s_axi_awprot => s_axi_awprot,
+s_axi_awvalid => s_axi_awvalid,
+s_axi_awready => s_axi_awready,
+s_axi_wdata => s_axi_wdata,
+s_axi_wstrb => s_axi_wstrb,
+s_axi_wvalid => s_axi_wvalid,
+s_axi_wready => s_axi_wready,
+s_axi_bresp => s_axi_bresp,
+s_axi_bvalid => s_axi_bvalid,
+s_axi_bready => s_axi_bready,
+s_axi_araddr => s_axi_araddr,
+s_axi_arprot => s_axi_arprot,
+s_axi_arvalid => s_axi_arvalid,
+s_axi_arready => s_axi_arready,
+s_axi_rdata => s_axi_rdata,
+s_axi_rresp => s_axi_rresp,
+s_axi_rvalid => s_axi_rvalid,
+s_axi_rready => s_axi_rready,
 {% elif bus_type == 'avmm' %}
-      avs_address     => avs_address,
-      avs_read        => avs_read,
-      avs_readdata    => avs_readdata,
-      avs_write       => avs_write,
-      avs_writedata   => avs_writedata,
-      avs_waitrequest => avs_waitrequest,
+avs_address => avs_address,
+avs_read => avs_read,
+avs_readdata => avs_readdata,
+avs_write => avs_write,
+avs_writedata => avs_writedata,
+avs_waitrequest => avs_waitrequest,
 {% endif %}
-      regs_out => regs_sw2hw,
-      regs_in  => regs_hw2sw
-    );
+regs_out => regs_sw2hw,
+regs_in => regs_hw2sw
+);
 
-  ----------------------------------------------------------------------------
-  -- Core Logic Instance
-  ----------------------------------------------------------------------------
-  u_core : entity work.{{ entity_name }}_core
+----------------------------------------------------------------------------
+-- Core Logic Instance
+----------------------------------------------------------------------------
+u_core : entity work.{{ entity_name }}_core
 {% if generics %}
-    generic map (
+generic map (
 {% for generic in generics %}
-      {{ generic.name }} => {{ generic.name }}{{ "," if not loop.last else "" }}
+{{ generic.name }} => {{ generic.name }}{{ "," if not loop.last else "" }}
 {% endfor %}
-    )
+)
 {% endif %}
-    port map (
-      clk      => {{ clock_port }},
-      rst      => {% if reset_active_high %}{{ reset_port }}{% else %}not {{ reset_port }}{% endif %},
-      regs_in  => regs_sw2hw,
-      regs_out => regs_hw2sw{{ "," if user_ports else "" }}
+port map (
+clk => {{ clock_port }},
+rst => {% if reset_active_high %}{{ reset_port }}{% else %}not {{ reset_port }}{% endif %},
+regs_in => regs_sw2hw,
+regs_out => regs_hw2sw{{ "," if user_ports else "" }}
 {% if user_ports %}
 {% for port in user_ports %}
-      {{ port.name }} => {{ port.name }}{{ "," if not loop.last else "" }}
+{{ port.name }} => {{ port.name }}{{ "," if not loop.last else "" }}
 {% endfor %}
 {% endif %}
-    );
+);
 
 end architecture rtl;
