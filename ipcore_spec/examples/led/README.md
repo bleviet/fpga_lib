@@ -1,3 +1,6 @@
+<!-- editorconfig-checker-disable-file -->
+<!-- This file contains YAML examples with 2-space indentation per YAML standard -->
+
 # LED Controller IP Core Example
 
 This directory contains a complete LED controller IP core example for testing VHDL generation with Altera and Xilinx FPGAs.
@@ -7,7 +10,7 @@ This directory contains a complete LED controller IP core example for testing VH
 The LED controller is a configurable IP core with an AXI-Lite interface that provides:
 - Control of up to 32 LED outputs (configurable via NUM_LEDS generic)
 - Direct LED on/off control
-- PWM brightness control capability  
+- PWM brightness control capability
 - Blink pattern generation
 - Interrupt generation for events
 - Simple control/status register interface
@@ -109,7 +112,7 @@ uv run pytest ipcore_spec/examples/led/tb/led_controller_test.py
 
 To add custom LED control logic, modify `rtl/led_controller_core.vhd`:
 - Access registers via `regs_in` (SW→HW)
-- Update status via `regs_out` (HW→SW)  
+- Update status via `regs_out` (HW→SW)
 - Drive `o_led` and `o_led_pwm` outputs
 - Assert `o_irq` for interrupts
 

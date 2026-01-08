@@ -1,3 +1,6 @@
+<!-- editorconfig-checker-disable-file -->
+<!-- This file contains YAML examples with 2-space indentation per YAML standard -->
+
 # IP Core YAML Specification
 
 > Author's Guide to defining IP cores and memory maps in YAML format.
