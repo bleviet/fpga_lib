@@ -24,6 +24,7 @@ trigger: always_on
 
 ## Version Control Protocol
 - **No Auto-Commit:** You are strictly FORBIDDEN from running `git commit`, `git push`, or `git merge` autonomously.
+- **Trim Trailing Whitespace:** You may automatically trim trailing whitespace in files.
 - **Review First:** You may `git add` files to stage them, but you must ask for explicit user confirmation before committing.
 - **Commit Messages:** When requested to commit, always draft the commit message for the user to review first.
 
