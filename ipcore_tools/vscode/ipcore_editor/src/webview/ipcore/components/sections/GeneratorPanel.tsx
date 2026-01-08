@@ -90,13 +90,22 @@ export const GeneratorPanel: React.FC<GeneratorPanelProps> = ({ ipCore }) => {
     // Get IP name for preview
     const ipName = ipCore.vlnv?.name?.toLowerCase() || 'ip_core';
 
-    const [options, setOptions] = useState<GenerationOptions>({
-        busType: detectedBus?.busType || 'axil',
-        includeVhdl: true,
-        includeRegfile: true,  // Always include regs with VHDL files
-        vendorFiles: 'none',
-        includeTestbench: false,
+    const [options, setOptions] = useState<GenerationOptions>(() => {
+        const savedState = vscode.getState();
+        return (savedState && savedState.generationOptions) ? savedState.generationOptions : {
+            busType: detectedBus?.busType || 'axil',
+            includeVhdl: true,
+            includeRegfile: true,
+            vendorFiles: 'none',
+            includeTestbench: false,
+        };
     });
+
+    // Persist options state
+    useEffect(() => {
+        const currentState = vscode.getState() || {};
+        vscode.setState({ ...currentState, generationOptions: options });
+    }, [options]);
 
     const [status, setStatus] = useState<GenerationStatus>({ status: 'idle' });
 
