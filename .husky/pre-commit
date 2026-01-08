@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
 . "$(dirname -- "$0")/_/husky.sh"
 
-cd vscode-extension
+cd ipcore_tools/vscode/ipcore_editor
 npx lint-staged

@@ -10,4 +10,6 @@ module.exports = {
     bracketSpacing: true,
     jsxBracketSameLine: false,
     jsxSingleQuote: false,
+    // Respect .editorconfig settings
+    editorconfig: true,
 };
