@@ -35,11 +35,13 @@ pip install -e .
 
 ```bash
 cd vscode-extension
-npm install
+npm install --ignore-scripts  # Use --ignore-scripts to skip husky in monorepo
 npm run compile
 ```
 
 Press `F5` to launch the Extension Development Host.
+
+> **Note:** If you encounter husky errors during installation, see the [Troubleshooting](#npm-install-fails-with-husky-error) section.
 
 ## Usage
 
@@ -173,6 +175,54 @@ npm run generate-types   # Generate types from schema
 
 ## Troubleshooting
 
+### npm install Fails with Husky Error
+
+**Problem:** Running `npm install` fails with error:
+```
+husky - .git can't be found
+npm error command failed
+npm error command sh -c husky install
+```
+
+**Cause:** This extension is part of a monorepo where the `.git` directory is located in a parent folder. Husky expects `.git` to be in the same directory as `package.json`.
+
+**Solution 1: Skip Husky (Quick Fix)**
+```bash
+npm install --ignore-scripts
+```
+
+**Solution 2: Configure Husky for Monorepo (Recommended for Development)**
+
+If you need git hooks functionality:
+
+1. Install dependencies first:
+   ```bash
+   npm install --ignore-scripts
+   ```
+
+2. Manually configure husky to use the parent repository:
+   ```bash
+   npx husky install ../../.git/hooks
+   ```
+
+3. Set up git hooks (optional):
+   ```bash
+   npx husky add ../../.git/hooks/pre-commit "cd ipcore_tools/vscode/ipcore_editor && npm run lint-staged"
+   ```
+
+**What is Husky?**
+
+Husky manages Git hooks to run scripts before commits, pushes, etc. It's used in this project to:
+- Run ESLint on staged files before commit
+- Run Prettier to format code automatically
+- Ensure code quality standards
+
+**Do I Need Husky?**
+
+- **For building/using the extension:** No, it's optional
+- **For contributing code:** Yes, it ensures consistent code style
+- **For casual development:** No, you can run `npm run lint` manually
+
 ### Extension Not Loading
 
 1. Check Output panel: `View → Output → Extension Host`
@@ -190,7 +240,7 @@ npm run generate-types   # Generate types from schema
 ```bash
 # Clean and rebuild
 rm -rf out/ dist/ node_modules/
-npm install
+npm install --ignore-scripts
 npm run compile
 ```
 
