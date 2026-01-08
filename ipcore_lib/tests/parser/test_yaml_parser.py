@@ -2,6 +2,9 @@
 Tests for the YAML IP Core parser.
 """
 
+# editorconfig-checker-disable-file
+# This file contains YAML fixtures that use 2-space indentation per YAML standard
+
 from pathlib import Path
 
 import pytest
@@ -50,21 +53,21 @@ vlnv:
 
 clocks:
     - name: "i_clk"
-            logicalName: "CLK"
-            direction: "in"
-            frequency: "100MHz"
-            description: "System clock"
+      logicalName: "CLK"
+      direction: "in"
+      frequency: "100MHz"
+      description: "System clock"
 
 resets:
     - name: "i_rst_n"
-            logicalName: "RESET_N"
-            direction: "in"
-            polarity: "activeLow"
-            description: "Active low reset"
+      logicalName: "RESET_N"
+      direction: "in"
+      polarity: "activeLow"
+      description: "Active low reset"
 
     - name: "i_rst_p"
-            logicalName: "RESET"
-            polarity: "activeHigh"
+      logicalName: "RESET"
+      polarity: "activeHigh"
 """
     yaml_file = tmp_path / "clocked.yml"
     yaml_file.write_text(yaml_content)
@@ -97,14 +100,14 @@ vlnv:
 
 ports:
     - name: "o_irq"
-            logicalName: "irq"
-            direction: "out"
-            description: "Interrupt output"
+      logicalName: "irq"
+      direction: "out"
+      description: "Interrupt output"
 
     - name: "io_data"
-            logicalName: "data_bus"
-            direction: "inout"
-            width: 32
+      logicalName: "data_bus"
+      direction: "inout"
+      width: 32
 """
     yaml_file = tmp_path / "ports.yml"
     yaml_file.write_text(yaml_content)
@@ -132,20 +135,20 @@ vlnv:
 
 busInterfaces:
     - name: "S_AXI"
-            type: "AXI4L"
-            mode: "slave"
-            physicalPrefix: "s_axi_"
-            associatedClock: "CLK"
-            associatedReset: "RST"
-            memoryMapRef: "REGS"
-            useOptionalPorts:
-                    - "AWPROT"
-                    - "ARPROT"
-            portWidthOverrides:
-                    AWADDR: 12
-                    ARADDR: 12
-                    WDATA: 32
-                    RDATA: 32
+      type: "AXI4L"
+      mode: "slave"
+      physicalPrefix: "s_axi_"
+      associatedClock: "CLK"
+      associatedReset: "RST"
+      memoryMapRef: "REGS"
+      useOptionalPorts:
+        - "AWPROT"
+        - "ARPROT"
+      portWidthOverrides:
+        AWADDR: 12
+        ARADDR: 12
+        WDATA: 32
+        RDATA: 32
 """
     yaml_file = tmp_path / "bus.yml"
     yaml_file.write_text(yaml_content)
@@ -177,15 +180,15 @@ vlnv:
 
 busInterfaces:
     - name: "M_AXIS"
-            type: "AXIS"
-            mode: "master"
-            physicalPrefix: "m_axis_"
-            associatedClock: "CLK"
-            array:
-                    count: 4
-                    indexStart: 0
-                    namingPattern: "M_AXIS_CH{index}"
-                    physicalPrefixPattern: "m_axis_ch{index}_"
+      type: "AXIS"
+      mode: "master"
+      physicalPrefix: "m_axis_"
+      associatedClock: "CLK"
+      array:
+        count: 4
+        indexStart: 0
+        namingPattern: "M_AXIS_CH{index}"
+        physicalPrefixPattern: "m_axis_ch{index}_"
 """
     yaml_file = tmp_path / "array.yml"
     yaml_file.write_text(yaml_content)
@@ -213,13 +216,13 @@ vlnv:
 
 parameters:
     - name: "DATA_WIDTH"
-            value: 32
-            dataType: "integer"
-            description: "Width of data bus"
+      value: 32
+      dataType: "integer"
+      description: "Width of data bus"
 
     - name: "ENABLE_FEATURE"
-            value: true
-            dataType: "boolean"
+      value: true
+      dataType: "boolean"
 """
     yaml_file = tmp_path / "params.yml"
     yaml_file.write_text(yaml_content)
@@ -246,34 +249,34 @@ vlnv:
 
 memoryMaps:
     - name: "CSR"
-            description: "Control/Status Registers"
-            addressBlocks:
-                    - name: "REGS"
-            baseAddress: 0x0
-            range: "4K"
-            defaultRegWidth: 32
-            registers:
-                - name: "CTRL"
-                                    addressOffset: 0x00
-                                    size: 32
-                                    access: "read-write"
-                                    description: "Control register"
-                                    fields:
-                                            - name: "ENABLE"
-                        bitOffset: 0
-                        bitWidth: 1
-                        access: "read-write"
-                                            - name: "MODE"
-                        bitOffset: 1
-                        bitWidth: 2
+      description: "Control/Status Registers"
+      addressBlocks:
+        - name: "REGS"
+          baseAddress: 0x0
+          range: "4K"
+          defaultRegWidth: 32
+          registers:
+            - name: "CTRL"
+              addressOffset: 0x00
+              size: 32
+              access: "read-write"
+              description: "Control register"
+              fields:
+                - name: "ENABLE"
+                  bitOffset: 0
+                  bitWidth: 1
+                  access: "read-write"
+                - name: "MODE"
+                  bitOffset: 1
+                  bitWidth: 2
 
-                - name: "STATUS"
-                                    addressOffset: 0x04
-                                    size: 32
-                                    access: "write-1-to-clear"
-                                    fields:
-                                            - name: "IRQ"
-                        bitWidth: 1
+            - name: "STATUS"
+              addressOffset: 0x04
+              size: 32
+              access: "write-1-to-clear"
+              fields:
+                - name: "IRQ"
+                  bitWidth: 1
 """
     yaml_file = tmp_path / "regs.yml"
     yaml_file.write_text(yaml_content)
@@ -317,17 +320,17 @@ vlnv:
 
 fileSets:
     - name: "RTL"
-            description: "RTL source files"
-            files:
-                    - path: "rtl/top.v"
-            type: "verilog"
-                    - path: "rtl/sub.vhd"
-            type: "vhdl"
+      description: "RTL source files"
+      files:
+        - path: "rtl/top.v"
+          type: "verilog"
+        - path: "rtl/sub.vhd"
+          type: "vhdl"
 
     - name: "SIM"
-            files:
-                    - path: "tb/testbench.sv"
-            type: "systemverilog"
+      files:
+        - path: "tb/testbench.sv"
+          type: "systemverilog"
 """
     yaml_file = tmp_path / "files.yml"
     yaml_file.write_text(yaml_content)
@@ -347,14 +350,14 @@ def test_parse_memory_map_with_import(tmp_path):
     # Create memory map file
     memmap_content = """
 - name: "CSR_MAP"
-    description: "Control registers"
-    addressBlocks:
-            - name: "REGS"
-        baseAddress: 0x0
-        range: "1K"
-        registers:
-            - name: "ID"
-                            size: 32
+  description: "Control registers"
+  addressBlocks:
+    - name: "REGS"
+      baseAddress: 0x0
+      range: "1K"
+      registers:
+        - name: "ID"
+          size: 32
 """
     memmap_file = tmp_path / "regs.memmap.yml"
     memmap_file.write_text(memmap_content)
@@ -481,18 +484,18 @@ vlnv:
 
 memoryMaps:
     - name: "REGS"
-            addressBlocks:
-                    - name: "BLOCK"
-            baseAddress: 0x0
-            range: "1K"
-            registers:
-                - name: "REG0"
-                                    size: 32
-                - name: "REG1"
-                                    size: 32
-                - reserved: 8
-                - name: "REG2"
-                                    size: 32
+      addressBlocks:
+        - name: "BLOCK"
+          baseAddress: 0x0
+          range: "1K"
+          registers:
+            - name: "REG0"
+              size: 32
+            - name: "REG1"
+              size: 32
+            - reserved: 8
+            - name: "REG2"
+              size: 32
 """
     yaml_file = tmp_path / "offsets.yml"
     yaml_file.write_text(yaml_content)
@@ -518,20 +521,20 @@ vlnv:
 
 memoryMaps:
     - name: "REGS"
-            addressBlocks:
-                    - name: "BLOCK"
-            baseAddress: 0x0
-            range: "1K"
-            registers:
-                - name: "REG"
-                                    size: 32
-                                    fields:
-                                            - name: "FIELD0"
-                        bitWidth: 1
-                                            - name: "FIELD1"
-                        bitWidth: 3
-                                            - name: "FIELD2"
-                        bitWidth: 8
+      addressBlocks:
+        - name: "BLOCK"
+          baseAddress: 0x0
+          range: "1K"
+          registers:
+            - name: "REG"
+              size: 32
+              fields:
+                - name: "FIELD0"
+                  bitWidth: 1
+                - name: "FIELD1"
+                  bitWidth: 3
+                - name: "FIELD2"
+                  bitWidth: 8
 """
     yaml_file = tmp_path / "fields.yml"
     yaml_file.write_text(yaml_content)
