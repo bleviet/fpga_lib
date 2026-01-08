@@ -94,11 +94,11 @@ export class HtmlGenerator {
    */
   private getContentSecurityPolicy(webview: vscode.Webview): string {
     return `
-      <meta 
-        http-equiv="Content-Security-Policy" 
-        content="default-src 'none'; 
-                 style-src ${webview.cspSource} 'unsafe-inline' https://cdn.tailwindcss.com https://fonts.googleapis.com; 
-                 font-src ${webview.cspSource} https://fonts.gstatic.com; 
+      <meta
+        http-equiv="Content-Security-Policy"
+        content="default-src 'none';
+                 style-src ${webview.cspSource} 'unsafe-inline' https://cdn.tailwindcss.com https://fonts.googleapis.com;
+                 font-src ${webview.cspSource} https://fonts.gstatic.com;
                  script-src ${webview.cspSource} 'unsafe-inline' https://cdn.tailwindcss.com;"
       >
     `;

@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { VSCodeTextField } from '@vscode/webview-ui-toolkit/react';
+import { FIELD_COLORS, getFieldColor } from '../shared/colors';
 
 interface BitFieldVisualizerProps {
   fields: any[];
@@ -13,56 +14,39 @@ interface BitFieldVisualizerProps {
   onCreateField?: (field: { bit_range: [number, number]; name: string }) => void;
 }
 
-const colorMap: Record<string, string> = {
-  blue: '#3b82f6',
-  orange: '#f97316',
-  emerald: '#10b981',
-  pink: '#ec4899',
-  purple: '#a855f7',
-  cyan: '#06b6d4',
-  amber: '#f59e0b',
-  rose: '#f43f5e',
-  gray: '#e5e7eb',
-};
-const colorKeys = Object.keys(colorMap);
-
-function getFieldColor(idx: number) {
-  return colorKeys[idx % colorKeys.length];
-}
-
 function toBits(field: any) {
   if (field.bit_range) {
-    const [hi, lo] = field.bit_range;
-    return hi === lo ? `${hi}` : `${hi}:${lo}`;
+  const [hi, lo] = field.bit_range;
+  return hi === lo ? `${hi}` : `${hi}:${lo}`;
   }
   if (field.bit !== undefined) {
-    return `${field.bit}`;
+  return `${field.bit}`;
   }
   return '';
 }
 
 function getFieldRange(field: any): { lo: number; hi: number } | null {
   if (field?.bit_range && Array.isArray(field.bit_range) && field.bit_range.length === 2) {
-    const hi = Number(field.bit_range[0]);
-    const lo = Number(field.bit_range[1]);
-    if (!Number.isFinite(hi) || !Number.isFinite(lo)) {
-      return null;
-    }
-    return { lo: Math.min(lo, hi), hi: Math.max(lo, hi) };
+  const hi = Number(field.bit_range[0]);
+  const lo = Number(field.bit_range[1]);
+  if (!Number.isFinite(hi) || !Number.isFinite(lo)) {
+    return null;
+  }
+  return { lo: Math.min(lo, hi), hi: Math.max(lo, hi) };
   }
   if (field?.bit !== undefined) {
-    const b = Number(field.bit);
-    if (!Number.isFinite(b)) {
-      return null;
-    }
-    return { lo: b, hi: b };
+  const b = Number(field.bit);
+  if (!Number.isFinite(b)) {
+    return null;
+  }
+  return { lo: b, hi: b };
   }
   return null;
 }
 
 function bitAt(value: number, bitIndex: number): 0 | 1 {
   if (!Number.isFinite(value) || bitIndex < 0) {
-    return 0;
+  return 0;
   }
   // Avoid 32-bit-only bitwise ops; support up to ~53 bits safely.
   const div = Math.floor(value / Math.pow(2, bitIndex));
@@ -72,11 +56,11 @@ function bitAt(value: number, bitIndex: number): 0 | 1 {
 function setBit(value: number, bitIndex: number, desired: 0 | 1): number {
   const base = Number.isFinite(value) ? Math.max(0, Math.trunc(value)) : 0;
   if (bitIndex < 0) {
-    return base;
+  return base;
   }
   const current = bitAt(base, bitIndex);
   if (current === desired) {
-    return base;
+  return base;
   }
   const delta = Math.pow(2, bitIndex);
   return desired === 1 ? base + delta : Math.max(0, base - delta);
@@ -85,33 +69,33 @@ function setBit(value: number, bitIndex: number, desired: 0 | 1): number {
 function parseRegisterValue(text: string): number | null {
   const s = text.trim();
   if (!s) {
-    return null;
+  return null;
   }
   // Accept decimal or 0x-prefixed hex.
   const v = Number.parseInt(s, 0);
   if (!Number.isFinite(v)) {
-    return null;
+  return null;
   }
   return v;
 }
 
 function maxForBits(bitCount: number): number {
   if (bitCount <= 0) {
-    return 0;
+  return 0;
   }
   // JS Numbers are safe up to 53 bits of integer precision.
   if (bitCount >= 53) {
-    return Number.MAX_SAFE_INTEGER;
+  return Number.MAX_SAFE_INTEGER;
   }
   return Math.pow(2, bitCount) - 1;
 }
 
 function extractBits(value: number, lo: number, width: number): number {
   if (!Number.isFinite(value)) {
-    return 0;
+  return 0;
   }
   if (width <= 0) {
-    return 0;
+  return 0;
   }
   const shifted = Math.floor(value / Math.pow(2, lo));
   const mask = width >= 53 ? Number.MAX_SAFE_INTEGER : Math.pow(2, width) - 1;
@@ -122,15 +106,15 @@ function extractBits(value: number, lo: number, width: number): number {
 function groupFields(fields: any[]) {
   const groups: { idx: number; start: number; end: number; name: string; color: string }[] = [];
   fields.forEach((field, idx) => {
-    let start = field.bit;
-    let end = field.bit;
-    if (field.bit_range) {
-      [end, start] = field.bit_range; // [hi, lo]
-    }
-    if (start > end) {
-      [start, end] = [end, start];
-    }
-    groups.push({ idx, start, end, name: field.name, color: getFieldColor(idx) });
+  let start = field.bit;
+  let end = field.bit;
+  if (field.bit_range) {
+    [end, start] = field.bit_range; // [hi, lo]
+  }
+  if (start > end) {
+    [start, end] = [end, start];
+  }
+  groups.push({ idx, start, end, name: field.name, color: getFieldColor(field.name || `field${idx}`, start) });
   });
   // Sort by start bit descending (MSB on left)
   groups.sort((a, b) => b.start - a.start);
@@ -154,18 +138,18 @@ function buildProLayoutSegments(fields: any[], registerSize: number): ProSegment
   let cursor = registerSize - 1; // Start from MSB
 
   for (const group of sorted) {
-    // If there's a gap before this field
-    if (cursor > group.end) {
-      segments.push({ type: 'gap', start: group.end + 1, end: cursor });
-    }
-    // Add the field
-    segments.push({ type: 'field', ...group });
-    cursor = group.start - 1;
+  // If there's a gap before this field
+  if (cursor > group.end) {
+    segments.push({ type: 'gap', start: group.end + 1, end: cursor });
+  }
+  // Add the field
+  segments.push({ type: 'field', ...group });
+  cursor = group.start - 1;
   }
 
   // If there's a gap at the end (toward LSB)
   if (cursor >= 0) {
-    segments.push({ type: 'gap', start: 0, end: cursor });
+  segments.push({ type: 'gap', start: 0, end: cursor });
   }
 
   return segments;
@@ -225,12 +209,12 @@ function findGapBoundaries(
 
   // Expand toward MSB (higher bits)
   while (maxBit < registerSize - 1 && bits[maxBit + 1] === null) {
-    maxBit++;
+  maxBit++;
   }
 
   // Expand toward LSB (lower bits)
   while (minBit > 0 && bits[minBit - 1] === null) {
-    minBit--;
+  minBit--;
   }
 
   return { minBit, maxBit };
@@ -250,27 +234,27 @@ function findResizeBoundary(
   if (!thisRange) return edge === 'msb' ? registerSize - 1 : 0;
 
   if (edge === 'msb') {
-    // Find nearest field above our MSB
-    let limit = registerSize - 1;
-    for (let i = 0; i < fields.length; i++) {
-      if (i === fieldIndex) continue;
-      const r = getFieldRange(fields[i]);
-      if (r && r.lo > thisRange.hi) {
-        limit = Math.min(limit, r.lo - 1);
-      }
+  // Find nearest field above our MSB
+  let limit = registerSize - 1;
+  for (let i = 0; i < fields.length; i++) {
+    if (i === fieldIndex) continue;
+    const r = getFieldRange(fields[i]);
+    if (r && r.lo > thisRange.hi) {
+    limit = Math.min(limit, r.lo - 1);
     }
-    return limit;
+  }
+  return limit;
   } else {
-    // Find nearest field below our LSB
-    let limit = 0;
-    for (let i = 0; i < fields.length; i++) {
-      if (i === fieldIndex) continue;
-      const r = getFieldRange(fields[i]);
-      if (r && r.hi < thisRange.lo) {
-        limit = Math.max(limit, r.hi + 1);
-      }
+  // Find nearest field below our LSB
+  let limit = 0;
+  for (let i = 0; i < fields.length; i++) {
+    if (i === fieldIndex) continue;
+    const r = getFieldRange(fields[i]);
+    if (r && r.hi < thisRange.lo) {
+    limit = Math.max(limit, r.hi + 1);
     }
-    return limit;
+  }
+  return limit;
   }
 }
 
@@ -300,845 +284,845 @@ const BitFieldVisualizer: React.FC<BitFieldVisualizerProps> = ({
   const [ctrlDrag, setCtrlDrag] = useState<CtrlDragState>(CTRL_DRAG_INITIAL);
 
   useEffect(() => {
-    if (!dragActive) {
-      return;
-    }
-    const stop = () => {
-      setDragActive(false);
-      setDragLast(null);
-    };
-    window.addEventListener('pointerup', stop);
-    window.addEventListener('pointercancel', stop);
-    window.addEventListener('blur', stop);
-    return () => {
-      window.removeEventListener('pointerup', stop);
-      window.removeEventListener('pointercancel', stop);
-      window.removeEventListener('blur', stop);
-    };
+  if (!dragActive) {
+    return;
+  }
+  const stop = () => {
+    setDragActive(false);
+    setDragLast(null);
+  };
+  window.addEventListener('pointerup', stop);
+  window.addEventListener('pointercancel', stop);
+  window.addEventListener('blur', stop);
+  return () => {
+    window.removeEventListener('pointerup', stop);
+    window.removeEventListener('pointercancel', stop);
+    window.removeEventListener('blur', stop);
+  };
   }, [dragActive]);
 
   // Shift-drag: cleanup on pointer up
   useEffect(() => {
-    if (!shiftDrag.active) {
-      return;
+  if (!shiftDrag.active) {
+    return;
+  }
+  const commitShiftDrag = () => {
+    if (shiftDrag.mode === 'resize' && shiftDrag.targetFieldIndex !== null) {
+    // Redefine field range to the dragged selection
+    const newLo = Math.min(shiftDrag.anchorBit, shiftDrag.currentBit);
+    const newHi = Math.max(shiftDrag.anchorBit, shiftDrag.currentBit);
+    if (onUpdateFieldRange && newLo <= newHi) {
+      onUpdateFieldRange(shiftDrag.targetFieldIndex, [newHi, newLo]);
     }
-    const commitShiftDrag = () => {
-      if (shiftDrag.mode === 'resize' && shiftDrag.targetFieldIndex !== null) {
-        // Redefine field range to the dragged selection
-        const newLo = Math.min(shiftDrag.anchorBit, shiftDrag.currentBit);
-        const newHi = Math.max(shiftDrag.anchorBit, shiftDrag.currentBit);
-        if (onUpdateFieldRange && newLo <= newHi) {
-          onUpdateFieldRange(shiftDrag.targetFieldIndex, [newHi, newLo]);
-        }
-      } else if (shiftDrag.mode === 'create') {
-        const lo = Math.min(shiftDrag.anchorBit, shiftDrag.currentBit);
-        const hi = Math.max(shiftDrag.anchorBit, shiftDrag.currentBit);
-        if (onCreateField && lo <= hi) {
-          onCreateField({ bit_range: [hi, lo], name: 'new_field' });
-        }
-      }
-      setShiftDrag(SHIFT_DRAG_INITIAL);
-    };
-    window.addEventListener('pointerup', commitShiftDrag);
-    window.addEventListener('pointercancel', () => setShiftDrag(SHIFT_DRAG_INITIAL));
-    window.addEventListener('blur', () => setShiftDrag(SHIFT_DRAG_INITIAL));
-    return () => {
-      window.removeEventListener('pointerup', commitShiftDrag);
-      window.removeEventListener('pointercancel', () => setShiftDrag(SHIFT_DRAG_INITIAL));
-      window.removeEventListener('blur', () => setShiftDrag(SHIFT_DRAG_INITIAL));
-    };
+    } else if (shiftDrag.mode === 'create') {
+    const lo = Math.min(shiftDrag.anchorBit, shiftDrag.currentBit);
+    const hi = Math.max(shiftDrag.anchorBit, shiftDrag.currentBit);
+    if (onCreateField && lo <= hi) {
+      onCreateField({ bit_range: [hi, lo], name: 'new_field' });
+    }
+    }
+    setShiftDrag(SHIFT_DRAG_INITIAL);
+  };
+  window.addEventListener('pointerup', commitShiftDrag);
+  window.addEventListener('pointercancel', () => setShiftDrag(SHIFT_DRAG_INITIAL));
+  window.addEventListener('blur', () => setShiftDrag(SHIFT_DRAG_INITIAL));
+  return () => {
+    window.removeEventListener('pointerup', commitShiftDrag);
+    window.removeEventListener('pointercancel', () => setShiftDrag(SHIFT_DRAG_INITIAL));
+    window.removeEventListener('blur', () => setShiftDrag(SHIFT_DRAG_INITIAL));
+  };
   }, [shiftDrag, onUpdateFieldRange, onCreateField]);
 
   // Ctrl-drag: cleanup on pointer up
   useEffect(() => {
-    if (!ctrlDrag.active) {
-      return;
-    }
-    const commitCtrlDrag = () => {
-      if (ctrlDrag.previewSegments) {
-        // Commit the new layout
-        // Group by field index and update ranges
-        const updates: { idx: number; range: [number, number] }[] = [];
+  if (!ctrlDrag.active) {
+    return;
+  }
+  const commitCtrlDrag = () => {
+    if (ctrlDrag.previewSegments) {
+    // Commit the new layout
+    // Group by field index and update ranges
+    const updates: { idx: number; range: [number, number] }[] = [];
 
-        ctrlDrag.previewSegments.forEach(seg => {
-          if (seg.type === 'field') {
-            updates.push({ idx: seg.idx, range: [seg.end, seg.start] });
-          }
-        });
-
-        // Apply updates
-        if (onBatchUpdateFields && updates.length > 0) {
-          onBatchUpdateFields(updates);
-        } else if (onUpdateFieldRange) {
-          // Fallback (might cause race conditions)
-          updates.forEach(update => {
-            onUpdateFieldRange(update.idx, update.range);
-          });
-        }
+    ctrlDrag.previewSegments.forEach(seg => {
+      if (seg.type === 'field') {
+      updates.push({ idx: seg.idx, range: [seg.end, seg.start] });
       }
-      setCtrlDrag(CTRL_DRAG_INITIAL);
-    };
-    window.addEventListener('pointerup', commitCtrlDrag);
-    window.addEventListener('pointercancel', () => setCtrlDrag(CTRL_DRAG_INITIAL));
-    window.addEventListener('blur', () => setCtrlDrag(CTRL_DRAG_INITIAL));
-    return () => {
-      window.removeEventListener('pointerup', commitCtrlDrag);
-      window.removeEventListener('pointercancel', () => setCtrlDrag(CTRL_DRAG_INITIAL));
-      window.removeEventListener('blur', () => setCtrlDrag(CTRL_DRAG_INITIAL));
-    };
+    });
+
+    // Apply updates
+    if (onBatchUpdateFields && updates.length > 0) {
+      onBatchUpdateFields(updates);
+    } else if (onUpdateFieldRange) {
+      // Fallback (might cause race conditions)
+      updates.forEach(update => {
+      onUpdateFieldRange(update.idx, update.range);
+      });
+    }
+    }
+    setCtrlDrag(CTRL_DRAG_INITIAL);
+  };
+  window.addEventListener('pointerup', commitCtrlDrag);
+  window.addEventListener('pointercancel', () => setCtrlDrag(CTRL_DRAG_INITIAL));
+  window.addEventListener('blur', () => setCtrlDrag(CTRL_DRAG_INITIAL));
+  return () => {
+    window.removeEventListener('pointerup', commitCtrlDrag);
+    window.removeEventListener('pointercancel', () => setCtrlDrag(CTRL_DRAG_INITIAL));
+    window.removeEventListener('blur', () => setCtrlDrag(CTRL_DRAG_INITIAL));
+  };
   }, [ctrlDrag, onUpdateFieldRange, onBatchUpdateFields]);
 
   /**
    * Handle Ctrl+PointerDown to start reorder mode.
    */
   const handleCtrlPointerDown = (bit: number, e: React.PointerEvent) => {
-    if (!e.ctrlKey) return;
-    if (e.button !== 0) return;
+  if (!e.ctrlKey) return;
+  if (e.button !== 0) return;
 
-    e.preventDefault();
-    e.stopPropagation();
+  e.preventDefault();
+  e.stopPropagation();
 
-    const fieldAtBit = bits[bit];
-    if (fieldAtBit !== null) {
-      // Start reorder drag
-      setCtrlDrag({
-        active: true,
-        draggedFieldIndex: fieldAtBit,
-        previewSegments: buildProLayoutSegments(fields, registerSize),
-      });
-    }
+  const fieldAtBit = bits[bit];
+  if (fieldAtBit !== null) {
+    // Start reorder drag
+    setCtrlDrag({
+    active: true,
+    draggedFieldIndex: fieldAtBit,
+    previewSegments: buildProLayoutSegments(fields, registerSize),
+    });
+  }
   };
 
   /**
    * Handle Shift+PointerDown to start resize or create mode.
    */
   const handleShiftPointerDown = (bit: number, e: React.PointerEvent) => {
-    if (!e.shiftKey) return;
-    if (e.button !== 0) return;
+  if (!e.shiftKey) return;
+  if (e.button !== 0) return;
 
-    e.preventDefault();
-    e.stopPropagation();
+  e.preventDefault();
+  e.stopPropagation();
 
-    const fieldAtBit = bits[bit];
+  const fieldAtBit = bits[bit];
 
-    if (fieldAtBit !== null) {
-      // RESIZE mode - redefine field range via drag selection
-      const fieldRange = getFieldRange(fields[fieldAtBit]);
-      if (!fieldRange) return;
+  if (fieldAtBit !== null) {
+    // RESIZE mode - redefine field range via drag selection
+    const fieldRange = getFieldRange(fields[fieldAtBit]);
+    if (!fieldRange) return;
 
-      // Allow dragging anywhere from collision boundary on LSB side to collision boundary on MSB side
-      const minBit = findResizeBoundary(fieldAtBit, 'lsb', fields, registerSize);
-      const maxBit = findResizeBoundary(fieldAtBit, 'msb', fields, registerSize);
+    // Allow dragging anywhere from collision boundary on LSB side to collision boundary on MSB side
+    const minBit = findResizeBoundary(fieldAtBit, 'lsb', fields, registerSize);
+    const maxBit = findResizeBoundary(fieldAtBit, 'msb', fields, registerSize);
 
-      setShiftDrag({
-        active: true,
-        mode: 'resize',
-        targetFieldIndex: fieldAtBit,
-        resizeEdge: null, // Not used in new model
-        originalRange: fieldRange,
-        anchorBit: bit,
-        currentBit: bit,
-        minBit,
-        maxBit,
-      });
-    } else {
-      // CREATE mode
-      const gap = findGapBoundaries(bit, bits, registerSize);
+    setShiftDrag({
+    active: true,
+    mode: 'resize',
+    targetFieldIndex: fieldAtBit,
+    resizeEdge: null, // Not used in new model
+    originalRange: fieldRange,
+    anchorBit: bit,
+    currentBit: bit,
+    minBit,
+    maxBit,
+    });
+  } else {
+    // CREATE mode
+    const gap = findGapBoundaries(bit, bits, registerSize);
 
-      setShiftDrag({
-        active: true,
-        mode: 'create',
-        targetFieldIndex: null,
-        resizeEdge: null,
-        originalRange: null,
-        anchorBit: bit,
-        currentBit: bit,
-        minBit: gap.minBit,
-        maxBit: gap.maxBit,
-      });
-    }
+    setShiftDrag({
+    active: true,
+    mode: 'create',
+    targetFieldIndex: null,
+    resizeEdge: null,
+    originalRange: null,
+    anchorBit: bit,
+    currentBit: bit,
+    minBit: gap.minBit,
+    maxBit: gap.maxBit,
+    });
+  }
   };
 
   /**
    * Handle pointer move during shift-drag.
    */
   const handleShiftPointerMove = (bit: number) => {
-    if (!shiftDrag.active) return;
-    const clampedBit = Math.max(shiftDrag.minBit, Math.min(bit, shiftDrag.maxBit));
-    if (clampedBit !== shiftDrag.currentBit) {
-      setShiftDrag((prev) => ({ ...prev, currentBit: clampedBit }));
-    }
+  if (!shiftDrag.active) return;
+  const clampedBit = Math.max(shiftDrag.minBit, Math.min(bit, shiftDrag.maxBit));
+  if (clampedBit !== shiftDrag.currentBit) {
+    setShiftDrag((prev) => ({ ...prev, currentBit: clampedBit }));
+  }
   };
 
   /**
    * Handle pointer move during ctrl-drag (reordering).
    */
   const handleCtrlPointerMove = (bit: number) => {
-    if (!ctrlDrag.active || ctrlDrag.draggedFieldIndex === null) return;
+  if (!ctrlDrag.active || ctrlDrag.draggedFieldIndex === null) return;
 
-    // 1. Get original segments (MSB -> LSB)
-    const originalSegments = buildProLayoutSegments(fields, registerSize);
+  // 1. Get original segments (MSB -> LSB)
+  const originalSegments = buildProLayoutSegments(fields, registerSize);
 
-    // 2. Find and remove dragged segment
-    const draggedSegIndex = originalSegments.findIndex(s => s.type === 'field' && s.idx === ctrlDrag.draggedFieldIndex);
-    if (draggedSegIndex === -1) return;
+  // 2. Find and remove dragged segment
+  const draggedSegIndex = originalSegments.findIndex(s => s.type === 'field' && s.idx === ctrlDrag.draggedFieldIndex);
+  if (draggedSegIndex === -1) return;
 
-    const draggedSeg = originalSegments[draggedSegIndex];
-    if (draggedSeg.type !== 'field') return; // Should not happen
+  const draggedSeg = originalSegments[draggedSegIndex];
+  if (draggedSeg.type !== 'field') return; // Should not happen
 
-    // Width of the moving field
-    const draggedWidth = draggedSeg.end - draggedSeg.start + 1;
+  // Width of the moving field
+  const draggedWidth = draggedSeg.end - draggedSeg.start + 1;
 
-    // Remove it from the list for calculations
-    const cleanSegments = [...originalSegments];
-    cleanSegments.splice(draggedSegIndex, 1);
+  // Remove it from the list for calculations
+  const cleanSegments = [...originalSegments];
+  cleanSegments.splice(draggedSegIndex, 1);
 
-    // 3. Flatten the clean segments into a contiguous simulated layout (LSB based)
-    // We need to know where each remaining segment starts logicallly if we packed them from LSB=0
-    // But wait, we want to know their "virtual position" to hit-test against cursor?
-    // User cursor matches valid bit positions 0..31.
-    // If we remove an item, the visual cursor is still at "Bit X".
-    // We want to insert AT "Bit X".
-    // So we should look at the original layout without the dragged item, but 
-    // we assume the drag is "floating" over the layout.
-    // Actually, simpler: We iterate the clean list. We calculate "Target Bit" = cursor.
-    // But since the list has "holes" (where dragged item was), how do we map?
-    // Let's use the CLEAN list repacked.
-    // E.g. [F1, F2, F3]. Drag F2. Clean: [F1, F3]. Repacked Clean: F1(at 0), F3(at F1.w).
-    // If I hover bit 0, I hit F1.
-    // If I hover bit F1.w, I hit F3.
-    // This allows me to insert strictly based on available spots.
+  // 3. Flatten the clean segments into a contiguous simulated layout (LSB based)
+  // We need to know where each remaining segment starts logicallly if we packed them from LSB=0
+  // But wait, we want to know their "virtual position" to hit-test against cursor?
+  // User cursor matches valid bit positions 0..31.
+  // If we remove an item, the visual cursor is still at "Bit X".
+  // We want to insert AT "Bit X".
+  // So we should look at the original layout without the dragged item, but
+  // we assume the drag is "floating" over the layout.
+  // Actually, simpler: We iterate the clean list. We calculate "Target Bit" = cursor.
+  // But since the list has "holes" (where dragged item was), how do we map?
+  // Let's use the CLEAN list repacked.
+  // E.g. [F1, F2, F3]. Drag F2. Clean: [F1, F3]. Repacked Clean: F1(at 0), F3(at F1.w).
+  // If I hover bit 0, I hit F1.
+  // If I hover bit F1.w, I hit F3.
+  // This allows me to insert strictly based on available spots.
 
-    // Repack clean list to build coordinate space
-    let currentBit = 0;
-    const repackedClean = cleanSegments.slice().reverse().map(seg => {
-      const width = seg.end - seg.start + 1;
-      const newLo = currentBit;
-      const newHi = currentBit + width - 1;
-      currentBit += width;
-      return { ...seg, start: newLo, end: newHi, width };
-    }).reverse(); // Restore MSB->LSB order
+  // Repack clean list to build coordinate space
+  let currentBit = 0;
+  const repackedClean = cleanSegments.slice().reverse().map(seg => {
+    const width = seg.end - seg.start + 1;
+    const newLo = currentBit;
+    const newHi = currentBit + width - 1;
+    currentBit += width;
+    return { ...seg, start: newLo, end: newHi, width };
+  }).reverse(); // Restore MSB->LSB order
 
-    // 4. Find insertion target in repacked list
-    // Since repackedClean covers 0 .. (32 - draggedWidth - 1), we constrain cursor
-    const maxCursor = Math.max(0, 32 - draggedWidth);
-    // We clamp the effective cursor to available space 
-    // But wait, user might drag to bit 31.
-    // If total width < 32 (implicit gap at top), we should just append at top.
+  // 4. Find insertion target in repacked list
+  // Since repackedClean covers 0 .. (32 - draggedWidth - 1), we constrain cursor
+  const maxCursor = Math.max(0, 32 - draggedWidth);
+  // We clamp the effective cursor to available space
+  // But wait, user might drag to bit 31.
+  // If total width < 32 (implicit gap at top), we should just append at top.
 
-    // Let's iterate and find target
-    let effectiveCursor = Math.min(bit, currentBit); // Ensure we don't go beyond packed content
+  // Let's iterate and find target
+  let effectiveCursor = Math.min(bit, currentBit); // Ensure we don't go beyond packed content
 
-    // If cursor is beyond current content (e.g. into top implicit gap), effectiveCursor is top.
+  // If cursor is beyond current content (e.g. into top implicit gap), effectiveCursor is top.
 
-    // Find target segment covering effectiveCursor
-    const targetIdx = repackedClean.findIndex(s => effectiveCursor >= s.start && effectiveCursor <= s.end);
+  // Find target segment covering effectiveCursor
+  const targetIdx = repackedClean.findIndex(s => effectiveCursor >= s.start && effectiveCursor <= s.end);
 
-    const newSegments: ProSegment[] = [];
+  const newSegments: ProSegment[] = [];
 
-    // Helper to insert dragged segment
-    const insertDragged = () => {
-      newSegments.push(draggedSeg);
-    };
+  // Helper to insert dragged segment
+  const insertDragged = () => {
+    newSegments.push(draggedSeg);
+  };
 
-    if (targetIdx === -1) {
-      // Cursor is above all content (implicit top gap)
-      // Just append at MSB side (start of list since MSB->LSB)
-      insertDragged(); // Insert as MSB
-      newSegments.push(...cleanSegments);
+  if (targetIdx === -1) {
+    // Cursor is above all content (implicit top gap)
+    // Just append at MSB side (start of list since MSB->LSB)
+    insertDragged(); // Insert as MSB
+    newSegments.push(...cleanSegments);
+  } else {
+    // We hit a segment.
+    const target = repackedClean[targetIdx];
+    const originalTarget = cleanSegments[targetIdx]; // Corresponding logic segment
+
+    const offsetInTarget = effectiveCursor - target.start;
+
+    if (target.type === 'field') {
+    // Insert Before or After based on center?
+    // Since list is MSB->LSB:
+    // "Before" in array = Higher Bits (MSB side).
+    // "After" in array = Lower Bits (LSB side).
+    const msbSide = offsetInTarget > (target.width / 2);
+
+    // Split list at target
+    // [Segments BeforeTarget] [Target] [Segments AfterTarget]
+    const before = cleanSegments.slice(0, targetIdx);
+    const after = cleanSegments.slice(targetIdx + 1);
+
+    newSegments.push(...before);
+    if (msbSide) {
+      insertDragged();
+      newSegments.push(originalTarget);
     } else {
-      // We hit a segment.
-      const target = repackedClean[targetIdx];
-      const originalTarget = cleanSegments[targetIdx]; // Corresponding logic segment
+      newSegments.push(originalTarget);
+      insertDragged();
+    }
+    newSegments.push(...after);
+    } else {
+    // Target is GAP. Split it.
+    // Gap is [MSB ... LSB].
+    // offsetInTarget is from LSB side (target.start).
+    // target.start = LSB. target.end = MSB.
+    // effectiveCursor matches offset.
+    // We want dragged segment to land at offset.
+    // So split gap: [Gap Top] [Dragged] [Gap Bot].
+    // Gap Bot width = offset.
+    // Gap Top width = width - offset.
 
-      const offsetInTarget = effectiveCursor - target.start;
+    const botWidth = offsetInTarget;
+    const topWidth = target.width - offsetInTarget;
 
-      if (target.type === 'field') {
-        // Insert Before or After based on center? 
-        // Since list is MSB->LSB:
-        // "Before" in array = Higher Bits (MSB side).
-        // "After" in array = Lower Bits (LSB side).
-        const msbSide = offsetInTarget > (target.width / 2);
+    const before = cleanSegments.slice(0, targetIdx);
+    const after = cleanSegments.slice(targetIdx + 1);
 
-        // Split list at target
-        // [Segments BeforeTarget] [Target] [Segments AfterTarget]
-        const before = cleanSegments.slice(0, targetIdx);
-        const after = cleanSegments.slice(targetIdx + 1);
+    newSegments.push(...before);
 
-        newSegments.push(...before);
-        if (msbSide) {
-          insertDragged();
-          newSegments.push(originalTarget);
-        } else {
-          newSegments.push(originalTarget);
-          insertDragged();
-        }
-        newSegments.push(...after);
-      } else {
-        // Target is GAP. Split it.
-        // Gap is [MSB ... LSB].
-        // offsetInTarget is from LSB side (target.start).
-        // target.start = LSB. target.end = MSB.
-        // effectiveCursor matches offset.
-        // We want dragged segment to land at offset.
-        // So split gap: [Gap Top] [Dragged] [Gap Bot].
-        // Gap Bot width = offset.
-        // Gap Top width = width - offset.
-
-        const botWidth = offsetInTarget;
-        const topWidth = target.width - offsetInTarget;
-
-        const before = cleanSegments.slice(0, targetIdx);
-        const after = cleanSegments.slice(targetIdx + 1);
-
-        newSegments.push(...before);
-
-        if (topWidth > 0) {
-          newSegments.push({ type: 'gap', start: 0, end: 0, width: topWidth } as any); // Dummy start/end
-        }
-
-        insertDragged();
-
-        if (botWidth > 0) {
-          newSegments.push({ type: 'gap', start: 0, end: 0, width: botWidth } as any); // Dummy start/end
-        }
-
-        newSegments.push(...after);
-      }
+    if (topWidth > 0) {
+      newSegments.push({ type: 'gap', start: 0, end: 0, width: topWidth } as any); // Dummy start/end
     }
 
-    // 5. Final Repack for Preview
-    currentBit = 0;
-    const finalSegments = newSegments.slice().reverse().map(seg => {
-      const width = (seg as any).width || (seg.end - seg.start + 1);
-      const lo = currentBit;
-      const hi = currentBit + width - 1;
-      currentBit += width;
-      return { ...seg, start: lo, end: hi };
-    }).reverse();
+    insertDragged();
 
-    setCtrlDrag(prev => ({ ...prev, previewSegments: finalSegments }));
+    if (botWidth > 0) {
+      newSegments.push({ type: 'gap', start: 0, end: 0, width: botWidth } as any); // Dummy start/end
+    }
+
+    newSegments.push(...after);
+    }
+  }
+
+  // 5. Final Repack for Preview
+  currentBit = 0;
+  const finalSegments = newSegments.slice().reverse().map(seg => {
+    const width = (seg as any).width || (seg.end - seg.start + 1);
+    const lo = currentBit;
+    const hi = currentBit + width - 1;
+    currentBit += width;
+    return { ...seg, start: lo, end: hi };
+  }).reverse();
+
+  setCtrlDrag(prev => ({ ...prev, previewSegments: finalSegments }));
   };
 
   const applyBit = (fieldIndex: number, localBit: number, desired: 0 | 1) => {
-    if (!onUpdateFieldReset) {
-      return;
-    }
-    const raw = fields?.[fieldIndex]?.reset_value;
-    const current = raw === null || raw === undefined ? 0 : Number(raw);
-    const next = setBit(current, localBit, desired);
-    onUpdateFieldReset(fieldIndex, next);
+  if (!onUpdateFieldReset) {
+    return;
+  }
+  const raw = fields?.[fieldIndex]?.reset_value;
+  const current = raw === null || raw === undefined ? 0 : Number(raw);
+  const next = setBit(current, localBit, desired);
+  onUpdateFieldReset(fieldIndex, next);
   };
 
   // Build a per-bit array with field index or null
   const bits: (number | null)[] = Array(registerSize).fill(null);
   fields.forEach((field, idx) => {
-    if (field.bit_range) {
-      const [hi, lo] = field.bit_range;
-      for (let i = lo; i <= hi; ++i) {
-        bits[i] = idx;
-      }
-    } else if (field.bit !== undefined) {
-      bits[field.bit] = idx;
+  if (field.bit_range) {
+    const [hi, lo] = field.bit_range;
+    for (let i = lo; i <= hi; ++i) {
+    bits[i] = idx;
     }
+  } else if (field.bit !== undefined) {
+    bits[field.bit] = idx;
+  }
   });
 
   const bitValues = useMemo(() => {
-    const values: (0 | 1)[] = Array(registerSize).fill(0);
-    fields.forEach((field) => {
-      const r = getFieldRange(field);
-      if (!r) {
-        return;
-      }
-      const raw = field?.reset_value;
-      const fieldValue = raw === null || raw === undefined ? 0 : Number(raw);
-      for (let bit = r.lo; bit <= r.hi; bit++) {
-        const localBit = bit - r.lo;
-        values[bit] = bitAt(fieldValue, localBit);
-      }
-    });
-    return values;
+  const values: (0 | 1)[] = Array(registerSize).fill(0);
+  fields.forEach((field) => {
+    const r = getFieldRange(field);
+    if (!r) {
+    return;
+    }
+    const raw = field?.reset_value;
+    const fieldValue = raw === null || raw === undefined ? 0 : Number(raw);
+    for (let bit = r.lo; bit <= r.hi; bit++) {
+    const localBit = bit - r.lo;
+    values[bit] = bitAt(fieldValue, localBit);
+    }
+  });
+  return values;
   }, [fields, registerSize]);
 
   const registerValue = useMemo(() => {
-    let v = 0;
-    for (let bit = 0; bit < registerSize; bit++) {
-      if (bitValues[bit] === 1) {
-        v += Math.pow(2, bit);
-      }
+  let v = 0;
+  for (let bit = 0; bit < registerSize; bit++) {
+    if (bitValues[bit] === 1) {
+    v += Math.pow(2, bit);
     }
-    return v;
+  }
+  return v;
   }, [bitValues, registerSize]);
 
   const registerValueText = useMemo(() => {
-    if (valueView === 'dec') {
-      return registerValue.toString(10);
-    }
-    return `0x${registerValue.toString(16).toUpperCase()}`;
+  if (valueView === 'dec') {
+    return registerValue.toString(10);
+  }
+  return `0x${registerValue.toString(16).toUpperCase()}`;
   }, [registerValue, valueView]);
 
   useEffect(() => {
-    if (valueEditing) {
-      return;
-    }
-    setValueDraft(registerValueText);
-    setValueError(null);
+  if (valueEditing) {
+    return;
+  }
+  setValueDraft(registerValueText);
+  setValueError(null);
   }, [registerValueText, valueEditing]);
 
   const validateRegisterValue = (v: number | null): string | null => {
-    if (v === null) {
-      return 'Value is required';
-    }
-    if (!Number.isFinite(v)) {
-      return 'Invalid number';
-    }
-    if (v < 0) {
-      return 'Value must be >= 0';
-    }
-    const max = maxForBits(registerSize);
-    if (v > max) {
-      return `Value too large for ${registerSize} bit(s)`;
-    }
-    return null;
+  if (v === null) {
+    return 'Value is required';
+  }
+  if (!Number.isFinite(v)) {
+    return 'Invalid number';
+  }
+  if (v < 0) {
+    return 'Value must be >= 0';
+  }
+  const max = maxForBits(registerSize);
+  if (v > max) {
+    return `Value too large for ${registerSize} bit(s)`;
+  }
+  return null;
   };
 
   const applyRegisterValue = (v: number) => {
-    if (!onUpdateFieldReset) {
-      return;
+  if (!onUpdateFieldReset) {
+    return;
+  }
+  fields.forEach((field, fieldIndex) => {
+    const r = getFieldRange(field);
+    if (!r) {
+    return;
     }
-    fields.forEach((field, fieldIndex) => {
-      const r = getFieldRange(field);
-      if (!r) {
-        return;
-      }
-      const width = r.hi - r.lo + 1;
-      const sub = extractBits(v, r.lo, width);
-      onUpdateFieldReset(fieldIndex, sub);
-    });
+    const width = r.hi - r.lo + 1;
+    const sub = extractBits(v, r.lo, width);
+    onUpdateFieldReset(fieldIndex, sub);
+  });
   };
 
   const commitRegisterValueDraft = () => {
-    const parsed = parseRegisterValue(valueDraft);
-    const err = validateRegisterValue(parsed);
-    setValueError(err);
-    if (err || parsed === null) {
-      return;
-    }
-    applyRegisterValue(parsed);
+  const parsed = parseRegisterValue(valueDraft);
+  const err = validateRegisterValue(parsed);
+  setValueError(err);
+  if (err || parsed === null) {
+    return;
+  }
+  applyRegisterValue(parsed);
   };
 
   const renderValueBar = () => (
-    <div className="mt-3 flex items-start justify-end gap-3">
-      <div className="text-sm vscode-muted font-mono font-semibold mt-[7px]">Value:</div>
-      <div className="min-w-[320px] text-base">
-        <VSCodeTextField
-          className="w-full"
-          value={valueDraft}
-          onFocus={() => setValueEditing(true)}
-          onBlur={() => {
-            setValueEditing(false);
-            commitRegisterValueDraft();
-          }}
-          onInput={(e: any) => {
-            const next = String(e.target.value ?? '');
-            setValueDraft(next);
-            const parsed = parseRegisterValue(next);
-            setValueError(validateRegisterValue(parsed));
-          }}
-          onKeyDown={(e: any) => {
-            if (e.key !== 'Enter') {
-              return;
-            }
-            e.preventDefault();
-            e.stopPropagation();
-            commitRegisterValueDraft();
-            setValueEditing(false);
-            // Return focus to the visualizer root.
-            e.currentTarget?.blur?.();
-          }}
-        />
-        {valueError ? <div className="text-xs vscode-error mt-1">{valueError}</div> : null}
-      </div>
-      <button
-        type="button"
-        className="px-3 py-2 text-sm font-semibold border rounded self-start"
-        style={{
-          borderColor: 'var(--vscode-button-border, var(--vscode-panel-border))',
-          background: 'var(--vscode-button-background)',
-          color: 'var(--vscode-button-foreground)',
-        }}
-        onMouseEnter={(e) => {
-          (e.currentTarget as HTMLButtonElement).style.background =
-            'var(--vscode-button-hoverBackground)';
-        }}
-        onMouseLeave={(e) => {
-          (e.currentTarget as HTMLButtonElement).style.background =
-            'var(--vscode-button-background)';
-        }}
-        onClick={() => setValueView((v) => (v === 'hex' ? 'dec' : 'hex'))}
-        title="Toggle hex/dec"
-      >
-        {valueView.toUpperCase()}
-      </button>
+  <div className="mt-3 flex items-start justify-end gap-3">
+    <div className="text-sm vscode-muted font-mono font-semibold mt-[7px]">Value:</div>
+    <div className="min-w-[320px] text-base">
+    <VSCodeTextField
+      className="w-full"
+      value={valueDraft}
+      onFocus={() => setValueEditing(true)}
+      onBlur={() => {
+      setValueEditing(false);
+      commitRegisterValueDraft();
+      }}
+      onInput={(e: any) => {
+      const next = String(e.target.value ?? '');
+      setValueDraft(next);
+      const parsed = parseRegisterValue(next);
+      setValueError(validateRegisterValue(parsed));
+      }}
+      onKeyDown={(e: any) => {
+      if (e.key !== 'Enter') {
+        return;
+      }
+      e.preventDefault();
+      e.stopPropagation();
+      commitRegisterValueDraft();
+      setValueEditing(false);
+      // Return focus to the visualizer root.
+      e.currentTarget?.blur?.();
+      }}
+    />
+    {valueError ? <div className="text-xs vscode-error mt-1">{valueError}</div> : null}
     </div>
+    <button
+    type="button"
+    className="px-3 py-2 text-sm font-semibold border rounded self-start"
+    style={{
+      borderColor: 'var(--vscode-button-border, var(--vscode-panel-border))',
+      background: 'var(--vscode-button-background)',
+      color: 'var(--vscode-button-foreground)',
+    }}
+    onMouseEnter={(e) => {
+      (e.currentTarget as HTMLButtonElement).style.background =
+      'var(--vscode-button-hoverBackground)';
+    }}
+    onMouseLeave={(e) => {
+      (e.currentTarget as HTMLButtonElement).style.background =
+      'var(--vscode-button-background)';
+    }}
+    onClick={() => setValueView((v) => (v === 'hex' ? 'dec' : 'hex'))}
+    title="Toggle hex/dec"
+    >
+    {valueView.toUpperCase()}
+    </button>
+  </div>
   );
 
   if (layout === 'pro') {
-    // Grouped, modern layout with floating labels and grid - includes gaps
-    const segments = (ctrlDrag.active && ctrlDrag.previewSegments)
-      ? ctrlDrag.previewSegments
-      : buildProLayoutSegments(fields, registerSize);
-    return (
-      <div className="w-full max-w-4xl">
-        <div className="relative w-full flex items-start">
-          {/* Bit grid background */}
-          <div className="relative flex flex-row items-end gap-0.5 px-2 pt-12 pb-2 min-h-[64px]">
-            {/* Render each segment (field or gap) */}
-            {segments.map((segment, segIdx) => {
-              const width = segment.end - segment.start + 1;
+  // Grouped, modern layout with floating labels and grid - includes gaps
+  const segments = (ctrlDrag.active && ctrlDrag.previewSegments)
+    ? ctrlDrag.previewSegments
+    : buildProLayoutSegments(fields, registerSize);
+  return (
+    <div className="w-full max-w-4xl">
+    <div className="relative w-full flex items-start">
+      {/* Bit grid background */}
+      <div className="relative flex flex-row items-end gap-0.5 px-2 pt-12 pb-2 min-h-[64px]">
+      {/* Render each segment (field or gap) */}
+      {segments.map((segment, segIdx) => {
+        const width = segment.end - segment.start + 1;
 
-              if (segment.type === 'gap') {
-                // Render gap segment
-                return (
-                  <div
-                    key={`gap-${segIdx}`}
-                    className="relative flex flex-col items-center justify-end select-none"
-                    style={{ width: `calc(${width} * 2.5rem)` }}
-                  >
-                    <div className="h-20 w-full rounded-t-md overflow-hidden flex">
-                      {Array.from({ length: width }).map((_, i) => {
-                        const bit = segment.end - i;
-                        // Check if this bit is in the active drag range (for both create and resize extending into gap)
-                        const isInDragRange = shiftDrag.active &&
-                          (shiftDrag.mode === 'create' || shiftDrag.mode === 'resize') &&
-                          bit >= Math.min(shiftDrag.anchorBit, shiftDrag.currentBit) &&
-                          bit <= Math.max(shiftDrag.anchorBit, shiftDrag.currentBit);
-                        return (
-                          <div
-                            key={i}
-                            className="w-10 h-20 flex items-center justify-center cursor-pointer touch-none"
-                            style={{
-                              background: isInDragRange
-                                ? 'var(--vscode-editor-selectionBackground, #264f78)'
-                                : 'var(--vscode-editor-background)',
-                              opacity: isInDragRange ? 0.9 : 0.5,
-                              border: isInDragRange ? '2px solid var(--vscode-focusBorder)' : undefined,
-                            }}
-                            onPointerDown={(e) => {
-                              if (e.shiftKey) {
-                                handleShiftPointerDown(bit, e);
-                                return;
-                              }
-                              if (e.ctrlKey) {
-                                handleCtrlPointerDown(bit, e);
-                                return;
-                              }
-                            }}
-                            onPointerMove={() => {
-                              handleShiftPointerMove(bit);
-                              handleCtrlPointerMove(bit);
-                            }}
-                            onPointerEnter={() => {
-                              if (shiftDrag.active) handleShiftPointerMove(bit);
-                              if (ctrlDrag.active) handleCtrlPointerMove(bit);
-                            }}
-                          >
-                            <span className="text-sm font-mono vscode-muted select-none">
-                              {isInDragRange ? '+' : '-'}
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                    {/* Per-bit numbers below */}
-                    <div className="flex flex-row w-full">
-                      {Array.from({ length: width }).map((_, i) => {
-                        const bit = segment.end - i;
-                        return (
-                          <div
-                            key={bit}
-                            className="w-10 text-center text-[11px] vscode-muted font-mono mt-1"
-                          >
-                            {bit}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              }
-
-              // Render field segment
-              const group = segment;
-              const isHovered = hoveredFieldIndex === group.idx;
-              const field = fields[group.idx];
-              const fieldReset =
-                field?.reset_value === null || field?.reset_value === undefined
-                  ? 0
-                  : Number(field.reset_value);
-
-              return (
-                <div
-                  key={group.idx}
-                  className={`relative flex flex-col items-center justify-end select-none ${isHovered ? 'z-10' : ''}`}
-                  style={{ width: `calc(${width} * 2.5rem)` }}
-                  onMouseEnter={() => setHoveredFieldIndex(group.idx)}
-                  onMouseLeave={() => setHoveredFieldIndex(null)}
-                >
-                  <div
-                    className="h-20 w-full rounded-t-md overflow-hidden flex"
-                    style={{
-                      opacity: 1,
-                      transform: isHovered ? 'translateY(-2px)' : undefined,
-                      filter: isHovered ? 'saturate(1.15) brightness(1.05)' : undefined,
-                      boxShadow: isHovered
-                        ? '0 0 0 2px var(--vscode-focusBorder), 0 10px 20px color-mix(in srgb, var(--vscode-foreground) 22%, transparent)'
-                        : undefined,
-                    }}
-                  >
-                    {Array.from({ length: width }).map((_, i) => {
-                      const bit = group.end - i;
-                      const localBit = bit - group.start;
-                      const v = bitAt(fieldReset, localBit);
-                      const dragKey = `${group.idx}:${localBit}`;
-
-                      // Check if we're resizing this field
-                      const isResizingThisField = shiftDrag.active &&
-                        shiftDrag.mode === 'resize' &&
-                        shiftDrag.targetFieldIndex === group.idx;
-
-                      // Check if this bit is within the new drag selection range
-                      const isInNewRange = isResizingThisField &&
-                        bit >= Math.min(shiftDrag.anchorBit, shiftDrag.currentBit) &&
-                        bit <= Math.max(shiftDrag.anchorBit, shiftDrag.currentBit);
-
-                      // Check if this bit will be removed (outside new range)
-                      const isOutOfNewRange = isResizingThisField && !isInNewRange;
-
-                      return (
-                        <div
-                          key={i}
-                          className={`w-10 h-20 flex items-center justify-center cursor-pointer touch-none ${v === 1 && !isOutOfNewRange ? 'ring-1 ring-white/70 ring-inset' : ''}`}
-                          style={{
-                            background: isOutOfNewRange
-                              ? 'var(--vscode-editor-background)'
-                              : colorMap[group.color],
-                            opacity: isOutOfNewRange ? 0.3 : 1,
-                            border: isInNewRange ? '2px solid var(--vscode-focusBorder)' : undefined,
-                          }}
-                          onPointerDown={(e) => {
-                            // Shift-drag for resize
-                            if (e.shiftKey) {
-                              handleShiftPointerDown(bit, e);
-                              return;
-                            }
-                            // Ctrl-drag for reorder
-                            if (e.ctrlKey) {
-                              handleCtrlPointerDown(bit, e);
-                              return;
-                            }
-                            // Normal bit toggle
-                            if (!onUpdateFieldReset) {
-                              return;
-                            }
-                            if (e.button !== 0) {
-                              return;
-                            }
-                            e.preventDefault();
-                            e.stopPropagation();
-
-                            const desired: 0 | 1 = v === 1 ? 0 : 1;
-                            setDragActive(true);
-                            setDragSetTo(desired);
-                            setDragLast(dragKey);
-                            applyBit(group.idx, localBit, desired);
-                          }}
-                          onPointerMove={() => {
-                            handleShiftPointerMove(bit);
-                            handleCtrlPointerMove(bit);
-                          }}
-                          onPointerEnter={(e) => {
-                            // Handle shift-drag move
-                            if (shiftDrag.active) {
-                              handleShiftPointerMove(bit);
-                              return;
-                            }
-                            if (ctrlDrag.active) {
-                              handleCtrlPointerMove(bit);
-                              return;
-                            }
-                            // Normal bit drag
-                            if (!dragActive) {
-                              return;
-                            }
-                            if (!onUpdateFieldReset) {
-                              return;
-                            }
-                            if (dragLast === dragKey) {
-                              return;
-                            }
-                            e.preventDefault();
-                            e.stopPropagation();
-                            setDragLast(dragKey);
-                            applyBit(group.idx, localBit, dragSetTo);
-                          }}
-                        >
-                          <span
-                            className={`text-sm font-mono text-white/90 select-none ${v === 1 ? 'font-bold' : 'font-normal'}`}
-                          >
-                            {v}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                  <div
-                    className="absolute -top-10 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded border shadow text-xs whitespace-nowrap pointer-events-none"
-                    style={{
-                      background: 'var(--vscode-editorWidget-background)',
-                      color: 'var(--vscode-foreground)',
-                      borderColor: 'var(--vscode-panel-border)',
-                    }}
-                  >
-                    <div className="font-bold">
-                      {group.name}
-                      <span className="ml-2 vscode-muted font-mono text-[11px]">
-                        [{Math.max(group.start, group.end)}:{Math.min(group.start, group.end)}]
-                      </span>
-                    </div>
-                    <div className="text-[11px] vscode-muted font-mono">
-                      {valueView === 'dec'
-                        ? Math.trunc(fieldReset).toString(10)
-                        : `0x${Math.trunc(fieldReset).toString(16).toUpperCase()}`}
-                    </div>
-                  </div>
-                  {/* Per-bit numbers below, LSB (right) to MSB (left) */}
-                  <div className="flex flex-row w-full">
-                    {Array.from({ length: width }).map((_, i) => {
-                      const bit = group.end - i;
-                      return (
-                        <div
-                          key={bit}
-                          className="w-10 text-center text-[11px] vscode-muted font-mono mt-1"
-                        >
-                          {bit}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
+        if (segment.type === 'gap') {
+        // Render gap segment
+        return (
+          <div
+          key={`gap-${segIdx}`}
+          className="relative flex flex-col items-center justify-end select-none"
+          style={{ width: `calc(${width} * 2.5rem)` }}
+          >
+          <div className="h-20 w-full rounded-t-md overflow-hidden flex">
+            {Array.from({ length: width }).map((_, i) => {
+            const bit = segment.end - i;
+            // Check if this bit is in the active drag range (for both create and resize extending into gap)
+            const isInDragRange = shiftDrag.active &&
+              (shiftDrag.mode === 'create' || shiftDrag.mode === 'resize') &&
+              bit >= Math.min(shiftDrag.anchorBit, shiftDrag.currentBit) &&
+              bit <= Math.max(shiftDrag.anchorBit, shiftDrag.currentBit);
+            return (
+              <div
+              key={i}
+              className="w-10 h-20 flex items-center justify-center cursor-pointer touch-none"
+              style={{
+                background: isInDragRange
+                ? 'var(--vscode-editor-selectionBackground, #264f78)'
+                : 'var(--vscode-editor-background)',
+                opacity: isInDragRange ? 0.9 : 0.5,
+                border: isInDragRange ? '2px solid var(--vscode-focusBorder)' : undefined,
+              }}
+              onPointerDown={(e) => {
+                if (e.shiftKey) {
+                handleShiftPointerDown(bit, e);
+                return;
+                }
+                if (e.ctrlKey) {
+                handleCtrlPointerDown(bit, e);
+                return;
+                }
+              }}
+              onPointerMove={() => {
+                handleShiftPointerMove(bit);
+                handleCtrlPointerMove(bit);
+              }}
+              onPointerEnter={() => {
+                if (shiftDrag.active) handleShiftPointerMove(bit);
+                if (ctrlDrag.active) handleCtrlPointerMove(bit);
+              }}
+              >
+              <span className="text-sm font-mono vscode-muted select-none">
+                {isInDragRange ? '+' : '-'}
+              </span>
+              </div>
+            );
             })}
           </div>
-        </div>
+          {/* Per-bit numbers below */}
+          <div className="flex flex-row w-full">
+            {Array.from({ length: width }).map((_, i) => {
+            const bit = segment.end - i;
+            return (
+              <div
+              key={bit}
+              className="w-10 text-center text-[11px] vscode-muted font-mono mt-1"
+              >
+              {bit}
+              </div>
+            );
+            })}
+          </div>
+          </div>
+        );
+        }
 
-        {renderValueBar()}
+        // Render field segment
+        const group = segment;
+        const isHovered = hoveredFieldIndex === group.idx;
+        const field = fields[group.idx];
+        const fieldReset =
+        field?.reset_value === null || field?.reset_value === undefined
+          ? 0
+          : Number(field.reset_value);
+
+        return (
+        <div
+          key={group.idx}
+          className={`relative flex flex-col items-center justify-end select-none ${isHovered ? 'z-10' : ''}`}
+          style={{ width: `calc(${width} * 2.5rem)` }}
+          onMouseEnter={() => setHoveredFieldIndex(group.idx)}
+          onMouseLeave={() => setHoveredFieldIndex(null)}
+        >
+          <div
+          className="h-20 w-full rounded-t-md overflow-hidden flex"
+          style={{
+            opacity: 1,
+            transform: isHovered ? 'translateY(-2px)' : undefined,
+            filter: isHovered ? 'saturate(1.15) brightness(1.05)' : undefined,
+            boxShadow: isHovered
+            ? '0 0 0 2px var(--vscode-focusBorder), 0 10px 20px color-mix(in srgb, var(--vscode-foreground) 22%, transparent)'
+            : undefined,
+          }}
+          >
+          {Array.from({ length: width }).map((_, i) => {
+            const bit = group.end - i;
+            const localBit = bit - group.start;
+            const v = bitAt(fieldReset, localBit);
+            const dragKey = `${group.idx}:${localBit}`;
+
+            // Check if we're resizing this field
+            const isResizingThisField = shiftDrag.active &&
+            shiftDrag.mode === 'resize' &&
+            shiftDrag.targetFieldIndex === group.idx;
+
+            // Check if this bit is within the new drag selection range
+            const isInNewRange = isResizingThisField &&
+            bit >= Math.min(shiftDrag.anchorBit, shiftDrag.currentBit) &&
+            bit <= Math.max(shiftDrag.anchorBit, shiftDrag.currentBit);
+
+            // Check if this bit will be removed (outside new range)
+            const isOutOfNewRange = isResizingThisField && !isInNewRange;
+
+            return (
+            <div
+              key={i}
+              className={`w-10 h-20 flex items-center justify-center cursor-pointer touch-none ${v === 1 && !isOutOfNewRange ? 'ring-1 ring-white/70 ring-inset' : ''}`}
+              style={{
+              background: isOutOfNewRange
+                ? 'var(--vscode-editor-background)'
+                : FIELD_COLORS[group.color],
+              opacity: isOutOfNewRange ? 0.3 : 1,
+              border: isInNewRange ? '2px solid var(--vscode-focusBorder)' : undefined,
+              }}
+              onPointerDown={(e) => {
+              // Shift-drag for resize
+              if (e.shiftKey) {
+                handleShiftPointerDown(bit, e);
+                return;
+              }
+              // Ctrl-drag for reorder
+              if (e.ctrlKey) {
+                handleCtrlPointerDown(bit, e);
+                return;
+              }
+              // Normal bit toggle
+              if (!onUpdateFieldReset) {
+                return;
+              }
+              if (e.button !== 0) {
+                return;
+              }
+              e.preventDefault();
+              e.stopPropagation();
+
+              const desired: 0 | 1 = v === 1 ? 0 : 1;
+              setDragActive(true);
+              setDragSetTo(desired);
+              setDragLast(dragKey);
+              applyBit(group.idx, localBit, desired);
+              }}
+              onPointerMove={() => {
+              handleShiftPointerMove(bit);
+              handleCtrlPointerMove(bit);
+              }}
+              onPointerEnter={(e) => {
+              // Handle shift-drag move
+              if (shiftDrag.active) {
+                handleShiftPointerMove(bit);
+                return;
+              }
+              if (ctrlDrag.active) {
+                handleCtrlPointerMove(bit);
+                return;
+              }
+              // Normal bit drag
+              if (!dragActive) {
+                return;
+              }
+              if (!onUpdateFieldReset) {
+                return;
+              }
+              if (dragLast === dragKey) {
+                return;
+              }
+              e.preventDefault();
+              e.stopPropagation();
+              setDragLast(dragKey);
+              applyBit(group.idx, localBit, dragSetTo);
+              }}
+            >
+              <span
+              className={`text-sm font-mono text-white/90 select-none ${v === 1 ? 'font-bold' : 'font-normal'}`}
+              >
+              {v}
+              </span>
+            </div>
+            );
+          })}
+          </div>
+          <div
+          className="absolute -top-10 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded border shadow text-xs whitespace-nowrap pointer-events-none"
+          style={{
+            background: 'var(--vscode-editorWidget-background)',
+            color: 'var(--vscode-foreground)',
+            borderColor: 'var(--vscode-panel-border)',
+          }}
+          >
+          <div className="font-bold">
+            {group.name}
+            <span className="ml-2 vscode-muted font-mono text-[11px]">
+            [{Math.max(group.start, group.end)}:{Math.min(group.start, group.end)}]
+            </span>
+          </div>
+          <div className="text-[11px] vscode-muted font-mono">
+            {valueView === 'dec'
+            ? Math.trunc(fieldReset).toString(10)
+            : `0x${Math.trunc(fieldReset).toString(16).toUpperCase()}`}
+          </div>
+          </div>
+          {/* Per-bit numbers below, LSB (right) to MSB (left) */}
+          <div className="flex flex-row w-full">
+          {Array.from({ length: width }).map((_, i) => {
+            const bit = group.end - i;
+            return (
+            <div
+              key={bit}
+              className="w-10 text-center text-[11px] vscode-muted font-mono mt-1"
+            >
+              {bit}
+            </div>
+            );
+          })}
+          </div>
+        </div>
+        );
+      })}
       </div>
-    );
+    </div>
+
+    {renderValueBar()}
+    </div>
+  );
   }
 
   // Default: simple per-bit grid
   return (
-    <div className="w-full flex flex-col items-center">
-      <div className="flex flex-row-reverse gap-0.5 select-none">
-        {bits.map((fieldIdx, bit) => {
-          const isHovered = fieldIdx !== null && fieldIdx === hoveredFieldIndex;
-          const dragKey = fieldIdx !== null ? `${fieldIdx}:${bit}` : null;
-          return (
-            <div
-              key={bit}
-              className={`w-10 h-20 flex flex-col items-center justify-end cursor-pointer group ${fieldIdx !== null ? 'bg-blue-500' : 'vscode-surface-alt'} ${isHovered ? 'z-10' : ''}`}
-              style={{
-                boxShadow: isHovered ? 'inset 0 0 0 2px var(--vscode-focusBorder)' : undefined,
-              }}
-              onMouseEnter={() => fieldIdx !== null && setHoveredFieldIndex(fieldIdx)}
-              onMouseLeave={() => setHoveredFieldIndex(null)}
-              onPointerDown={(e) => {
-                // Shift-drag for resize/create
-                if (e.shiftKey) {
-                  handleShiftPointerDown(bit, e);
-                  return;
-                }
-                // Normal bit toggle
-                if (!onUpdateFieldReset) {
-                  return;
-                }
-                if (fieldIdx === null) {
-                  return;
-                }
-                if (e.button !== 0) {
-                  return;
-                }
-                const r = getFieldRange(fields[fieldIdx]);
-                if (!r) {
-                  return;
-                }
-                const localBit = bit - r.lo;
-                if (localBit < 0 || localBit > r.hi - r.lo) {
-                  return;
-                }
-                const raw = fields[fieldIdx]?.reset_value;
-                const current = raw === null || raw === undefined ? 0 : Number(raw);
-                const curBit = bitAt(current, localBit);
-                const desired: 0 | 1 = curBit === 1 ? 0 : 1;
-                e.preventDefault();
-                e.stopPropagation();
-                setDragActive(true);
-                setDragSetTo(desired);
-                setDragLast(`${fieldIdx}:${localBit}`);
-                applyBit(fieldIdx, localBit, desired);
-              }}
-              onPointerMove={() => handleShiftPointerMove(bit)}
-              onPointerEnter={(e) => {
-                // Handle shift-drag move
-                if (shiftDrag.active) {
-                  handleShiftPointerMove(bit);
-                  return;
-                }
-                // Normal bit drag
-                if (!dragActive) {
-                  return;
-                }
-                if (!onUpdateFieldReset) {
-                  return;
-                }
-                if (fieldIdx === null) {
-                  return;
-                }
-                const r = getFieldRange(fields[fieldIdx]);
-                if (!r) {
-                  return;
-                }
-                const localBit = bit - r.lo;
-                if (localBit < 0 || localBit > r.hi - r.lo) {
-                  return;
-                }
-                const key = `${fieldIdx}:${localBit}`;
-                if (dragLast === key) {
-                  return;
-                }
-                e.preventDefault();
-                e.stopPropagation();
-                setDragLast(key);
-                applyBit(fieldIdx, localBit, dragSetTo);
-              }}
-            >
-              <span className="text-[10px] vscode-muted font-mono">{bit}</span>
-              <span className="text-[11px] font-mono mb-1">{bitValues[bit]}</span>
-            </div>
-          );
-        })}
+  <div className="w-full flex flex-col items-center">
+    <div className="flex flex-row-reverse gap-0.5 select-none">
+    {bits.map((fieldIdx, bit) => {
+      const isHovered = fieldIdx !== null && fieldIdx === hoveredFieldIndex;
+      const dragKey = fieldIdx !== null ? `${fieldIdx}:${bit}` : null;
+      return (
+      <div
+        key={bit}
+        className={`w-10 h-20 flex flex-col items-center justify-end cursor-pointer group ${fieldIdx !== null ? 'bg-blue-500' : 'vscode-surface-alt'} ${isHovered ? 'z-10' : ''}`}
+        style={{
+        boxShadow: isHovered ? 'inset 0 0 0 2px var(--vscode-focusBorder)' : undefined,
+        }}
+        onMouseEnter={() => fieldIdx !== null && setHoveredFieldIndex(fieldIdx)}
+        onMouseLeave={() => setHoveredFieldIndex(null)}
+        onPointerDown={(e) => {
+        // Shift-drag for resize/create
+        if (e.shiftKey) {
+          handleShiftPointerDown(bit, e);
+          return;
+        }
+        // Normal bit toggle
+        if (!onUpdateFieldReset) {
+          return;
+        }
+        if (fieldIdx === null) {
+          return;
+        }
+        if (e.button !== 0) {
+          return;
+        }
+        const r = getFieldRange(fields[fieldIdx]);
+        if (!r) {
+          return;
+        }
+        const localBit = bit - r.lo;
+        if (localBit < 0 || localBit > r.hi - r.lo) {
+          return;
+        }
+        const raw = fields[fieldIdx]?.reset_value;
+        const current = raw === null || raw === undefined ? 0 : Number(raw);
+        const curBit = bitAt(current, localBit);
+        const desired: 0 | 1 = curBit === 1 ? 0 : 1;
+        e.preventDefault();
+        e.stopPropagation();
+        setDragActive(true);
+        setDragSetTo(desired);
+        setDragLast(`${fieldIdx}:${localBit}`);
+        applyBit(fieldIdx, localBit, desired);
+        }}
+        onPointerMove={() => handleShiftPointerMove(bit)}
+        onPointerEnter={(e) => {
+        // Handle shift-drag move
+        if (shiftDrag.active) {
+          handleShiftPointerMove(bit);
+          return;
+        }
+        // Normal bit drag
+        if (!dragActive) {
+          return;
+        }
+        if (!onUpdateFieldReset) {
+          return;
+        }
+        if (fieldIdx === null) {
+          return;
+        }
+        const r = getFieldRange(fields[fieldIdx]);
+        if (!r) {
+          return;
+        }
+        const localBit = bit - r.lo;
+        if (localBit < 0 || localBit > r.hi - r.lo) {
+          return;
+        }
+        const key = `${fieldIdx}:${localBit}`;
+        if (dragLast === key) {
+          return;
+        }
+        e.preventDefault();
+        e.stopPropagation();
+        setDragLast(key);
+        applyBit(fieldIdx, localBit, dragSetTo);
+        }}
+      >
+        <span className="text-[10px] vscode-muted font-mono">{bit}</span>
+        <span className="text-[11px] font-mono mb-1">{bitValues[bit]}</span>
       </div>
-      <div className="flex flex-row-reverse gap-0.5 mt-1">
-        {bits.map((fieldIdx, bit) => (
-          <div key={bit} className="w-7 text-center text-[10px] vscode-muted font-mono">
-            {fieldIdx !== null ? fields[fieldIdx].name : ''}
-          </div>
-        ))}
-      </div>
-
-      <div className="w-full">{renderValueBar()}</div>
+      );
+    })}
     </div>
+    <div className="flex flex-row-reverse gap-0.5 mt-1">
+    {bits.map((fieldIdx, bit) => (
+      <div key={bit} className="w-7 text-center text-[10px] vscode-muted font-mono">
+      {fieldIdx !== null ? fields[fieldIdx].name : ''}
+      </div>
+    ))}
+    </div>
+
+    <div className="w-full">{renderValueBar()}</div>
+  </div>
   );
 };
 

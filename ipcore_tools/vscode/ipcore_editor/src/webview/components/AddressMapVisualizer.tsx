@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { FIELD_COLORS, FIELD_COLOR_KEYS } from '../shared/colors';
 
 interface AddressMapVisualizerProps {
   blocks: any[];
@@ -7,21 +8,8 @@ interface AddressMapVisualizerProps {
   totalAddressSpace?: number;
 }
 
-const colorMap: Record<string, string> = {
-  blue: '#3b82f6',
-  orange: '#f97316',
-  emerald: '#10b981',
-  pink: '#ec4899',
-  purple: '#a855f7',
-  cyan: '#06b6d4',
-  amber: '#f59e0b',
-  rose: '#f43f5e',
-  gray: '#6b7280',
-};
-const colorKeys = Object.keys(colorMap);
-
 function getBlockColor(idx: number) {
-  return colorKeys[idx % colorKeys.length];
+  return FIELD_COLOR_KEYS[idx % FIELD_COLOR_KEYS.length];
 }
 
 function toHex(n: number): string {
@@ -31,7 +19,7 @@ function toHex(n: number): string {
 const AddressMapVisualizer: React.FC<AddressMapVisualizerProps> = ({
   blocks,
   hoveredBlockIndex = null,
-  setHoveredBlockIndex = () => {},
+  setHoveredBlockIndex = () => { },
   totalAddressSpace = 65536, // Default 64KB
 }) => {
   // Calculate max address to determine total range
@@ -95,7 +83,7 @@ const AddressMapVisualizer: React.FC<AddressMapVisualizerProps> = ({
                 <div
                   className="h-20 w-full rounded-t-md overflow-hidden flex items-center justify-center px-2"
                   style={{
-                    background: colorMap[group.color],
+                    background: FIELD_COLORS[group.color],
                     opacity: 1,
                     transform: isHovered ? 'translateY(-2px)' : undefined,
                     filter: isHovered ? 'saturate(1.15) brightness(1.05)' : undefined,
