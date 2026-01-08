@@ -8,6 +8,8 @@ interface BitFieldVisualizerProps {
   registerSize?: number;
   layout?: 'default' | 'pro';
   onUpdateFieldReset?: (fieldIndex: number, resetValue: number | null) => void;
+  onUpdateFieldRange?: (fieldIndex: number, newRange: [number, number]) => void;
+  onCreateField?: (field: { bit_range: [number, number]; name: string }) => void;
 }
 
 const colorMap: Record<string, string> = {
@@ -134,13 +136,140 @@ function groupFields(fields: any[]) {
   return groups;
 }
 
+type ProSegment =
+  | { type: 'field'; idx: number; start: number; end: number; name: string; color: string }
+  | { type: 'gap'; start: number; end: number };
+
+/**
+ * Build layout segments including fields and gaps, ordered MSB to LSB.
+ */
+function buildProLayoutSegments(fields: any[], registerSize: number): ProSegment[] {
+  const groups = groupFields(fields);
+  const segments: ProSegment[] = [];
+
+  // Sort groups by end (MSB) descending for left-to-right rendering
+  const sorted = [...groups].sort((a, b) => b.end - a.end);
+
+  let cursor = registerSize - 1; // Start from MSB
+
+  for (const group of sorted) {
+    // If there's a gap before this field
+    if (cursor > group.end) {
+      segments.push({ type: 'gap', start: group.end + 1, end: cursor });
+    }
+    // Add the field
+    segments.push({ type: 'field', ...group });
+    cursor = group.start - 1;
+  }
+
+  // If there's a gap at the end (toward LSB)
+  if (cursor >= 0) {
+    segments.push({ type: 'gap', start: 0, end: cursor });
+  }
+
+  return segments;
+}
+
+// ============================================================================
+// Shift-Drag Types and Helpers
+// ============================================================================
+
+interface ShiftDragState {
+  active: boolean;
+  mode: 'resize' | 'create';
+  targetFieldIndex: number | null;
+  resizeEdge: 'msb' | 'lsb' | null;
+  originalRange: { lo: number; hi: number } | null;
+  anchorBit: number;
+  currentBit: number;
+  minBit: number;
+  maxBit: number;
+}
+
+const SHIFT_DRAG_INITIAL: ShiftDragState = {
+  active: false,
+  mode: 'resize',
+  targetFieldIndex: null,
+  resizeEdge: null,
+  originalRange: null,
+  anchorBit: 0,
+  currentBit: 0,
+  minBit: 0,
+  maxBit: 31,
+};
+
+/**
+ * Find the boundaries of the gap containing startBit.
+ * Returns { minBit, maxBit } for the contiguous empty region.
+ */
+function findGapBoundaries(
+  startBit: number,
+  bits: (number | null)[],
+  registerSize: number
+): { minBit: number; maxBit: number } {
+  let minBit = startBit;
+  let maxBit = startBit;
+
+  // Expand toward MSB (higher bits)
+  while (maxBit < registerSize - 1 && bits[maxBit + 1] === null) {
+    maxBit++;
+  }
+
+  // Expand toward LSB (lower bits)
+  while (minBit > 0 && bits[minBit - 1] === null) {
+    minBit--;
+  }
+
+  return { minBit, maxBit };
+}
+
+/**
+ * Find the collision boundary when resizing a field toward 'edge'.
+ * Returns the maximum (for msb) or minimum (for lsb) bit the field can extend to.
+ */
+function findResizeBoundary(
+  fieldIndex: number,
+  edge: 'msb' | 'lsb',
+  fields: any[],
+  registerSize: number
+): number {
+  const thisRange = getFieldRange(fields[fieldIndex]);
+  if (!thisRange) return edge === 'msb' ? registerSize - 1 : 0;
+
+  if (edge === 'msb') {
+    // Find nearest field above our MSB
+    let limit = registerSize - 1;
+    for (let i = 0; i < fields.length; i++) {
+      if (i === fieldIndex) continue;
+      const r = getFieldRange(fields[i]);
+      if (r && r.lo > thisRange.hi) {
+        limit = Math.min(limit, r.lo - 1);
+      }
+    }
+    return limit;
+  } else {
+    // Find nearest field below our LSB
+    let limit = 0;
+    for (let i = 0; i < fields.length; i++) {
+      if (i === fieldIndex) continue;
+      const r = getFieldRange(fields[i]);
+      if (r && r.hi < thisRange.lo) {
+        limit = Math.max(limit, r.hi + 1);
+      }
+    }
+    return limit;
+  }
+}
+
 const BitFieldVisualizer: React.FC<BitFieldVisualizerProps> = ({
   fields,
   hoveredFieldIndex = null,
-  setHoveredFieldIndex = () => {},
+  setHoveredFieldIndex = () => { },
   registerSize = 32,
   layout = 'default',
   onUpdateFieldReset,
+  onUpdateFieldRange,
+  onCreateField,
 }) => {
   const [valueView, setValueView] = useState<'hex' | 'dec'>('hex');
   const [valueDraft, setValueDraft] = useState<string>('');
@@ -149,6 +278,9 @@ const BitFieldVisualizer: React.FC<BitFieldVisualizerProps> = ({
   const [dragActive, setDragActive] = useState(false);
   const [dragSetTo, setDragSetTo] = useState<0 | 1>(0);
   const [dragLast, setDragLast] = useState<string | null>(null);
+
+  // Shift-drag state for resizing/creating fields
+  const [shiftDrag, setShiftDrag] = useState<ShiftDragState>(SHIFT_DRAG_INITIAL);
 
   useEffect(() => {
     if (!dragActive) {
@@ -167,6 +299,99 @@ const BitFieldVisualizer: React.FC<BitFieldVisualizerProps> = ({
       window.removeEventListener('blur', stop);
     };
   }, [dragActive]);
+
+  // Shift-drag: cleanup on pointer up
+  useEffect(() => {
+    if (!shiftDrag.active) {
+      return;
+    }
+    const commitShiftDrag = () => {
+      if (shiftDrag.mode === 'resize' && shiftDrag.targetFieldIndex !== null) {
+        // Redefine field range to the dragged selection
+        const newLo = Math.min(shiftDrag.anchorBit, shiftDrag.currentBit);
+        const newHi = Math.max(shiftDrag.anchorBit, shiftDrag.currentBit);
+        if (onUpdateFieldRange && newLo <= newHi) {
+          onUpdateFieldRange(shiftDrag.targetFieldIndex, [newHi, newLo]);
+        }
+      } else if (shiftDrag.mode === 'create') {
+        const lo = Math.min(shiftDrag.anchorBit, shiftDrag.currentBit);
+        const hi = Math.max(shiftDrag.anchorBit, shiftDrag.currentBit);
+        if (onCreateField && lo <= hi) {
+          onCreateField({ bit_range: [hi, lo], name: 'new_field' });
+        }
+      }
+      setShiftDrag(SHIFT_DRAG_INITIAL);
+    };
+    window.addEventListener('pointerup', commitShiftDrag);
+    window.addEventListener('pointercancel', () => setShiftDrag(SHIFT_DRAG_INITIAL));
+    window.addEventListener('blur', () => setShiftDrag(SHIFT_DRAG_INITIAL));
+    return () => {
+      window.removeEventListener('pointerup', commitShiftDrag);
+      window.removeEventListener('pointercancel', () => setShiftDrag(SHIFT_DRAG_INITIAL));
+      window.removeEventListener('blur', () => setShiftDrag(SHIFT_DRAG_INITIAL));
+    };
+  }, [shiftDrag, onUpdateFieldRange, onCreateField]);
+
+  /**
+   * Handle Shift+PointerDown to start resize or create mode.
+   */
+  const handleShiftPointerDown = (bit: number, e: React.PointerEvent) => {
+    if (!e.shiftKey) return;
+    if (e.button !== 0) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    const fieldAtBit = bits[bit];
+
+    if (fieldAtBit !== null) {
+      // RESIZE mode - redefine field range via drag selection
+      const fieldRange = getFieldRange(fields[fieldAtBit]);
+      if (!fieldRange) return;
+
+      // Allow dragging anywhere from collision boundary on LSB side to collision boundary on MSB side
+      const minBit = findResizeBoundary(fieldAtBit, 'lsb', fields, registerSize);
+      const maxBit = findResizeBoundary(fieldAtBit, 'msb', fields, registerSize);
+
+      setShiftDrag({
+        active: true,
+        mode: 'resize',
+        targetFieldIndex: fieldAtBit,
+        resizeEdge: null, // Not used in new model
+        originalRange: fieldRange,
+        anchorBit: bit,
+        currentBit: bit,
+        minBit,
+        maxBit,
+      });
+    } else {
+      // CREATE mode
+      const gap = findGapBoundaries(bit, bits, registerSize);
+
+      setShiftDrag({
+        active: true,
+        mode: 'create',
+        targetFieldIndex: null,
+        resizeEdge: null,
+        originalRange: null,
+        anchorBit: bit,
+        currentBit: bit,
+        minBit: gap.minBit,
+        maxBit: gap.maxBit,
+      });
+    }
+  };
+
+  /**
+   * Handle pointer move during shift-drag.
+   */
+  const handleShiftPointerMove = (bit: number) => {
+    if (!shiftDrag.active) return;
+    const clampedBit = Math.max(shiftDrag.minBit, Math.min(bit, shiftDrag.maxBit));
+    if (clampedBit !== shiftDrag.currentBit) {
+      setShiftDrag((prev) => ({ ...prev, currentBit: clampedBit }));
+    }
+  };
 
   const applyBit = (fieldIndex: number, localBit: number, desired: 0 | 1) => {
     if (!onUpdateFieldReset) {
@@ -332,16 +557,83 @@ const BitFieldVisualizer: React.FC<BitFieldVisualizerProps> = ({
   );
 
   if (layout === 'pro') {
-    // Grouped, modern layout with floating labels and grid
-    const groups = groupFields(fields);
+    // Grouped, modern layout with floating labels and grid - includes gaps
+    const segments = buildProLayoutSegments(fields, registerSize);
     return (
       <div className="w-full max-w-4xl">
         <div className="relative w-full flex items-start">
           {/* Bit grid background */}
           <div className="relative flex flex-row items-end gap-0.5 px-2 pt-12 pb-2 min-h-[64px]">
-            {/* Render each field as a colored segment with label */}
-            {groups.map((group) => {
-              const width = group.end - group.start + 1;
+            {/* Render each segment (field or gap) */}
+            {segments.map((segment, segIdx) => {
+              const width = segment.end - segment.start + 1;
+
+              if (segment.type === 'gap') {
+                // Render gap segment
+                return (
+                  <div
+                    key={`gap-${segIdx}`}
+                    className="relative flex flex-col items-center justify-end select-none"
+                    style={{ width: `calc(${width} * 2.5rem)` }}
+                  >
+                    <div className="h-20 w-full rounded-t-md overflow-hidden flex">
+                      {Array.from({ length: width }).map((_, i) => {
+                        const bit = segment.end - i;
+                        // Check if this bit is in the active drag range (for both create and resize extending into gap)
+                        const isInDragRange = shiftDrag.active &&
+                          (shiftDrag.mode === 'create' || shiftDrag.mode === 'resize') &&
+                          bit >= Math.min(shiftDrag.anchorBit, shiftDrag.currentBit) &&
+                          bit <= Math.max(shiftDrag.anchorBit, shiftDrag.currentBit);
+                        return (
+                          <div
+                            key={i}
+                            className="w-10 h-20 flex items-center justify-center cursor-pointer touch-none"
+                            style={{
+                              background: isInDragRange
+                                ? 'var(--vscode-editor-selectionBackground, #264f78)'
+                                : 'var(--vscode-editor-background)',
+                              opacity: isInDragRange ? 0.9 : 0.5,
+                              border: isInDragRange ? '2px solid var(--vscode-focusBorder)' : undefined,
+                            }}
+                            onPointerDown={(e) => {
+                              if (e.shiftKey) {
+                                handleShiftPointerDown(bit, e);
+                              }
+                            }}
+                            onPointerMove={() => handleShiftPointerMove(bit)}
+                            onPointerEnter={() => {
+                              if (shiftDrag.active) {
+                                handleShiftPointerMove(bit);
+                              }
+                            }}
+                          >
+                            <span className="text-sm font-mono vscode-muted select-none">
+                              {isInDragRange ? '+' : '-'}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {/* Per-bit numbers below */}
+                    <div className="flex flex-row w-full">
+                      {Array.from({ length: width }).map((_, i) => {
+                        const bit = segment.end - i;
+                        return (
+                          <div
+                            key={bit}
+                            className="w-10 text-center text-[11px] vscode-muted font-mono mt-1"
+                          >
+                            {bit}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              }
+
+              // Render field segment
+              const group = segment;
               const isHovered = hoveredFieldIndex === group.idx;
               const field = fields[group.idx];
               const fieldReset =
@@ -373,12 +665,38 @@ const BitFieldVisualizer: React.FC<BitFieldVisualizerProps> = ({
                       const localBit = bit - group.start;
                       const v = bitAt(fieldReset, localBit);
                       const dragKey = `${group.idx}:${localBit}`;
+
+                      // Check if we're resizing this field
+                      const isResizingThisField = shiftDrag.active &&
+                        shiftDrag.mode === 'resize' &&
+                        shiftDrag.targetFieldIndex === group.idx;
+
+                      // Check if this bit is within the new drag selection range
+                      const isInNewRange = isResizingThisField &&
+                        bit >= Math.min(shiftDrag.anchorBit, shiftDrag.currentBit) &&
+                        bit <= Math.max(shiftDrag.anchorBit, shiftDrag.currentBit);
+
+                      // Check if this bit will be removed (outside new range)
+                      const isOutOfNewRange = isResizingThisField && !isInNewRange;
+
                       return (
                         <div
                           key={i}
-                          className={`w-10 h-20 flex items-center justify-center cursor-pointer touch-none ${v === 1 ? 'ring-1 ring-white/70 ring-inset' : ''}`}
-                          style={{ background: colorMap[group.color] }}
+                          className={`w-10 h-20 flex items-center justify-center cursor-pointer touch-none ${v === 1 && !isOutOfNewRange ? 'ring-1 ring-white/70 ring-inset' : ''}`}
+                          style={{
+                            background: isOutOfNewRange
+                              ? 'var(--vscode-editor-background)'
+                              : colorMap[group.color],
+                            opacity: isOutOfNewRange ? 0.3 : 1,
+                            border: isInNewRange ? '2px solid var(--vscode-focusBorder)' : undefined,
+                          }}
                           onPointerDown={(e) => {
+                            // Shift-drag for resize
+                            if (e.shiftKey) {
+                              handleShiftPointerDown(bit, e);
+                              return;
+                            }
+                            // Normal bit toggle
                             if (!onUpdateFieldReset) {
                               return;
                             }
@@ -394,7 +712,14 @@ const BitFieldVisualizer: React.FC<BitFieldVisualizerProps> = ({
                             setDragLast(dragKey);
                             applyBit(group.idx, localBit, desired);
                           }}
+                          onPointerMove={() => handleShiftPointerMove(bit)}
                           onPointerEnter={(e) => {
+                            // Handle shift-drag move
+                            if (shiftDrag.active) {
+                              handleShiftPointerMove(bit);
+                              return;
+                            }
+                            // Normal bit drag
                             if (!dragActive) {
                               return;
                             }
@@ -481,6 +806,12 @@ const BitFieldVisualizer: React.FC<BitFieldVisualizerProps> = ({
               onMouseEnter={() => fieldIdx !== null && setHoveredFieldIndex(fieldIdx)}
               onMouseLeave={() => setHoveredFieldIndex(null)}
               onPointerDown={(e) => {
+                // Shift-drag for resize/create
+                if (e.shiftKey) {
+                  handleShiftPointerDown(bit, e);
+                  return;
+                }
+                // Normal bit toggle
                 if (!onUpdateFieldReset) {
                   return;
                 }
@@ -509,7 +840,14 @@ const BitFieldVisualizer: React.FC<BitFieldVisualizerProps> = ({
                 setDragLast(`${fieldIdx}:${localBit}`);
                 applyBit(fieldIdx, localBit, desired);
               }}
+              onPointerMove={() => handleShiftPointerMove(bit)}
               onPointerEnter={(e) => {
+                // Handle shift-drag move
+                if (shiftDrag.active) {
+                  handleShiftPointerMove(bit);
+                  return;
+                }
+                // Normal bit drag
                 if (!dragActive) {
                   return;
                 }

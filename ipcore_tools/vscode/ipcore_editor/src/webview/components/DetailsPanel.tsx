@@ -1608,6 +1608,48 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(
                 onUpdateFieldReset={(fieldIndex, resetValue) => {
                   onUpdate(['fields', fieldIndex, 'reset_value'], resetValue);
                 }}
+                onUpdateFieldRange={(fieldIndex, newRange) => {
+                  // Update entire field object at once to avoid race conditions
+                  const [hi, lo] = newRange;
+                  const field = fields[fieldIndex];
+                  const updatedField = {
+                    ...field,
+                    bit_range: newRange,
+                    bit_offset: lo,
+                    bit_width: hi - lo + 1,
+                  };
+                  const newFields = [...fields];
+                  newFields[fieldIndex] = updatedField;
+                  onUpdate(['fields'], newFields);
+                }}
+                onCreateField={(newField) => {
+                  // Generate unique name
+                  let maxN = 0;
+                  for (const f of fields) {
+                    const m = String(f.name || '').match(/^field(\d+)$/);
+                    if (m) {
+                      maxN = Math.max(maxN, parseInt(m[1], 10));
+                    }
+                  }
+                  const name = `field${maxN + 1}`;
+                  const [hi, lo] = newField.bit_range;
+                  const field = {
+                    name,
+                    bit_range: newField.bit_range,
+                    bit_offset: lo,
+                    bit_width: hi - lo + 1,
+                    access: 'read-write',
+                    reset_value: 0,
+                    description: '',
+                  };
+                  // Add new field and sort by LSB
+                  const newFields = [...fields, field].sort((a, b) => {
+                    const aLo = a.bit_range ? a.bit_range[1] : (a.bit_offset ?? 0);
+                    const bLo = b.bit_range ? b.bit_range[1] : (b.bit_offset ?? 0);
+                    return aLo - bLo;
+                  });
+                  onUpdate(['fields'], newFields);
+                }}
               />
             </div>
           </div>
@@ -2079,13 +2121,12 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(
                         <tr
                           key={idx}
                           data-block-idx={idx}
-                          className={`group transition-colors border-l-4 border-transparent h-12 ${
-                            idx === selectedBlockIndex
-                              ? 'vscode-focus-border vscode-row-selected'
-                              : idx === hoveredBlockIndex
-                                ? 'vscode-focus-border vscode-row-hover'
-                                : ''
-                          }`}
+                          className={`group transition-colors border-l-4 border-transparent h-12 ${idx === selectedBlockIndex
+                            ? 'vscode-focus-border vscode-row-selected'
+                            : idx === hoveredBlockIndex
+                              ? 'vscode-focus-border vscode-row-hover'
+                              : ''
+                            }`}
                           onMouseEnter={() => setHoveredBlockIndex(idx)}
                           onMouseLeave={() => setHoveredBlockIndex(null)}
                           onClick={() => {
@@ -2281,13 +2322,12 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(
                         <tr
                           key={idx}
                           data-reg-idx={idx}
-                          className={`group transition-colors border-l-4 border-transparent h-12 ${
-                            idx === selectedRegIndex
-                              ? 'vscode-focus-border vscode-row-selected'
-                              : idx === hoveredRegIndex
-                                ? 'vscode-focus-border vscode-row-hover'
-                                : ''
-                          }`}
+                          className={`group transition-colors border-l-4 border-transparent h-12 ${idx === selectedRegIndex
+                            ? 'vscode-focus-border vscode-row-selected'
+                            : idx === hoveredRegIndex
+                              ? 'vscode-focus-border vscode-row-hover'
+                              : ''
+                            }`}
                           onMouseEnter={() => setHoveredRegIndex(idx)}
                           onMouseLeave={() => setHoveredRegIndex(null)}
                           onClick={() => {
