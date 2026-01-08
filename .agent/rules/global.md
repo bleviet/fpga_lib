@@ -15,6 +15,12 @@ trigger: always_on
 - **Commit Messages:** Use Conventional Commits (feat, fix, docs, chore, test).
 - **Comments:** Do not leave commented-out code. Delete it.
 - **Documentation:** Keep README files up-to-date when changing functionality.
+- **Code Formatting:** Before generating or modifying code, read `.editorconfig` in the project root to determine:
+  - Indentation style (spaces vs. tabs)
+  - Indentation size (2 or 4 spaces)
+  - Line endings (LF vs. CRLF)
+  - Trailing whitespace rules
+  Apply these settings consistently in all generated code.
 
 ## 3. Project Structure Awareness
 - **Python Backend:** Core library is in `/ipcore_lib/` with models, parsers, generators, runtime, and drivers.
