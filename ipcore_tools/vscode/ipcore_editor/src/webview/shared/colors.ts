@@ -48,24 +48,19 @@ export const FIELD_COLORS: Record<string, string> = {
 export const FIELD_COLOR_KEYS = Object.keys(FIELD_COLORS);
 
 /**
- * Get a stable color for a field based on its name and bit position.
- * This ensures fields maintain their color when reordered and adjacent fields have different colors.
+ * Get a stable color for a field based on its name only.
+ * This ensures fields maintain their color when reordered.
  *
  * @param fieldName The name of the field
- * @param bitOffset Optional bit offset to mix into the hash for adjacent field differentiation
+ * @param _bitOffset Deprecated, ignored for stability during repositioning
  * @returns A color name from FIELD_COLORS
  */
-export function getFieldColor(fieldName: string, bitOffset?: number): string {
-  // Simple hash function for string
+export function getFieldColor(fieldName: string, _bitOffset?: number): string {
+  // Simple hash function for string - uses only name for stability
   let hash = 0;
   for (let i = 0; i < fieldName.length; i++) {
     hash = (hash << 5) - hash + fieldName.charCodeAt(i);
     hash = hash & hash; // Convert to 32-bit integer
-  }
-
-  // Mix in bit offset to ensure adjacent fields get different colors
-  if (bitOffset !== undefined) {
-    hash = hash ^ (bitOffset * 31);
   }
 
   return FIELD_COLOR_KEYS[Math.abs(hash) % FIELD_COLOR_KEYS.length];
