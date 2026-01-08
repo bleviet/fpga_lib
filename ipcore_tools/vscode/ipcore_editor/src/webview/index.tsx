@@ -10,6 +10,7 @@ import { useYamlSync } from './hooks/useYamlSync';
 import { YamlPathResolver, type YamlPath } from './services/YamlPathResolver';
 import { YamlService } from './services/YamlService';
 import type { NormalizedRegister, NormalizedRegisterArray } from './services/DataNormalizer';
+import { BitFieldUtils } from './utils/BitFieldUtils';
 import './index.css';
 
 /**
@@ -250,9 +251,43 @@ const App = () => {
       const delta = typeof payload.delta === 'number' ? payload.delta : 0;
       const next = index + delta;
       if (index >= 0 && next >= 0 && index < fieldsArr.length && next < fieldsArr.length) {
+        // Swap fields in array
         const tmp = fieldsArr[index];
         fieldsArr[index] = fieldsArr[next];
         fieldsArr[next] = tmp;
+        
+        // Recalculate bit offsets for ALL fields after swapping
+        // Important: Create clean field objects to avoid modifying shared references
+        let offset = 0;
+        for (let i = 0; i < fieldsArr.length; i++) {
+          const f = fieldsArr[i];
+          
+          // Parse width from bits string (primary source of truth in YAML)
+          let width = 1; // default
+          if (typeof f?.bits === 'string') {
+            const parsed = BitFieldUtils.parseBitsLike(f.bits);
+            if (parsed && parsed.bit_width > 0) {
+              width = parsed.bit_width;
+            }
+          }
+          // Fall back to bit_width property if bits is not available
+          else if (Number.isFinite(f?.bit_width) && f.bit_width > 0) {
+            width = Number(f.bit_width);
+          }
+          width = Math.max(1, Math.min(32, Math.trunc(width)));
+          
+          // Replace field with clean object containing only YAML-persisted properties
+          fieldsArr[i] = {
+            name: f.name,
+            bits: BitFieldUtils.formatBitsLike(offset, width),
+            access: f.access,
+            reset_value: f.reset_value,
+            description: f.description,
+            enumerated_values: f.enumerated_values,
+          };
+          
+          offset += width;
+        }
       }
     }
   };

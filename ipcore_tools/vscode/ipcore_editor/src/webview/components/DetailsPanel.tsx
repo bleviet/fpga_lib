@@ -678,6 +678,13 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(
           e.preventDefault();
           e.stopPropagation();
           onUpdate(['__op', 'field-move'], { index: selectedFieldIndex, delta });
+          
+          // Clear draft states to force display of fresh normalized values
+          setBitsDrafts({});
+          setBitsErrors({});
+          setNameDrafts({});
+          setNameErrors({});
+          
           setSelectedFieldIndex(next);
           setHoveredFieldIndex(next);
 
@@ -1583,6 +1590,13 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(
           return;
         }
         onUpdate(['__op', 'field-move'], { index: idx, delta });
+        
+        // Clear draft states to force display of fresh normalized values
+        setBitsDrafts({});
+        setBitsErrors({});
+        setNameDrafts({});
+        setNameErrors({});
+        
         setSelectedFieldIndex(next);
         setHoveredFieldIndex(next);
       };
