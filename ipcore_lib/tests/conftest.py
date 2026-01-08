@@ -1,5 +1,6 @@
-import sys
 import os
+import sys
+
 import pytest
 
 # Add the project root to sys.path so that ipcore_lib is importable

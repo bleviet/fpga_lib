@@ -3,9 +3,10 @@ FileSet definitions for IP cores.
 """
 
 from enum import Enum
-from typing import List
-from pydantic import BaseModel, Field, field_validator
 from pathlib import Path
+from typing import List
+
+from pydantic import BaseModel, Field, field_validator
 
 
 class FileType(str, Enum):

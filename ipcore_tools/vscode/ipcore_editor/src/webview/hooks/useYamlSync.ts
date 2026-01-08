@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect } from "react";
 
 /**
  * VSCode API wrapper type
@@ -22,27 +22,26 @@ interface ExtensionMessage {
  */
 export function useYamlSync(
   vscode: VsCodeApi | undefined,
-  onUpdate: (text: string, fileName?: string) => void
+  onUpdate: (text: string, fileName?: string) => void,
 ) {
   useEffect(() => {
     const handleMessage = (event: MessageEvent<ExtensionMessage>) => {
       const message = event.data;
       switch (message.type) {
-        case 'update':
+        case "update":
           if (message.text !== undefined) {
             onUpdate(message.text, message.fileName);
           }
           break;
         default:
         // Ignore unknown message types
-
       }
     };
 
-    window.addEventListener('message', handleMessage);
+    window.addEventListener("message", handleMessage);
 
     return () => {
-      window.removeEventListener('message', handleMessage);
+      window.removeEventListener("message", handleMessage);
     };
   }, [onUpdate]);
 
@@ -50,14 +49,14 @@ export function useYamlSync(
    * Send updated YAML text to the extension
    */
   const sendUpdate = (text: string) => {
-    vscode?.postMessage({ type: 'update', text });
+    vscode?.postMessage({ type: "update", text });
   };
 
   /**
    * Send a command to the extension
    */
   const sendCommand = (command: string, payload?: any) => {
-    vscode?.postMessage({ type: 'command', command, ...payload });
+    vscode?.postMessage({ type: "command", command, ...payload });
   };
 
   return {

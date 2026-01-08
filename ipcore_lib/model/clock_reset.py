@@ -2,11 +2,12 @@
 Clock and reset definitions for IP cores.
 """
 
-from typing import Optional, Any
+from typing import Any, Optional
+
 from pydantic import Field, field_validator
 
 from .base import Polarity
-from .port import PortDirection, Port
+from .port import Port, PortDirection
 
 
 class Clock(Port):
@@ -16,8 +17,11 @@ class Clock(Port):
     Defines both logical (internal) and physical (port) names for clock signals.
     Inherits from Port, typically with width=1.
     """
+
     # Override direction to default to IN, but allow others
-    direction: PortDirection = Field(default=PortDirection.IN, description="Port direction (typically 'in')")
+    direction: PortDirection = Field(
+        default=PortDirection.IN, description="Port direction (typically 'in')"
+    )
     frequency: Optional[str] = Field(default=None, description="Clock frequency (e.g., '100MHz')")
 
     @property
@@ -52,8 +56,11 @@ class Reset(Port):
     including polarity information.
     Inherits from Port, typically with width=1.
     """
+
     # Override direction to default to IN
-    direction: PortDirection = Field(default=PortDirection.IN, description="Port direction (typically 'in')")
+    direction: PortDirection = Field(
+        default=PortDirection.IN, description="Port direction (typically 'in')"
+    )
     polarity: Polarity = Field(
         default=Polarity.ACTIVE_HIGH, description="Reset polarity (activeHigh or activeLow)"
     )

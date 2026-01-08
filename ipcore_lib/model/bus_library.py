@@ -5,15 +5,16 @@ Provides access to predefined bus definitions (AXI4L, AXIS, AVALON_MM, etc.)
 from the bus_definitions.yml file.
 """
 
-from pathlib import Path
-from typing import Dict, List, Optional, Any
 from dataclasses import dataclass
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 import yaml
 
-
 # Default path to bus definitions
-DEFAULT_BUS_DEFS_PATH = Path(__file__).parent.parent.parent / "ipcore_spec" / "common" / "bus_definitions.yml"
+DEFAULT_BUS_DEFS_PATH = (
+    Path(__file__).parent.parent.parent / "ipcore_spec" / "common" / "bus_definitions.yml"
+)
 
 # Suggested physical prefixes for each bus type and mode
 SUGGESTED_PREFIXES = {
@@ -28,6 +29,7 @@ SUGGESTED_PREFIXES = {
 @dataclass
 class PortDefinition:
     """Definition of a bus port."""
+
     name: str
     direction: Optional[str] = None
     width: Optional[int] = None
@@ -45,6 +47,7 @@ class PortDefinition:
 @dataclass
 class BusTypeInfo:
     """VLNV information for a bus type."""
+
     vendor: str
     library: str
     name: str
@@ -58,6 +61,7 @@ class BusTypeInfo:
 @dataclass
 class BusDefinition:
     """Complete bus definition including type info and ports."""
+
     key: str  # e.g., "AXI4L"
     bus_type: BusTypeInfo
     ports: List[PortDefinition]
@@ -104,27 +108,29 @@ class BusLibrary:
         if not path.exists():
             raise FileNotFoundError(f"Bus definitions file not found: {path}")
 
-        with open(path, 'r') as f:
+        with open(path, "r") as f:
             raw_data = yaml.safe_load(f) or {}
 
         definitions = {}
         for key, data in raw_data.items():
-            bus_type_data = data.get('busType', {})
+            bus_type_data = data.get("busType", {})
             bus_type = BusTypeInfo(
-                vendor=bus_type_data.get('vendor', ''),
-                library=bus_type_data.get('library', ''),
-                name=bus_type_data.get('name', key.lower()),
-                version=bus_type_data.get('version', '1.0'),
+                vendor=bus_type_data.get("vendor", ""),
+                library=bus_type_data.get("library", ""),
+                name=bus_type_data.get("name", key.lower()),
+                version=bus_type_data.get("version", "1.0"),
             )
 
             ports = []
-            for port_data in data.get('ports', []):
-                ports.append(PortDefinition(
-                    name=port_data.get('name', ''),
-                    direction=port_data.get('direction'),
-                    width=port_data.get('width'),
-                    presence=port_data.get('presence', 'required'),
-                ))
+            for port_data in data.get("ports", []):
+                ports.append(
+                    PortDefinition(
+                        name=port_data.get("name", ""),
+                        direction=port_data.get("direction"),
+                        width=port_data.get("width"),
+                        presence=port_data.get("presence", "required"),
+                    )
+                )
 
             definitions[key] = BusDefinition(
                 key=key,
@@ -206,8 +212,7 @@ class BusLibrary:
             List of bus info dictionaries
         """
         return [
-            self.get_bus_info(key, include_ports=include_ports)
-            for key in self.list_bus_types()
+            self.get_bus_info(key, include_ports=include_ports) for key in self.list_bus_types()
         ]
 
     def get_bus_library_dict(self) -> Dict[str, Dict[str, Any]]:

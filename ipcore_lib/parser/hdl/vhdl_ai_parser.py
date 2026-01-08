@@ -54,9 +54,7 @@ class ParserConfig(BaseModel):
     strict_mode: bool = Field(
         default=False, description="Fail on parsing errors (vs graceful degradation)"
     )
-    max_retries: int = Field(
-        default=2, description="Max retries if LLM response is invalid"
-    )
+    max_retries: int = Field(default=2, description="Max retries if LLM response is invalid")
 
     model_config = {"extra": "forbid"}
 
@@ -93,15 +91,16 @@ class VhdlLlmParser:
         try:
             # Try to import llm_core providers
             import sys
+
             llm_core_path = Path(__file__).parents[4] / "llm-playground" / "llm_core"
 
             if llm_core_path.exists():
                 sys.path.insert(0, str(llm_core_path))
 
             # Import directly from module files
+            from llm_core.providers.gemini import GeminiProvider
             from llm_core.providers.ollama import OllamaProvider
             from llm_core.providers.openai import OpenAIProvider
-            from llm_core.providers.gemini import GeminiProvider
             from llm_core.providers.strategies.openai_api_strategy import OpenAIAPIStrategy
 
             # Initialize provider based on config
@@ -111,8 +110,7 @@ class VhdlLlmParser:
                 self.provider = OpenAIProvider(model_name=self.model_name)
             elif self.provider_name.lower() == "gemini":
                 self.provider = GeminiProvider(
-                    strategy=OpenAIAPIStrategy(),
-                    model_name=self.model_name
+                    strategy=OpenAIAPIStrategy(), model_name=self.model_name
                 )
             else:
                 logger.warning(f"Unknown provider: {self.provider_name}, LLM disabled")
@@ -150,33 +148,33 @@ class VhdlLlmParser:
 
 Return ONLY valid JSON (no markdown, no explanation) with this structure:
 {
-  "entity_name": "string",
-  "description": "brief 1-2 sentence description",
-  "generics": [
+    "entity_name": "string",
+    "description": "brief 1-2 sentence description",
+    "generics": [
     {
-      "name": "string",
-      "type": "string (e.g., integer, std_logic_vector)",
-      "default": "string or null"
+            "name": "string",
+            "type": "string (e.g., integer, std_logic_vector)",
+            "default": "string or null"
     }
-  ],
-  "ports": [
+    ],
+    "ports": [
     {
-      "name": "string",
-      "direction": "in|out|inout",
-      "type": "string (e.g., std_logic, std_logic_vector)",
-      "width": number (1 for std_logic, N for vectors),
-      "range": "string (e.g., '7 downto 0') or null"
+            "name": "string",
+            "direction": "in|out|inout",
+            "type": "string (e.g., std_logic, std_logic_vector)",
+            "width": number (1 for std_logic, N for vectors),
+            "range": "string (e.g., '7 downto 0') or null"
     }
-  ],
-  "bus_interfaces": [
+    ],
+    "bus_interfaces": [
     {
-      "name": "string (e.g., s_axi)",
-      "type": "string (e.g., AXI4_LITE, AXI_STREAM, AVALON_MM)",
-      "mode": "master|slave|source|sink",
-      "physical_prefix": "string (e.g., s_axi_)",
-      "signals": ["list of signal names in this interface"]
+            "name": "string (e.g., s_axi)",
+            "type": "string (e.g., AXI4_LITE, AXI_STREAM, AVALON_MM)",
+            "mode": "master|slave|source|sink",
+            "physical_prefix": "string (e.g., s_axi_)",
+            "signals": ["list of signal names in this interface"]
     }
-  ]
+    ]
 }
 
 Common bus interface types and their signals:
@@ -240,10 +238,14 @@ Return complete JSON with all fields filled:"""
             # Parse JSON
             parsed_data = json.loads(response_clean)
 
-            logger.info(f"LLM successfully parsed entity: {parsed_data.get('entity_name', 'unknown')}")
-            logger.info(f"  Ports: {len(parsed_data.get('ports', []))}, "
-                       f"Generics: {len(parsed_data.get('generics', []))}, "
-                       f"Bus Interfaces: {len(parsed_data.get('bus_interfaces', []))}")
+            logger.info(
+                f"LLM successfully parsed entity: {parsed_data.get('entity_name', 'unknown')}"
+            )
+            logger.info(
+                f"  Ports: {len(parsed_data.get('ports', []))}, "
+                f"Generics: {len(parsed_data.get('generics', []))}, "
+                f"Bus Interfaces: {len(parsed_data.get('bus_interfaces', []))}"
+            )
 
             return parsed_data
 
@@ -280,12 +282,13 @@ class VHDLAiParser:
 
         # Initialize LLM parser
         self.llm_parser = VhdlLlmParser(
-            provider_name=self.config.llm_provider,
-            model_name=self.config.llm_model
+            provider_name=self.config.llm_provider, model_name=self.config.llm_model
         )
 
         if self.llm_parser.is_available():
-            logger.info(f"LLM parser initialized: {self.config.llm_provider}/{self.config.llm_model}")
+            logger.info(
+                f"LLM parser initialized: {self.config.llm_provider}/{self.config.llm_model}"
+            )
         else:
             error_msg = "LLM provider not available. This parser requires an LLM to function."
             if self.config.strict_mode:
@@ -328,7 +331,9 @@ class VHDLAiParser:
 
         for attempt in range(self.config.max_retries + 1):
             try:
-                logger.info(f"Parsing VHDL with LLM (attempt {attempt + 1}/{self.config.max_retries + 1})...")
+                logger.info(
+                    f"Parsing VHDL with LLM (attempt {attempt + 1}/{self.config.max_retries + 1})..."
+                )
                 parsed_data = self.llm_parser.parse_vhdl_entity(vhdl_text)
                 break  # Success!
             except Exception as e:
@@ -352,19 +357,15 @@ class VHDLAiParser:
             vendor=self.config.default_vendor,
             library=self.config.default_library,
             name=source_name.replace(".vhd", "").replace(".vhdl", ""),
-            version=self.config.default_version
+            version=self.config.default_version,
         )
         return IpCore(
             api_version=self.config.default_api_version,
             vlnv=vlnv,
-            description=f"Failed to parse: {source_name}"
+            description=f"Failed to parse: {source_name}",
         )
 
-    def _build_ip_core_from_llm(
-        self,
-        parsed_data: Dict[str, Any],
-        source_name: str
-    ) -> IpCore:
+    def _build_ip_core_from_llm(self, parsed_data: Dict[str, Any], source_name: str) -> IpCore:
         """
         Build validated IpCore model from LLM-parsed data.
 
@@ -381,7 +382,7 @@ class VHDLAiParser:
             vendor=self.config.default_vendor,
             library=self.config.default_library,
             name=entity_name,
-            version=self.config.default_version
+            version=self.config.default_version,
         )
 
         description = parsed_data.get("description", entity_name)
@@ -414,7 +415,7 @@ class VHDLAiParser:
                     physical_port=port_data["name"],  # Same as logical name
                     direction=direction,
                     width=width,
-                    description=""
+                    description="",
                 )
                 ports.append(port)
             except (KeyError, ValidationError) as e:
@@ -428,7 +429,7 @@ class VHDLAiParser:
                     name=generic_data["name"],
                     value=generic_data.get("default", "") or "",
                     data_type=generic_data.get("type", "integer"),
-                    description=""
+                    description="",
                 )
                 parameters.append(param)
             except (KeyError, ValidationError) as e:
@@ -443,7 +444,7 @@ class VHDLAiParser:
                     type=bus_data.get("type", "UNKNOWN"),
                     mode=bus_data.get("mode", "slave"),
                     physical_prefix=bus_data.get("physical_prefix", ""),
-                    description=""
+                    description="",
                 )
                 bus_interface_models.append(bus_if)
             except (KeyError, ValidationError) as e:
@@ -457,11 +458,13 @@ class VHDLAiParser:
                 description=description,
                 ports=ports,
                 parameters=parameters,
-                bus_interfaces=bus_interface_models
+                bus_interfaces=bus_interface_models,
             )
 
             logger.info(f"Successfully built IP core: {vlnv.full_name}")
-            logger.info(f"  Ports: {len(ports)}, Generics: {len(parameters)}, Bus Interfaces: {len(bus_interface_models)}")
+            logger.info(
+                f"  Ports: {len(ports)}, Generics: {len(parameters)}, Bus Interfaces: {len(bus_interface_models)}"
+            )
 
             return ip_core
 
@@ -472,7 +475,5 @@ class VHDLAiParser:
 
             # Return minimal valid core
             return IpCore(
-                api_version=self.config.default_api_version,
-                vlnv=vlnv,
-                description=description
+                api_version=self.config.default_api_version, vlnv=vlnv, description=description
             )

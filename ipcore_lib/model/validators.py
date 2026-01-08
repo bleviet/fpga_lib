@@ -5,12 +5,12 @@ Provides validation rules beyond basic Pydantic validation,
 including cross-field and semantic validation.
 """
 
-from typing import List, Set
 from dataclasses import dataclass
+from typing import List, Set
 
-from .core import IpCore
-from .memory import Register, MemoryMap, AddressBlock
 from .bus import BusInterface
+from .core import IpCore
+from .memory import AddressBlock, MemoryMap, Register
 
 
 @dataclass

@@ -2,9 +2,10 @@
 Base models for IP core metadata.
 """
 
-from typing import Any
 from enum import Enum
-from pydantic import BaseModel, Field, field_validator, ValidationInfo
+from typing import Any
+
+from pydantic import BaseModel, Field, ValidationInfo, field_validator
 
 
 class VLNV(BaseModel):
@@ -74,6 +75,7 @@ class VLNV(BaseModel):
 
 class ParameterType(str, Enum):
     """Enumeration for standard IP-XACT/HDL parameter types."""
+
     INTEGER = "integer"
     NATURAL = "natural"
     POSITIVE = "positive"
@@ -123,7 +125,7 @@ class Parameter(BaseModel):
             ParameterType.INTEGER,
             ParameterType.NATURAL,
             ParameterType.POSITIVE,
-            ParameterType.REAL
+            ParameterType.REAL,
         )
 
     @property
@@ -139,5 +141,6 @@ class Parameter(BaseModel):
 
 class Polarity(str, Enum):
     """Reset polarity enumeration."""
+
     ACTIVE_HIGH = "activeHigh"
     ACTIVE_LOW = "activeLow"

@@ -1,12 +1,13 @@
 """Template rendering coverage tests for VHDL generator."""
-import pytest
+
 from pathlib import Path
 
+import pytest
+
 from ipcore_lib.generator.hdl.vhdl_generator import VHDLGenerator
-from ipcore_lib.model.core import IpCore
 from ipcore_lib.model.base import VLNV, Parameter, ParameterType
-from ipcore_lib.model.port import Port, PortDirection
-from ipcore_lib.model.memory import MemoryMap, AddressBlock, Register, BitField, AccessType
+from ipcore_lib.model.core import IpCore
+from ipcore_lib.model.memory import AccessType, AddressBlock, BitField, MemoryMap, Register
 from ipcore_lib.model.port import Port, PortDirection
 
 
@@ -33,7 +34,7 @@ class TestTemplateRendering:
             description="Template test IP",
             ports=[],
             parameters=[],
-            memory_maps=[]
+            memory_maps=[],
         )
 
     @pytest.fixture
@@ -58,15 +59,15 @@ class TestTemplateRendering:
                                     name="enable",
                                     bit_offset=0,
                                     bit_width=1,
-                                    access=AccessType.READ_WRITE
+                                    access=AccessType.READ_WRITE,
                                 ),
                                 BitField(
                                     name="mode",
                                     bit_offset=1,
                                     bit_width=2,
-                                    access=AccessType.READ_WRITE
-                                )
-                            ]
+                                    access=AccessType.READ_WRITE,
+                                ),
+                            ],
                         ),
                         Register(
                             name="STATUS",
@@ -78,13 +79,13 @@ class TestTemplateRendering:
                                     name="ready",
                                     bit_offset=0,
                                     bit_width=1,
-                                    access=AccessType.READ_ONLY
+                                    access=AccessType.READ_ONLY,
                                 )
-                            ]
-                        )
-                    ]
+                            ],
+                        ),
+                    ],
                 )
-            ]
+            ],
         )
 
         return IpCore(
@@ -93,7 +94,7 @@ class TestTemplateRendering:
             description="Register test IP",
             ports=[],
             parameters=[],
-            memory_maps=[memory_map]
+            memory_maps=[memory_map],
         )
 
     @pytest.fixture
@@ -110,27 +111,27 @@ class TestTemplateRendering:
             ],
             parameters=[
                 Parameter(name="DATA_WIDTH", data_type=ParameterType.INTEGER, value=32),
-                Parameter(name="FIFO_DEPTH", data_type=ParameterType.INTEGER, value=16)
+                Parameter(name="FIFO_DEPTH", data_type=ParameterType.INTEGER, value=16),
             ],
-            memory_maps=[]
+            memory_maps=[],
         )
 
     def test_all_templates_exist(self, templates_dir):
         """Verify all expected templates exist."""
         expected_templates = [
-            'package.vhdl.j2',
-            'top.vhdl.j2',
-            'core.vhdl.j2',
-            'bus_axil.vhdl.j2',
-            'bus_avmm.vhdl.j2',
-            'register_file.vhdl.j2',
-            'entity.vhdl.j2',
-            'architecture.vhdl.j2',
-            'intel_hw_tcl.j2',
-            'xilinx_component_xml.j2',
-            'cocotb_test.py.j2',
-            'cocotb_makefile.j2',
-            'memmap.yml.j2'
+            "package.vhdl.j2",
+            "top.vhdl.j2",
+            "core.vhdl.j2",
+            "bus_axil.vhdl.j2",
+            "bus_avmm.vhdl.j2",
+            "register_file.vhdl.j2",
+            "entity.vhdl.j2",
+            "architecture.vhdl.j2",
+            "intel_hw_tcl.j2",
+            "xilinx_component_xml.j2",
+            "cocotb_test.py.j2",
+            "cocotb_makefile.j2",
+            "memmap.yml.j2",
         ]
 
         for template_name in expected_templates:
@@ -155,14 +156,14 @@ class TestTemplateRendering:
 
     def test_top_template_axil(self, generator, simple_ip_core):
         """Test top.vhdl.j2 renders with AXI-Lite."""
-        result = generator.generate_top(simple_ip_core, bus_type='axil')
+        result = generator.generate_top(simple_ip_core, bus_type="axil")
         assert result is not None
         assert "entity" in result
         assert "template_test" in result
 
     def test_top_template_with_ports(self, generator, ip_core_with_ports):
         """Test top template with user ports."""
-        result = generator.generate_top(ip_core_with_ports, bus_type='axil')
+        result = generator.generate_top(ip_core_with_ports, bus_type="axil")
         assert result is not None
         assert "data_in" in result
         assert "data_out" in result
@@ -177,14 +178,14 @@ class TestTemplateRendering:
 
     def test_bus_axil_template(self, generator, simple_ip_core):
         """Test bus_axil.vhdl.j2 renders without errors."""
-        result = generator.generate_bus_wrapper(simple_ip_core, bus_type='axil')
+        result = generator.generate_bus_wrapper(simple_ip_core, bus_type="axil")
         assert result is not None
         assert "entity" in result
         assert "_axil" in result
 
     def test_bus_avmm_template(self, generator, simple_ip_core):
         """Test bus_avmm.vhdl.j2 renders without errors."""
-        result = generator.generate_bus_wrapper(simple_ip_core, bus_type='avmm')
+        result = generator.generate_bus_wrapper(simple_ip_core, bus_type="avmm")
         assert result is not None
         assert "entity" in result
         assert "_avmm" in result
@@ -260,7 +261,7 @@ class TestTemplateRendering:
     def test_all_templates_render_simple(self, generator, simple_ip_core):
         """Test all templates render with simple IP core."""
         # Generate all files
-        files = generator.generate_all(simple_ip_core, bus_type='axil', include_regfile=False)
+        files = generator.generate_all(simple_ip_core, bus_type="axil", include_regfile=False)
 
         # Should have at least package, top, core, bus wrapper
         assert len(files) >= 4
@@ -273,7 +274,9 @@ class TestTemplateRendering:
     def test_all_templates_render_with_registers(self, generator, ip_core_with_registers):
         """Test all templates render with registers."""
         # Generate all files
-        files = generator.generate_all(ip_core_with_registers, bus_type='axil', include_regfile=True)
+        files = generator.generate_all(
+            ip_core_with_registers, bus_type="axil", include_regfile=True
+        )
 
         # Should have package, top, core, bus wrapper, regfile
         assert len(files) >= 5
@@ -285,31 +288,31 @@ class TestTemplateRendering:
 
     def test_both_bus_types_render(self, generator, simple_ip_core):
         """Test both AXI-Lite and Avalon-MM bus wrappers render."""
-        axil_files = generator.generate_all(simple_ip_core, bus_type='axil')
-        avmm_files = generator.generate_all(simple_ip_core, bus_type='avmm')
+        axil_files = generator.generate_all(simple_ip_core, bus_type="axil")
+        avmm_files = generator.generate_all(simple_ip_core, bus_type="avmm")
 
         # Both should succeed
         assert len(axil_files) >= 4
         assert len(avmm_files) >= 4
 
         # Should have different bus wrapper files
-        assert any('_axil.vhd' in f for f in axil_files.keys())
-        assert any('_avmm.vhd' in f for f in avmm_files.keys())
+        assert any("_axil.vhd" in f for f in axil_files.keys())
+        assert any("_avmm.vhd" in f for f in avmm_files.keys())
 
     def test_vendor_files_all_render(self, generator, simple_ip_core):
         """Test all vendor integration files render."""
         # Intel
-        intel_files = generator.generate_vendor_files(simple_ip_core, vendor='intel')
+        intel_files = generator.generate_vendor_files(simple_ip_core, vendor="intel")
         assert len(intel_files) == 1
-        assert any('_hw.tcl' in f for f in intel_files.keys())
+        assert any("_hw.tcl" in f for f in intel_files.keys())
 
         # Xilinx
-        xilinx_files = generator.generate_vendor_files(simple_ip_core, vendor='xilinx')
+        xilinx_files = generator.generate_vendor_files(simple_ip_core, vendor="xilinx")
         assert len(xilinx_files) == 1
-        assert 'component.xml' in xilinx_files
+        assert "component.xml" in xilinx_files
 
         # Both
-        both_files = generator.generate_vendor_files(simple_ip_core, vendor='both')
+        both_files = generator.generate_vendor_files(simple_ip_core, vendor="both")
         assert len(both_files) == 2
 
     def test_testbench_files_all_render(self, generator, ip_core_with_registers):
@@ -330,19 +333,20 @@ class TestTemplateRendering:
 
     def test_templates_no_syntax_errors(self, generator, ip_core_with_registers):
         """Test templates don't produce obvious syntax errors in VHDL."""
-        files = generator.generate_all(ip_core_with_registers, bus_type='axil')
+        files = generator.generate_all(ip_core_with_registers, bus_type="axil")
 
         for filename, content in files.items():
-            if filename.endswith('.vhd'):
+            if filename.endswith(".vhd"):
                 # Basic VHDL syntax checks
                 # Package files have 'package', entities have 'entity'
-                assert ('entity' in content.lower() or 'package' in content.lower()), \
-                    f"{filename} missing entity or package"
-                assert 'end' in content.lower(), f"{filename} missing end statements"
+                assert (
+                    "entity" in content.lower() or "package" in content.lower()
+                ), f"{filename} missing entity or package"
+                assert "end" in content.lower(), f"{filename} missing end statements"
 
                 # No template artifacts
-                assert '{{' not in content, f"{filename} has unrendered Jinja2 syntax"
-                assert '{%' not in content, f"{filename} has unrendered Jinja2 control"
+                assert "{{" not in content, f"{filename} has unrendered Jinja2 syntax"
+                assert "{%" not in content, f"{filename} has unrendered Jinja2 control"
 
 
 class TestTemplateEdgeCases:
@@ -361,11 +365,11 @@ class TestTemplateEdgeCases:
             description="Empty test",
             ports=[],
             parameters=[],
-            memory_maps=[]
+            memory_maps=[],
         )
 
         # Should not crash
-        files = generator.generate_all(ip_core, bus_type='axil')
+        files = generator.generate_all(ip_core, bus_type="axil")
         assert len(files) >= 4
 
     def test_single_bit_fields(self, generator):
@@ -389,21 +393,21 @@ class TestTemplateEdgeCases:
                                     name=f"flag{i}",
                                     bit_offset=i,
                                     bit_width=1,
-                                    access=AccessType.READ_WRITE
+                                    access=AccessType.READ_WRITE,
                                 )
                                 for i in range(8)
-                            ]
+                            ],
                         )
-                    ]
+                    ],
                 )
-            ]
+            ],
         )
 
         ip_core = IpCore(
             api_version="test/v1.0",
             vlnv=VLNV(vendor="test", library="lib", name="flags", version="1.0"),
             description="Flags test",
-            memory_maps=[memory_map]
+            memory_maps=[memory_map],
         )
 
         result = generator.generate_package(ip_core)
@@ -432,20 +436,20 @@ class TestTemplateEdgeCases:
                                     name="data",
                                     bit_offset=0,
                                     bit_width=32,
-                                    access=AccessType.READ_WRITE
+                                    access=AccessType.READ_WRITE,
                                 )
-                            ]
+                            ],
                         )
-                    ]
+                    ],
                 )
-            ]
+            ],
         )
 
         ip_core = IpCore(
             api_version="test/v1.0",
             vlnv=VLNV(vendor="test", library="lib", name="wide", version="1.0"),
             description="Wide register test",
-            memory_maps=[memory_map]
+            memory_maps=[memory_map],
         )
 
         result = generator.generate_package(ip_core)
@@ -458,7 +462,7 @@ class TestTemplateEdgeCases:
             Port(
                 name=f"port{i}",
                 direction=PortDirection.IN if i % 2 == 0 else PortDirection.OUT,
-                width=8
+                width=8,
             )
             for i in range(20)
         ]
@@ -467,10 +471,10 @@ class TestTemplateEdgeCases:
             api_version="test/v1.0",
             vlnv=VLNV(vendor="test", library="lib", name="many_ports", version="1.0"),
             description="Many ports test",
-            ports=ports
+            ports=ports,
         )
 
-        result = generator.generate_top(ip_core, bus_type='axil')
+        result = generator.generate_top(ip_core, bus_type="axil")
         assert result is not None
         assert "port0" in result
         assert "port19" in result

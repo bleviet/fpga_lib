@@ -2,8 +2,9 @@
 Bus interface definitions for IP cores.
 """
 
-from typing import Optional, List, Dict, Any
 from enum import Enum
+from typing import Any, Dict, List, Optional
+
 from pydantic import BaseModel, Field, field_validator
 
 from .base import VLNV
@@ -16,6 +17,7 @@ class BusType(VLNV):
     References a standardized bus definition (AXI4L, AXIS, AVALON_MM, etc.).
     Inherits validation, immutability, and factory methods from VLNV.
     """
+
     # Override fields to provide context-specific descriptions
     vendor: str = Field(..., description="Bus standard vendor")
     library: str = Field(..., description="Bus library")
@@ -25,6 +27,7 @@ class BusType(VLNV):
 
 class BusInterfaceMode(str, Enum):
     """Enumeration for bus interface modes."""
+
     MASTER = "master"
     SLAVE = "slave"
     SOURCE = "source"
@@ -84,9 +87,7 @@ class BusInterface(BaseModel):
     mode: BusInterfaceMode = Field(..., description="Interface mode: 'master' or 'slave'")
 
     # Port mapping
-    physical_prefix: str = Field(
-        ..., description="Prefix for physical port names (e.g., 's_axi_')"
-    )
+    physical_prefix: str = Field(..., description="Prefix for physical port names (e.g., 's_axi_')")
 
     # Clock/Reset association
     associated_clock: Optional[str] = Field(

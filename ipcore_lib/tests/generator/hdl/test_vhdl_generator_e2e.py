@@ -1,8 +1,10 @@
 """End-to-end tests for VHDL generator using example YAML files."""
-import pytest
-from pathlib import Path
-import tempfile
+
 import subprocess
+import tempfile
+from pathlib import Path
+
+import pytest
 
 from ipcore_lib.generator.hdl.vhdl_generator import VHDLGenerator
 from ipcore_lib.parser.yaml.ip_yaml_parser import YamlIpCoreParser
@@ -38,7 +40,7 @@ class TestVHDLGeneratorE2E:
         assert ip_core is not None
 
         # Generate all VHDL files
-        files = generator.generate_all(ip_core, bus_type='axil')
+        files = generator.generate_all(ip_core, bus_type="axil")
 
         # Verify basic structure
         assert len(files) >= 4
@@ -58,7 +60,7 @@ class TestVHDLGeneratorE2E:
         assert ip_core is not None
 
         # Generate all VHDL files
-        files = generator.generate_all(ip_core, bus_type='axil')
+        files = generator.generate_all(ip_core, bus_type="axil")
 
         # Verify files generated
         name = ip_core.vlnv.name.lower()
@@ -83,7 +85,7 @@ class TestVHDLGeneratorE2E:
         assert ip_core is not None
 
         # Generate VHDL files
-        files = generator.generate_all(ip_core, bus_type='axil')
+        files = generator.generate_all(ip_core, bus_type="axil")
 
         # Timer should have registers
         name = ip_core.vlnv.name.lower()
@@ -107,7 +109,7 @@ class TestVHDLGeneratorE2E:
         assert ip_core is not None
 
         # Generate testbench files
-        tb_files = generator.generate_testbench(ip_core, bus_type='axil')
+        tb_files = generator.generate_testbench(ip_core, bus_type="axil")
 
         # Verify testbench structure
         assert len(tb_files) == 3
@@ -133,8 +135,8 @@ class TestVHDLGeneratorE2E:
         assert ip_core is not None
 
         # Generate vendor files
-        intel_files = generator.generate_vendor_files(ip_core, vendor='intel')
-        xilinx_files = generator.generate_vendor_files(ip_core, vendor='xilinx')
+        intel_files = generator.generate_vendor_files(ip_core, vendor="intel")
+        xilinx_files = generator.generate_vendor_files(ip_core, vendor="xilinx")
 
         # Verify Intel files
         assert len(intel_files) == 1
@@ -168,11 +170,7 @@ class TestVHDLGeneratorSyntaxValidation:
     def _check_ghdl_available(self):
         """Check if GHDL is available."""
         try:
-            result = subprocess.run(
-                ['ghdl', '--version'],
-                capture_output=True,
-                timeout=5
-            )
+            result = subprocess.run(["ghdl", "--version"], capture_output=True, timeout=5)
             return result.returncode == 0
         except (FileNotFoundError, subprocess.TimeoutExpired):
             return False
@@ -193,29 +191,34 @@ class TestVHDLGeneratorSyntaxValidation:
             # Write all VHDL files
             vhdl_only = {}
             for filename, content in vhdl_files.items():
-                if filename.endswith('.vhd'):
+                if filename.endswith(".vhd"):
                     (tmppath / filename).write_text(content)
                     vhdl_only[filename] = content
 
             # Analyze files in dependency order: package first, then submodules, then top
             filenames = list(vhdl_only.keys())
+
             # Sort: package (_pkg.vhd) first, submodules (with suffixes) in middle, top-level last
             def sort_key(f):
-                if '_pkg.vhd' in f:
+                if "_pkg.vhd" in f:
                     return (0, f)  # Package first
-                elif any(suffix in f for suffix in ['_axil.vhd', '_avmm.vhd', '_core.vhd', '_regfile.vhd']):
+                elif any(
+                    suffix in f
+                    for suffix in ["_axil.vhd", "_avmm.vhd", "_core.vhd", "_regfile.vhd"]
+                ):
                     return (1, f)  # Submodules with known suffixes
                 else:
                     return (2, f)  # Top-level and others last
+
             filenames.sort(key=sort_key)
 
             # Analyze each file with GHDL in order
             for filename in filenames:
                 result = subprocess.run(
-                    ['ghdl', '-a', '--std=08', str(tmppath / filename)],
+                    ["ghdl", "-a", "--std=08", str(tmppath / filename)],
                     capture_output=True,
                     cwd=tmpdir,
-                    timeout=10
+                    timeout=10,
                 )
                 if result.returncode != 0:
                     print(f"GHDL error in {filename}:")
@@ -236,7 +239,7 @@ class TestVHDLGeneratorSyntaxValidation:
 
         # Parse and generate
         ip_core = parser.parse_file(str(yaml_file))
-        files = generator.generate_all(ip_core, bus_type='axil')
+        files = generator.generate_all(ip_core, bus_type="axil")
 
         # Validate syntax
         assert self._validate_vhdl_syntax(files), "Generated VHDL has syntax errors"
@@ -248,7 +251,7 @@ class TestVHDLGeneratorSyntaxValidation:
 
         from ipcore_lib.model.base import VLNV
         from ipcore_lib.model.core import IpCore
-        from ipcore_lib.model.memory import MemoryMap, AddressBlock, Register, BitField, AccessType
+        from ipcore_lib.model.memory import AccessType, AddressBlock, BitField, MemoryMap, Register
 
         # Create IP core with registers
         memory_map = MemoryMap(
@@ -266,9 +269,19 @@ class TestVHDLGeneratorSyntaxValidation:
                             size=32,
                             access=AccessType.READ_WRITE,
                             fields=[
-                                BitField(name="enable", bit_offset=0, bit_width=1, access=AccessType.READ_WRITE),
-                                BitField(name="mode", bit_offset=1, bit_width=2, access=AccessType.READ_WRITE)
-                            ]
+                                BitField(
+                                    name="enable",
+                                    bit_offset=0,
+                                    bit_width=1,
+                                    access=AccessType.READ_WRITE,
+                                ),
+                                BitField(
+                                    name="mode",
+                                    bit_offset=1,
+                                    bit_width=2,
+                                    access=AccessType.READ_WRITE,
+                                ),
+                            ],
                         ),
                         Register(
                             name="STATUS",
@@ -276,23 +289,28 @@ class TestVHDLGeneratorSyntaxValidation:
                             size=32,
                             access=AccessType.READ_ONLY,
                             fields=[
-                                BitField(name="ready", bit_offset=0, bit_width=1, access=AccessType.READ_ONLY)
-                            ]
-                        )
-                    ]
+                                BitField(
+                                    name="ready",
+                                    bit_offset=0,
+                                    bit_width=1,
+                                    access=AccessType.READ_ONLY,
+                                )
+                            ],
+                        ),
+                    ],
                 )
-            ]
+            ],
         )
 
         ip_core = IpCore(
             api_version="test/v1.0",
             vlnv=VLNV(vendor="test", library="lib", name="syntax_test", version="1.0"),
             description="IP core for GHDL syntax validation",
-            memory_maps=[memory_map]
+            memory_maps=[memory_map],
         )
 
         # Generate all files
-        files = generator.generate_all(ip_core, bus_type='axil')
+        files = generator.generate_all(ip_core, bus_type="axil")
 
         # Validate VHDL syntax with GHDL
         assert self._validate_vhdl_syntax(files), "Generated VHDL has syntax errors"
@@ -309,7 +327,7 @@ class TestVHDLGeneratorSyntaxValidation:
 
         # Parse and generate
         ip_core = parser.parse_file(str(yaml_file))
-        files = generator.generate_all(ip_core, bus_type='axil')
+        files = generator.generate_all(ip_core, bus_type="axil")
 
         # Validate syntax
         assert self._validate_vhdl_syntax(files), "Generated VHDL has syntax errors"

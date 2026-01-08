@@ -5,30 +5,31 @@ Loads YAML files and converts them to canonical Pydantic models.
 Supports imports, bus library loading, and memory map references.
 """
 
-import yaml
 from pathlib import Path
-from typing import Dict, Any, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
+
+import yaml
 from pydantic import ValidationError
 
 from ipcore_lib.model import (
-    IpCore,
     VLNV,
+    AccessType,
+    AddressBlock,
+    ArrayConfig,
+    BitField,
+    BusInterface,
     Clock,
-    Reset,
+    File,
+    FileSet,
+    FileType,
+    IpCore,
+    MemoryMap,
+    Parameter,
     Polarity,
     Port,
     PortDirection,
-    BusInterface,
-    ArrayConfig,
-    Parameter,
-    MemoryMap,
-    AddressBlock,
     Register,
-    BitField,
-    AccessType,
-    FileSet,
-    File,
-    FileType,
+    Reset,
 )
 
 
@@ -222,13 +223,15 @@ class YamlIpCoreParser:
                 # Convert camelCase to snake_case for Pydantic
                 clocks.append(
                     Clock(
-                        **self._filter_none({
-                            "name": clock_data.get("name"),
-                            "logical_name": clock_data.get("logicalName", "CLK"),
-                            "direction": clock_data.get("direction", "in"),
-                            "frequency": clock_data.get("frequency"),
-                            "description": clock_data.get("description"),
-                        })
+                        **self._filter_none(
+                            {
+                                "name": clock_data.get("name"),
+                                "logical_name": clock_data.get("logicalName", "CLK"),
+                                "direction": clock_data.get("direction", "in"),
+                                "frequency": clock_data.get("frequency"),
+                                "description": clock_data.get("description"),
+                            }
+                        )
                     )
                 )
             except Exception as e:
@@ -242,19 +245,27 @@ class YamlIpCoreParser:
             try:
                 # Map polarity string to enum
                 polarity_str = reset_data.get("polarity", "activeLow")
-                polarity = Polarity.ACTIVE_LOW if polarity_str == "activeLow" else Polarity.ACTIVE_HIGH
+                polarity = (
+                    Polarity.ACTIVE_LOW if polarity_str == "activeLow" else Polarity.ACTIVE_HIGH
+                )
                 # Default logical name based on polarity
-                default_logical = "RESET_N" if polarity_str == "activeLow" or polarity_str == "active_low" else "RESET"
+                default_logical = (
+                    "RESET_N"
+                    if polarity_str == "activeLow" or polarity_str == "active_low"
+                    else "RESET"
+                )
 
                 resets.append(
                     Reset(
-                        **self._filter_none({
-                            "name": reset_data.get("name"),
-                            "logical_name": reset_data.get("logicalName", default_logical),
-                            "direction": reset_data.get("direction", "in"),
-                            "polarity": polarity,
-                            "description": reset_data.get("description"),
-                        })
+                        **self._filter_none(
+                            {
+                                "name": reset_data.get("name"),
+                                "logical_name": reset_data.get("logicalName", default_logical),
+                                "direction": reset_data.get("direction", "in"),
+                                "polarity": polarity,
+                                "description": reset_data.get("description"),
+                            }
+                        )
                     )
                 )
             except Exception as e:
@@ -268,13 +279,15 @@ class YamlIpCoreParser:
             try:
                 ports.append(
                     Port(
-                        **self._filter_none({
-                            "name": port_data.get("name"),
-                            "logical_name": port_data.get("logicalName", ""),
-                            "direction": port_data.get("direction"),
-                            "width": port_data.get("width", 1),
-                            "description": port_data.get("description"),
-                        })
+                        **self._filter_none(
+                            {
+                                "name": port_data.get("name"),
+                                "logical_name": port_data.get("logicalName", ""),
+                                "direction": port_data.get("direction"),
+                                "width": port_data.get("width", 1),
+                                "description": port_data.get("description"),
+                            }
+                        )
                     )
                 )
             except Exception as e:
@@ -301,18 +314,20 @@ class YamlIpCoreParser:
 
                 interfaces.append(
                     BusInterface(
-                        **self._filter_none({
-                            "name": bus_data.get("name"),
-                            "type": bus_data.get("type"),
-                            "mode": bus_data.get("mode"),
-                            "physical_prefix": bus_data.get("physicalPrefix"),
-                            "associated_clock": bus_data.get("associatedClock"),
-                            "associated_reset": bus_data.get("associatedReset"),
-                            "memory_map_ref": bus_data.get("memoryMapRef"),
-                            "use_optional_ports": bus_data.get("useOptionalPorts"),
-                            "port_width_overrides": bus_data.get("portWidthOverrides"),
-                            "array": array_config,
-                        })
+                        **self._filter_none(
+                            {
+                                "name": bus_data.get("name"),
+                                "type": bus_data.get("type"),
+                                "mode": bus_data.get("mode"),
+                                "physical_prefix": bus_data.get("physicalPrefix"),
+                                "associated_clock": bus_data.get("associatedClock"),
+                                "associated_reset": bus_data.get("associatedReset"),
+                                "memory_map_ref": bus_data.get("memoryMapRef"),
+                                "use_optional_ports": bus_data.get("useOptionalPorts"),
+                                "port_width_overrides": bus_data.get("portWidthOverrides"),
+                                "array": array_config,
+                            }
+                        )
                     )
                 )
             except Exception as e:
@@ -326,12 +341,14 @@ class YamlIpCoreParser:
             try:
                 parameters.append(
                     Parameter(
-                        **self._filter_none({
-                            "name": param_data.get("name"),
-                            "value": param_data.get("value"),
-                            "data_type": param_data.get("dataType", "integer"),
-                            "description": param_data.get("description"),
-                        })
+                        **self._filter_none(
+                            {
+                                "name": param_data.get("name"),
+                                "value": param_data.get("value"),
+                                "data_type": param_data.get("dataType", "integer"),
+                                "description": param_data.get("description"),
+                            }
+                        )
                     )
                 )
             except Exception as e:
@@ -414,11 +431,13 @@ class YamlIpCoreParser:
 
                 memory_maps.append(
                     MemoryMap(
-                        **self._filter_none({
-                            "name": map_data.get("name"),
-                            "description": map_data.get("description"),
-                            "address_blocks": address_blocks if address_blocks else None,
-                        })
+                        **self._filter_none(
+                            {
+                                "name": map_data.get("name"),
+                                "description": map_data.get("description"),
+                                "address_blocks": address_blocks if address_blocks else None,
+                            }
+                        )
                     )
                 )
             except Exception as e:
@@ -449,14 +468,16 @@ class YamlIpCoreParser:
 
                 blocks.append(
                     AddressBlock(
-                        **self._filter_none({
-                            "name": block_data.get("name"),
-                            "offset": base_address,
-                            "range": range_value,
-                            "description": block_data.get("description"),
-                            "usage": block_data.get("usage", "register"),
-                            "registers": registers if registers else None,
-                        })
+                        **self._filter_none(
+                            {
+                                "name": block_data.get("name"),
+                                "offset": base_address,
+                                "range": range_value,
+                                "description": block_data.get("description"),
+                                "usage": block_data.get("usage", "register"),
+                                "registers": registers if registers else None,
+                            }
+                        )
                     )
                 )
             except Exception as e:
@@ -526,15 +547,17 @@ class YamlIpCoreParser:
 
                 registers.append(
                     Register(
-                        **self._filter_none({
-                            "name": reg_data.get("name"),
-                            "offset": address_offset,
-                            "size": size,
-                            "access": access_type,
-                            "description": reg_data.get("description"),
-                            "reset_value": reg_data.get("resetValue"),
-                            "fields": fields if fields else None,
-                        })
+                        **self._filter_none(
+                            {
+                                "name": reg_data.get("name"),
+                                "offset": address_offset,
+                                "size": size,
+                                "access": access_type,
+                                "description": reg_data.get("description"),
+                                "reset_value": reg_data.get("resetValue"),
+                                "fields": fields if fields else None,
+                            }
+                        )
                     )
                 )
 
@@ -547,23 +570,20 @@ class YamlIpCoreParser:
         return registers
 
     def _expand_nested_register_array(
-        self,
-        array_spec: Dict[str, Any],
-        base_offset: int,
-        file_path: Path
+        self, array_spec: Dict[str, Any], base_offset: int, file_path: Path
     ) -> List[Register]:
         """
         Expand a nested register array (new .memmap.yml format).
 
         Example:
             - name: TIMER
-              count: 4
-              stride: 16
-              registers:
+                            count: 4
+                            stride: 16
+                            registers:
                 - name: CTRL
-                  offset: 0
+                                    offset: 0
                 - name: STATUS
-                  offset: 4
+                                    offset: 4
 
         Creates:
             TIMER_0_CTRL @ base + 0
@@ -586,10 +606,7 @@ class YamlIpCoreParser:
         sub_registers = array_spec.get("registers", [])
 
         if not sub_registers:
-            raise ParseError(
-                f"Nested register array '{base_name}' has no sub-registers",
-                file_path
-            )
+            raise ParseError(f"Nested register array '{base_name}' has no sub-registers", file_path)
 
         registers = []
 
@@ -619,25 +636,24 @@ class YamlIpCoreParser:
 
                 registers.append(
                     Register(
-                        **self._filter_none({
-                            "name": reg_name,
-                            "offset": final_offset,
-                            "size": size,
-                            "access": access_type,
-                            "description": sub_reg.get("description"),
-                            "reset_value": sub_reg.get("resetValue"),
-                            "fields": fields if fields else None,
-                        })
+                        **self._filter_none(
+                            {
+                                "name": reg_name,
+                                "offset": final_offset,
+                                "size": size,
+                                "access": access_type,
+                                "description": sub_reg.get("description"),
+                                "reset_value": sub_reg.get("resetValue"),
+                                "fields": fields if fields else None,
+                            }
+                        )
                     )
                 )
 
         return registers
 
     def _expand_register_array(
-        self,
-        array_spec: Dict[str, Any],
-        start_offset: int,
-        file_path: Path
+        self, array_spec: Dict[str, Any], start_offset: int, file_path: Path
     ) -> List[Register]:
         """
         Expand a generateArray specification into multiple registers.
@@ -660,7 +676,7 @@ class YamlIpCoreParser:
         if template_name not in self._register_templates:
             raise ParseError(
                 f"Register template '{template_name}' not found. Available: {list(self._register_templates.keys())}",
-                file_path
+                file_path,
             )
 
         template = self._register_templates[template_name]
@@ -695,20 +711,22 @@ class YamlIpCoreParser:
 
                 registers.append(
                     Register(
-                        **self._filter_none({
-                            "name": reg_name,
-                            "offset": current_offset,
-                            "size": size,
-                            "access": access_type,
-                            "description": template_reg.get("description"),
-                            "reset_value": template_reg.get("resetValue"),
-                            "fields": fields if fields else None,
-                        })
+                        **self._filter_none(
+                            {
+                                "name": reg_name,
+                                "offset": current_offset,
+                                "size": size,
+                                "access": access_type,
+                                "description": template_reg.get("description"),
+                                "reset_value": template_reg.get("resetValue"),
+                                "fields": fields if fields else None,
+                            }
+                        )
                     )
                 )
 
                 # Update offset for next register
-                current_offset += (size // 8)
+                current_offset += size // 8
 
         return registers
 
@@ -754,14 +772,17 @@ class YamlIpCoreParser:
 
                 fields.append(
                     BitField(
-                        **self._filter_none({
-                            "name": field_data.get("name"),
-                            "bit_offset": bit_offset,
-                            "bit_width": bit_width,
-                            "access": access_type,
-                            "description": field_data.get("description"),
-                            "reset_value": field_data.get("resetValue") or field_data.get("reset"),
-                        })
+                        **self._filter_none(
+                            {
+                                "name": field_data.get("name"),
+                                "bit_offset": bit_offset,
+                                "bit_width": bit_width,
+                                "access": access_type,
+                                "description": field_data.get("description"),
+                                "reset_value": field_data.get("resetValue")
+                                or field_data.get("reset"),
+                            }
+                        )
                     )
                 )
 
@@ -836,11 +857,13 @@ class YamlIpCoreParser:
 
                 file_sets.append(
                     FileSet(
-                        **self._filter_none({
-                            "name": fs_data.get("name"),
-                            "description": fs_data.get("description"),
-                            "files": files if files else None,
-                        })
+                        **self._filter_none(
+                            {
+                                "name": fs_data.get("name"),
+                                "description": fs_data.get("description"),
+                                "files": files if files else None,
+                            }
+                        )
                     )
                 )
             except Exception as e:
@@ -879,11 +902,13 @@ class YamlIpCoreParser:
 
                 files.append(
                     File(
-                        **self._filter_none({
-                            "path": file_data.get("path"),
-                            "type": file_type,
-                            "description": file_data.get("description"),
-                        })
+                        **self._filter_none(
+                            {
+                                "path": file_data.get("path"),
+                                "type": file_type,
+                                "description": file_data.get("description"),
+                            }
+                        )
                     )
                 )
             except Exception as e:

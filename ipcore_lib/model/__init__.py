@@ -8,25 +8,24 @@ For runtime register access (hardware I/O), use ipcore_lib.runtime.register.
 """
 
 from .base import VLNV, Parameter, Polarity
-from .bus import BusInterface, BusType, ArrayConfig
-from .memory import (
-    AccessType,
-    MemoryMap,
-    AddressBlock,
-    RegisterDef,
-    BitFieldDef,
-    RegisterArrayDef,
-    MemoryMapReference,
-    BlockUsage,
-    # Backward compatibility aliases
-    Register,
-    BitField,
-    RegisterArray,
-)
+from .bus import ArrayConfig, BusInterface, BusType
 from .clock_reset import Clock, Reset
-from .port import Port, PortDirection
-from .fileset import FileSet, File, FileType
 from .core import IpCore
+from .fileset import File, FileSet, FileType
+from .memory import (  # Backward compatibility aliases
+    AccessType,
+    AddressBlock,
+    BitField,
+    BitFieldDef,
+    BlockUsage,
+    MemoryMap,
+    MemoryMapReference,
+    Register,
+    RegisterArray,
+    RegisterArrayDef,
+    RegisterDef,
+)
+from .port import Port, PortDirection
 
 __all__ = [
     # Base
@@ -63,4 +62,3 @@ __all__ = [
     # Core
     "IpCore",
 ]
-

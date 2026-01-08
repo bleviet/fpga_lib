@@ -6,20 +6,21 @@ Avalon-MM, etc.) by matching port naming patterns against bus definitions.
 """
 
 import re
-from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Any
 from collections import defaultdict
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
 
 import yaml
 
-from ipcore_lib.model.port import Port, PortDirection
+from ipcore_lib.model.base import Polarity
 from ipcore_lib.model.bus import BusInterface, BusInterfaceMode
 from ipcore_lib.model.clock_reset import Clock, Reset
-from ipcore_lib.model.base import Polarity
-
+from ipcore_lib.model.port import Port, PortDirection
 
 # Default path to bus definitions
-DEFAULT_BUS_DEFS_PATH = Path(__file__).parent.parent.parent.parent / "ipcore_spec" / "common" / "bus_definitions.yml"
+DEFAULT_BUS_DEFS_PATH = (
+    Path(__file__).parent.parent.parent.parent / "ipcore_spec" / "common" / "bus_definitions.yml"
+)
 
 
 class BusInterfaceDetector:
@@ -36,7 +37,7 @@ class BusInterfaceDetector:
 
         Args:
             bus_defs_path: Path to bus_definitions.yml file.
-                           Defaults to ipcore_spec/common/bus_definitions.yml
+                            Defaults to ipcore_spec/common/bus_definitions.yml
         """
         self.bus_defs_path = bus_defs_path or DEFAULT_BUS_DEFS_PATH
         self.bus_definitions = self._load_definitions()
@@ -45,7 +46,7 @@ class BusInterfaceDetector:
         """Load bus definitions from YAML file."""
         if not self.bus_defs_path.exists():
             return {}
-        with open(self.bus_defs_path, 'r') as f:
+        with open(self.bus_defs_path, "r") as f:
             return yaml.safe_load(f) or {}
 
     def detect(self, ports: List[Port]) -> List[BusInterface]:
@@ -71,9 +72,7 @@ class BusInterfaceDetector:
 
         return detected
 
-    def classify_clocks_resets(
-        self, ports: List[Port]
-    ) -> Tuple[List[Clock], List[Reset]]:
+    def classify_clocks_resets(self, ports: List[Port]) -> Tuple[List[Clock], List[Reset]]:
         """
         Identify clock and reset signals from ports.
 
@@ -88,22 +87,22 @@ class BusInterfaceDetector:
 
         # Common clock patterns
         clock_patterns = [
-            r'^i?_?clk',
-            r'^i?_?clock',
-            r'_clk$',
-            r'_clock$',
-            r'^aclk$',
-            r'^i_clk_.*',
+            r"^i?_?clk",
+            r"^i?_?clock",
+            r"_clk$",
+            r"_clock$",
+            r"^aclk$",
+            r"^i_clk_.*",
         ]
 
         # Common reset patterns
         reset_patterns = [
-            r'^i?_?rst',
-            r'^i?_?reset',
-            r'_rst$',
-            r'_reset$',
-            r'^aresetn?$',
-            r'^i_rst_n?_.*',
+            r"^i?_?rst",
+            r"^i?_?reset",
+            r"_rst$",
+            r"_reset$",
+            r"^aresetn?$",
+            r"^i_rst_n?_.*",
         ]
 
         for port in ports:
@@ -115,23 +114,29 @@ class BusInterfaceDetector:
             # Check clock patterns
             for pattern in clock_patterns:
                 if re.search(pattern, name_lower, re.IGNORECASE):
-                    clocks.append(Clock(
-                        name=port.name,
-                        frequency=None,  # Unknown from VHDL
-                        description=f"Detected clock signal"
-                    ))
+                    clocks.append(
+                        Clock(
+                            name=port.name,
+                            frequency=None,  # Unknown from VHDL
+                            description=f"Detected clock signal",
+                        )
+                    )
                     break
 
             # Check reset patterns
             for pattern in reset_patterns:
                 if re.search(pattern, name_lower, re.IGNORECASE):
                     # Detect polarity from name
-                    polarity = Polarity.ACTIVE_LOW if '_n' in name_lower or 'resetn' in name_lower else Polarity.ACTIVE_HIGH
-                    resets.append(Reset(
-                        name=port.name,
-                        polarity=polarity,
-                        description=f"Detected reset signal"
-                    ))
+                    polarity = (
+                        Polarity.ACTIVE_LOW
+                        if "_n" in name_lower or "resetn" in name_lower
+                        else Polarity.ACTIVE_HIGH
+                    )
+                    resets.append(
+                        Reset(
+                            name=port.name, polarity=polarity, description=f"Detected reset signal"
+                        )
+                    )
                     break
 
         return clocks, resets
@@ -146,12 +151,12 @@ class BusInterfaceDetector:
 
         # Known bus prefixes to look for
         prefix_patterns = [
-            r'^(s_axi_\w*?)(?:aw|ar|w|r|b)',  # AXI-Lite slave
-            r'^(m_axi_\w*?)(?:aw|ar|w|r|b)',  # AXI-Lite master
-            r'^(s_axis_\w*?)t',                # AXI-Stream sink
-            r'^(m_axis_\w*?)t',                # AXI-Stream source
-            r'^(avs_)',                        # Avalon slave
-            r'^(avm_)',                        # Avalon master
+            r"^(s_axi_\w*?)(?:aw|ar|w|r|b)",  # AXI-Lite slave
+            r"^(m_axi_\w*?)(?:aw|ar|w|r|b)",  # AXI-Lite master
+            r"^(s_axis_\w*?)t",  # AXI-Stream sink
+            r"^(m_axis_\w*?)t",  # AXI-Stream source
+            r"^(avs_)",  # Avalon slave
+            r"^(avm_)",  # Avalon master
         ]
 
         for port in ports:
@@ -168,7 +173,7 @@ class BusInterfaceDetector:
 
             if not matched:
                 # Try to extract prefix from underscore-separated name
-                parts = name_lower.split('_')
+                parts = name_lower.split("_")
                 if len(parts) >= 2:
                     # Use first two parts as potential prefix
                     potential_prefix = f"{parts[0]}_{parts[1]}_"
@@ -177,9 +182,7 @@ class BusInterfaceDetector:
 
         return dict(groups)
 
-    def _match_bus_type(
-        self, prefix: str, ports: List[Port]
-    ) -> Optional[BusInterface]:
+    def _match_bus_type(self, prefix: str, ports: List[Port]) -> Optional[BusInterface]:
         """
         Match a port group against known bus definitions.
 
@@ -193,18 +196,22 @@ class BusInterfaceDetector:
         # Create suffix map from ports
         suffix_map = {}
         for port in ports:
-            suffix = port.name.lower()[len(prefix):].upper()
+            suffix = port.name.lower()[len(prefix) :].upper()
             suffix_map[suffix] = port
 
         best_match = None
         best_score = 0
 
         for bus_name, bus_def in self.bus_definitions.items():
-            if 'ports' not in bus_def:
+            if "ports" not in bus_def:
                 continue
 
-            required_ports = [p['name'] for p in bus_def['ports'] if p.get('presence') == 'required']
-            optional_ports = [p['name'] for p in bus_def['ports'] if p.get('presence') == 'optional']
+            required_ports = [
+                p["name"] for p in bus_def["ports"] if p.get("presence") == "required"
+            ]
+            optional_ports = [
+                p["name"] for p in bus_def["ports"] if p.get("presence") == "optional"
+            ]
 
             # Count matches
             required_matched = sum(1 for p in required_ports if p in suffix_map)
@@ -229,7 +236,7 @@ class BusInterfaceDetector:
                         type=bus_name,
                         mode=mode,
                         physical_prefix=prefix,
-                        description=f"Detected {bus_name} interface"
+                        description=f"Detected {bus_name} interface",
                     )
 
         return best_match
@@ -243,34 +250,34 @@ class BusInterfaceDetector:
         The bus definition uses directions for master/source perspective.
         If actual directions are inverted, the interface is slave/sink.
         """
-        bus_type_name = bus_def.get('busType', {}).get('name', '').lower()
+        bus_type_name = bus_def.get("busType", {}).get("name", "").lower()
 
         # For AXI-Stream, use source/sink terminology
-        if 'axis' in bus_type_name or 'avalon_st' in bus_type_name:
+        if "axis" in bus_type_name or "avalon_st" in bus_type_name:
             # Check TDATA or DATA direction
-            for port_def in bus_def.get('ports', []):
-                if port_def['name'].upper() in ('TDATA', 'DATA'):
-                    expected_dir = port_def.get('direction', 'out')
-                    if port_def['name'].upper() in suffix_map:
-                        actual_port = suffix_map[port_def['name'].upper()]
-                        if expected_dir == 'out' and actual_port.direction == PortDirection.OUT:
+            for port_def in bus_def.get("ports", []):
+                if port_def["name"].upper() in ("TDATA", "DATA"):
+                    expected_dir = port_def.get("direction", "out")
+                    if port_def["name"].upper() in suffix_map:
+                        actual_port = suffix_map[port_def["name"].upper()]
+                        if expected_dir == "out" and actual_port.direction == PortDirection.OUT:
                             return BusInterfaceMode.SOURCE
-                        elif expected_dir == 'out' and actual_port.direction == PortDirection.IN:
+                        elif expected_dir == "out" and actual_port.direction == PortDirection.IN:
                             return BusInterfaceMode.SINK
             return BusInterfaceMode.SOURCE  # Default
 
         # For memory-mapped buses, use master/slave
         # Check AWREADY or ARREADY direction
-        for port_def in bus_def.get('ports', []):
-            if port_def['name'].upper() in ('AWREADY', 'ARREADY', 'READDATA'):
-                expected_dir = port_def.get('direction', 'in')
-                if port_def['name'].upper() in suffix_map:
-                    actual_port = suffix_map[port_def['name'].upper()]
+        for port_def in bus_def.get("ports", []):
+            if port_def["name"].upper() in ("AWREADY", "ARREADY", "READDATA"):
+                expected_dir = port_def.get("direction", "in")
+                if port_def["name"].upper() in suffix_map:
+                    actual_port = suffix_map[port_def["name"].upper()]
                     # Master: AWREADY is input (from slave)
                     # Slave: AWREADY is output (to master)
-                    if expected_dir == 'in' and actual_port.direction == PortDirection.OUT:
+                    if expected_dir == "in" and actual_port.direction == PortDirection.OUT:
                         return BusInterfaceMode.SLAVE
-                    elif expected_dir == 'in' and actual_port.direction == PortDirection.IN:
+                    elif expected_dir == "in" and actual_port.direction == PortDirection.IN:
                         return BusInterfaceMode.MASTER
 
         return BusInterfaceMode.SLAVE  # Default for most IPs

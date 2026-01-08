@@ -6,10 +6,11 @@ and error handling that are not covered by the basic test file.
 """
 
 import os
+
 import pytest
 
-from ipcore_lib.parser.hdl.vhdl_parser import VHDLParser
 from ipcore_lib.model import IpCore, Port, PortDirection
+from ipcore_lib.parser.hdl.vhdl_parser import VHDLParser
 
 
 class TestVHDLParserEdgeCases:

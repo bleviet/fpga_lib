@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react';
-import { FIELD_COLORS, FIELD_COLOR_KEYS } from '../shared/colors';
+import React, { useMemo, useState } from "react";
+import { FIELD_COLORS, FIELD_COLOR_KEYS } from "../shared/colors";
 
 interface AddressMapVisualizerProps {
   blocks: any[];
@@ -19,7 +19,7 @@ function toHex(n: number): string {
 const AddressMapVisualizer: React.FC<AddressMapVisualizerProps> = ({
   blocks,
   hoveredBlockIndex = null,
-  setHoveredBlockIndex = () => { },
+  setHoveredBlockIndex = () => {},
   totalAddressSpace = 65536, // Default 64KB
 }) => {
   // Calculate max address to determine total range
@@ -47,7 +47,7 @@ const AddressMapVisualizer: React.FC<AddressMapVisualizerProps> = ({
         end: base + size - 1,
         size,
         color: getBlockColor(idx),
-        usage: block.usage || 'register',
+        usage: block.usage || "register",
       };
     });
   }, [blocks]);
@@ -75,8 +75,8 @@ const AddressMapVisualizer: React.FC<AddressMapVisualizerProps> = ({
             return (
               <div
                 key={group.idx}
-                className={`relative flex flex-col items-center justify-end select-none ${isHovered ? 'z-10' : ''}`}
-                style={{ width: `${group.widthPercent}%`, minWidth: '120px' }}
+                className={`relative flex flex-col items-center justify-end select-none ${isHovered ? "z-10" : ""}`}
+                style={{ width: `${group.widthPercent}%`, minWidth: "120px" }}
                 onMouseEnter={() => setHoveredBlockIndex(group.idx)}
                 onMouseLeave={() => setHoveredBlockIndex(null)}
               >
@@ -85,28 +85,30 @@ const AddressMapVisualizer: React.FC<AddressMapVisualizerProps> = ({
                   style={{
                     background: FIELD_COLORS[group.color],
                     opacity: 1,
-                    transform: isHovered ? 'translateY(-2px)' : undefined,
-                    filter: isHovered ? 'saturate(1.15) brightness(1.05)' : undefined,
+                    transform: isHovered ? "translateY(-2px)" : undefined,
+                    filter: isHovered
+                      ? "saturate(1.15) brightness(1.05)"
+                      : undefined,
                     boxShadow: isHovered
-                      ? '0 0 0 2px var(--vscode-focusBorder), 0 10px 20px color-mix(in srgb, var(--vscode-foreground) 22%, transparent)'
+                      ? "0 0 0 2px var(--vscode-focusBorder), 0 10px 20px color-mix(in srgb, var(--vscode-foreground) 22%, transparent)"
                       : undefined,
                   }}
                 >
                   <div className="flex flex-col items-center gap-0.5">
                     <span className="text-lg select-none">
-                      {group.usage === 'memory' ? '📦' : '📋'}
+                      {group.usage === "memory" ? "📦" : "📋"}
                     </span>
                     <span className="text-[10px] font-mono text-white/80 font-semibold select-none text-center leading-tight">
-                      {group.usage === 'memory' ? 'MEM' : 'REG'}
+                      {group.usage === "memory" ? "MEM" : "REG"}
                     </span>
                   </div>
                 </div>
                 <div
                   className="absolute -top-10 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded border shadow text-xs whitespace-nowrap pointer-events-none"
                   style={{
-                    background: 'var(--vscode-editorWidget-background)',
-                    color: 'var(--vscode-foreground)',
-                    borderColor: 'var(--vscode-panel-border)',
+                    background: "var(--vscode-editorWidget-background)",
+                    color: "var(--vscode-foreground)",
+                    borderColor: "var(--vscode-panel-border)",
                   }}
                 >
                   <div className="font-bold">

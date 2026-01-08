@@ -5,25 +5,26 @@ This test demonstrates creating and validating IP core models.
 """
 
 import pytest
+
 from ipcore_lib.model import (
-    IpCore,
     VLNV,
+    AccessType,
+    AddressBlock,
+    ArrayConfig,
+    BitField,
+    BusInterface,
     Clock,
-    Reset,
+    File,
+    FileSet,
+    FileType,
+    IpCore,
+    MemoryMap,
+    Parameter,
     Polarity,
     Port,
     PortDirection,
-    BusInterface,
-    ArrayConfig,
-    Parameter,
-    MemoryMap,
-    AddressBlock,
     Register,
-    BitField,
-    AccessType,
-    FileSet,
-    File,
-    FileType,
+    Reset,
 )
 from ipcore_lib.model.validators import validate_ip_core
 
@@ -134,7 +135,9 @@ def test_bus_interface_array():
     print(f"  Instance count: {bus.instance_count}")
     print(f"  Instances:")
     for idx in bus.array.indices:
-        print(f"    [{idx}] {bus.array.get_instance_name(idx)} -> {bus.array.get_instance_prefix(idx)}")
+        print(
+            f"    [{idx}] {bus.array.get_instance_name(idx)} -> {bus.array.get_instance_prefix(idx)}"
+        )
     print()
 
 

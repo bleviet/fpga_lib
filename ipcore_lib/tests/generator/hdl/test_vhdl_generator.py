@@ -1,13 +1,15 @@
 """Tests for VHDL generator."""
-import pytest
+
 from pathlib import Path
 
+import pytest
+
 from ipcore_lib.generator.hdl.vhdl_generator import VHDLGenerator
-from ipcore_lib.parser.yaml.ip_yaml_parser import YamlIpCoreParser
-from ipcore_lib.model.core import IpCore
 from ipcore_lib.model.base import VLNV
+from ipcore_lib.model.core import IpCore
+from ipcore_lib.model.memory import AccessType, AddressBlock, BitField, MemoryMap, Register
 from ipcore_lib.model.port import Port, PortDirection
-from ipcore_lib.model.memory import MemoryMap, AddressBlock, Register, BitField, AccessType
+from ipcore_lib.parser.yaml.ip_yaml_parser import YamlIpCoreParser
 
 
 class TestVHDLGeneratorBasic:
@@ -27,7 +29,7 @@ class TestVHDLGeneratorBasic:
             description="Simple test IP",
             ports=[],
             parameters=[],
-            memory_maps=[]
+            memory_maps=[],
         )
 
         generator = VHDLGenerator()
@@ -45,11 +47,11 @@ class TestVHDLGeneratorBasic:
             description="Test top entity",
             ports=[],
             parameters=[],
-            memory_maps=[]
+            memory_maps=[],
         )
 
         generator = VHDLGenerator()
-        top = generator.generate_top(ip_core, bus_type='axil')
+        top = generator.generate_top(ip_core, bus_type="axil")
 
         assert top is not None
         assert "entity test_top is" in top
@@ -63,7 +65,7 @@ class TestVHDLGeneratorBasic:
             description="Test core module",
             ports=[],
             parameters=[],
-            memory_maps=[]
+            memory_maps=[],
         )
 
         generator = VHDLGenerator()
@@ -81,11 +83,11 @@ class TestVHDLGeneratorBasic:
             description="Test bus wrapper",
             ports=[],
             parameters=[],
-            memory_maps=[]
+            memory_maps=[],
         )
 
         generator = VHDLGenerator()
-        bus_wrapper = generator.generate_bus_wrapper(ip_core, bus_type='axil')
+        bus_wrapper = generator.generate_bus_wrapper(ip_core, bus_type="axil")
 
         assert bus_wrapper is not None
         assert "entity test_bus_axil is" in bus_wrapper
@@ -98,11 +100,11 @@ class TestVHDLGeneratorBasic:
             description="Test Avalon wrapper",
             ports=[],
             parameters=[],
-            memory_maps=[]
+            memory_maps=[],
         )
 
         generator = VHDLGenerator()
-        bus_wrapper = generator.generate_bus_wrapper(ip_core, bus_type='avmm')
+        bus_wrapper = generator.generate_bus_wrapper(ip_core, bus_type="avmm")
 
         assert bus_wrapper is not None
         assert "entity test_avmm_avmm is" in bus_wrapper
@@ -115,11 +117,11 @@ class TestVHDLGeneratorBasic:
             description="Test all files",
             ports=[],
             parameters=[],
-            memory_maps=[]
+            memory_maps=[],
         )
 
         generator = VHDLGenerator()
-        files = generator.generate_all(ip_core, bus_type='axil')
+        files = generator.generate_all(ip_core, bus_type="axil")
 
         assert len(files) == 4
         assert "test_all_pkg.vhd" in files
@@ -135,11 +137,11 @@ class TestVHDLGeneratorBasic:
             description="Test with regfile",
             ports=[],
             parameters=[],
-            memory_maps=[]
+            memory_maps=[],
         )
 
         generator = VHDLGenerator()
-        files = generator.generate_all(ip_core, bus_type='axil', include_regs=True)
+        files = generator.generate_all(ip_core, bus_type="axil", include_regs=True)
 
         assert len(files) == 5
         assert "test_regfile_regs.vhd" in files
@@ -169,13 +171,13 @@ class TestVHDLGeneratorWithRegisters:
                                     name="enable",
                                     bit_offset=0,
                                     bit_width=1,
-                                    access=AccessType.READ_WRITE
+                                    access=AccessType.READ_WRITE,
                                 )
-                            ]
+                            ],
                         )
-                    ]
+                    ],
                 )
-            ]
+            ],
         )
 
         ip_core = IpCore(
@@ -184,7 +186,7 @@ class TestVHDLGeneratorWithRegisters:
             description="Register test",
             ports=[],
             parameters=[],
-            memory_maps=[memory_map]
+            memory_maps=[memory_map],
         )
 
         generator = VHDLGenerator()
@@ -202,14 +204,14 @@ class TestVHDLGeneratorWithRegisters:
             ports=[
                 Port(name="clk", direction=PortDirection.IN, width=1),
                 Port(name="rst_n", direction=PortDirection.IN, width=1),
-                Port(name="data_out", direction=PortDirection.OUT, width=8)
+                Port(name="data_out", direction=PortDirection.OUT, width=8),
             ],
             parameters=[],
-            memory_maps=[]
+            memory_maps=[],
         )
 
         generator = VHDLGenerator()
-        top = generator.generate_top(ip_core, bus_type='axil')
+        top = generator.generate_top(ip_core, bus_type="axil")
 
         assert "clk" in top
         assert "rst_n" in top
@@ -227,7 +229,7 @@ class TestVHDLGeneratorVendorFiles:
             description="Intel test",
             ports=[],
             parameters=[],
-            memory_maps=[]
+            memory_maps=[],
         )
 
         generator = VHDLGenerator()
@@ -244,7 +246,7 @@ class TestVHDLGeneratorVendorFiles:
             description="Xilinx test",
             ports=[],
             parameters=[],
-            memory_maps=[]
+            memory_maps=[],
         )
 
         generator = VHDLGenerator()
@@ -266,7 +268,7 @@ class TestVHDLGeneratorTestbench:
             description="Testbench test",
             ports=[],
             parameters=[],
-            memory_maps=[]
+            memory_maps=[],
         )
 
         generator = VHDLGenerator()
@@ -283,7 +285,7 @@ class TestVHDLGeneratorTestbench:
             description="Makefile test",
             ports=[],
             parameters=[],
-            memory_maps=[]
+            memory_maps=[],
         )
 
         generator = VHDLGenerator()
@@ -301,7 +303,7 @@ class TestVHDLGeneratorTestbench:
             description="All testbench files",
             ports=[],
             parameters=[],
-            memory_maps=[]
+            memory_maps=[],
         )
 
         generator = VHDLGenerator()
@@ -310,4 +312,3 @@ class TestVHDLGeneratorTestbench:
         assert len(files) == 2
         assert "tb_all_test.py" in files
         assert "Makefile" in files
-

@@ -3,6 +3,7 @@ Main IP Core model - the canonical representation.
 """
 
 from typing import List, Optional
+
 from pydantic import BaseModel, Field, field_validator
 
 from .base import VLNV, Parameter
@@ -46,9 +47,7 @@ class IpCore(BaseModel):
     file_sets: List[FileSet] = Field(default_factory=list, description="File sets")
 
     # Parameters
-    parameters: List[Parameter] = Field(
-        default_factory=list, description="Generics/parameters"
-    )
+    parameters: List[Parameter] = Field(default_factory=list, description="Generics/parameters")
 
     # Bus library reference
     use_bus_library: Optional[str] = Field(

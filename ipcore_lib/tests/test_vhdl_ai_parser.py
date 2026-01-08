@@ -6,11 +6,13 @@ and validates entity parsing, port extraction, generic handling, and
 bus interface detection.
 """
 
-import pytest
 from pathlib import Path
-from ipcore_lib.parser.hdl.vhdl_ai_parser import VHDLAiParser, ParserConfig
-from ipcore_lib.model.port import PortDirection
+
+import pytest
+
 from ipcore_lib.model.core import IpCore
+from ipcore_lib.model.port import PortDirection
+from ipcore_lib.parser.hdl.vhdl_ai_parser import ParserConfig, VHDLAiParser
 
 
 @pytest.fixture
@@ -22,11 +24,7 @@ def test_vhdl_dir():
 @pytest.fixture
 def parser_config():
     """Default parser configuration for testing."""
-    return ParserConfig(
-        llm_provider="ollama",
-        llm_model="gemma3:12b",
-        strict_mode=False
-    )
+    return ParserConfig(llm_provider="ollama", llm_model="gemma3:12b", strict_mode=False)
 
 
 @pytest.fixture
@@ -38,6 +36,7 @@ def parser(parser_config):
 # ============================================================================
 # Basic Entity Parsing Tests
 # ============================================================================
+
 
 class TestBasicEntityParsing:
     """Test basic entity structure parsing."""
@@ -67,8 +66,7 @@ class TestBasicEntityParsing:
             vhdl_file = test_vhdl_dir / filename
             if vhdl_file.exists():
                 ip_core = parser.parse_file(vhdl_file)
-                assert ip_core.vlnv.name == expected_name, \
-                    f"Entity name mismatch for {filename}"
+                assert ip_core.vlnv.name == expected_name, f"Entity name mismatch for {filename}"
 
     def test_description_generation(self, parser, test_vhdl_dir):
         """Verify LLM generates meaningful descriptions."""
@@ -83,6 +81,7 @@ class TestBasicEntityParsing:
 # ============================================================================
 # Port Parsing Tests
 # ============================================================================
+
 
 class TestPortParsing:
     """Test port extraction and direction parsing."""
@@ -149,6 +148,7 @@ class TestPortParsing:
 # Generic/Parameter Parsing Tests
 # ============================================================================
 
+
 class TestGenericParsing:
     """Test generic/parameter extraction."""
 
@@ -206,6 +206,7 @@ class TestGenericParsing:
 # Complex Expression Tests
 # ============================================================================
 
+
 class TestComplexExpressions:
     """Test parsing of complex arithmetic expressions in port widths."""
 
@@ -256,6 +257,7 @@ class TestComplexExpressions:
 # Bus Interface Detection Tests
 # ============================================================================
 
+
 class TestBusInterfaceDetection:
     """Test AI-powered bus interface detection."""
 
@@ -286,8 +288,9 @@ class TestBusInterfaceDetection:
         bus_types = [b.type for b in ip_core.bus_interfaces]
 
         # Check for AXI-Stream interfaces
-        assert any("axis" in name.lower() or "stream" in t.lower()
-                   for name, t in zip(bus_names, bus_types))
+        assert any(
+            "axis" in name.lower() or "stream" in t.lower() for name, t in zip(bus_names, bus_types)
+        )
 
     def test_spi_detection(self, parser, test_vhdl_dir):
         """Test SPI bus interface detection."""
@@ -319,6 +322,7 @@ class TestBusInterfaceDetection:
 # Error Handling Tests
 # ============================================================================
 
+
 class TestErrorHandling:
     """Test parser error handling and graceful degradation."""
 
@@ -329,10 +333,7 @@ class TestErrorHandling:
 
     def test_strict_mode_on_failure(self):
         """Test strict mode raises errors."""
-        config = ParserConfig(
-            llm_provider="invalid_provider",
-            strict_mode=True
-        )
+        config = ParserConfig(llm_provider="invalid_provider", strict_mode=True)
 
         # Should raise RuntimeError in strict mode
         with pytest.raises(RuntimeError):
@@ -340,10 +341,7 @@ class TestErrorHandling:
 
     def test_graceful_degradation_on_failure(self):
         """Test graceful degradation when LLM unavailable."""
-        config = ParserConfig(
-            llm_provider="invalid_provider",
-            strict_mode=False
-        )
+        config = ParserConfig(llm_provider="invalid_provider", strict_mode=False)
 
         # Should create parser but log error
         parser = VHDLAiParser(config=config)
@@ -353,6 +351,7 @@ class TestErrorHandling:
 # ============================================================================
 # Model Validation Tests
 # ============================================================================
+
 
 class TestModelValidation:
     """Test Pydantic model validation."""
@@ -395,6 +394,7 @@ class TestModelValidation:
 # Performance Tests
 # ============================================================================
 
+
 @pytest.mark.slow
 class TestPerformance:
     """Performance and timing tests."""
@@ -420,6 +420,7 @@ class TestPerformance:
 # Integration Tests
 # ============================================================================
 
+
 @pytest.mark.integration
 class TestIntegration:
     """Integration tests with different LLM providers."""
@@ -436,8 +437,7 @@ class TestIntegration:
         assert ip_core.vlnv.name == "simple_counter"
 
     @pytest.mark.skipif(
-        "OPENAI_API_KEY" not in __import__("os").environ,
-        reason="OpenAI API key not configured"
+        "OPENAI_API_KEY" not in __import__("os").environ, reason="OpenAI API key not configured"
     )
     def test_parse_with_openai(self, test_vhdl_dir):
         """Test parsing with OpenAI provider."""
@@ -448,8 +448,7 @@ class TestIntegration:
         assert ip_core.vlnv.name == "simple_counter"
 
     @pytest.mark.skipif(
-        "GEMINI_API_KEY" not in __import__("os").environ,
-        reason="Gemini API key not configured"
+        "GEMINI_API_KEY" not in __import__("os").environ, reason="Gemini API key not configured"
     )
     def test_parse_with_gemini(self, test_vhdl_dir):
         """Test parsing with Gemini provider."""

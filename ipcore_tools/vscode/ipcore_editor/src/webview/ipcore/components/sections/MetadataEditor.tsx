@@ -1,6 +1,13 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { FormField, SelectField, TextAreaField } from '../../../shared/components';
-import { validateRequired, validateVersion } from '../../../shared/utils/validation';
+import React, { useState, useRef, useEffect, useCallback } from "react";
+import {
+  FormField,
+  SelectField,
+  TextAreaField,
+} from "../../../shared/components";
+import {
+  validateRequired,
+  validateVersion,
+} from "../../../shared/utils/validation";
 
 interface MetadataEditorProps {
   ipCore: any;
@@ -12,7 +19,7 @@ interface MetadataRow {
   label: string;
   path: (string | number)[];
   getValue: (ipCore: any) => string;
-  type?: 'text' | 'select' | 'textarea';
+  type?: "text" | "select" | "textarea";
   options?: { value: string; label: string }[];
   validator?: (value: string) => string | null;
   required?: boolean;
@@ -21,67 +28,67 @@ interface MetadataRow {
 
 const METADATA_ROWS: MetadataRow[] = [
   {
-    key: 'apiVersion',
-    label: 'API Version',
-    path: ['apiVersion'],
+    key: "apiVersion",
+    label: "API Version",
+    path: ["apiVersion"],
     getValue: (ip) => {
       const val = ip?.apiVersion;
       if (val === undefined || val === null) {
-        return '1.0';
+        return "1.0";
       }
       // Convert number to string, ensuring 1 becomes "1.0"
-      if (typeof val === 'number') {
+      if (typeof val === "number") {
         return Number.isInteger(val) ? `${val}.0` : String(val);
       }
       return String(val);
     },
-    type: 'select',
-    options: [{ value: '1.0', label: '1.0' }],
+    type: "select",
+    options: [{ value: "1.0", label: "1.0" }],
     required: true,
   },
   {
-    key: 'vendor',
-    label: 'Vendor',
-    path: ['vlnv', 'vendor'],
-    getValue: (ip) => ip?.vlnv?.vendor || '',
+    key: "vendor",
+    label: "Vendor",
+    path: ["vlnv", "vendor"],
+    getValue: (ip) => ip?.vlnv?.vendor || "",
     validator: validateRequired,
     required: true,
-    placeholder: 'e.g., my-company.com',
+    placeholder: "e.g., my-company.com",
   },
   {
-    key: 'library',
-    label: 'Library',
-    path: ['vlnv', 'library'],
-    getValue: (ip) => ip?.vlnv?.library || '',
+    key: "library",
+    label: "Library",
+    path: ["vlnv", "library"],
+    getValue: (ip) => ip?.vlnv?.library || "",
     validator: validateRequired,
     required: true,
-    placeholder: 'e.g., my_lib',
+    placeholder: "e.g., my_lib",
   },
   {
-    key: 'name',
-    label: 'Name',
-    path: ['vlnv', 'name'],
-    getValue: (ip) => ip?.vlnv?.name || '',
+    key: "name",
+    label: "Name",
+    path: ["vlnv", "name"],
+    getValue: (ip) => ip?.vlnv?.name || "",
     validator: validateRequired,
     required: true,
-    placeholder: 'e.g., my_core',
+    placeholder: "e.g., my_core",
   },
   {
-    key: 'version',
-    label: 'Version',
-    path: ['vlnv', 'version'],
-    getValue: (ip) => ip?.vlnv?.version || '',
+    key: "version",
+    label: "Version",
+    path: ["vlnv", "version"],
+    getValue: (ip) => ip?.vlnv?.version || "",
     validator: validateVersion,
     required: true,
-    placeholder: 'e.g., 1.0.0',
+    placeholder: "e.g., 1.0.0",
   },
   {
-    key: 'description',
-    label: 'Description',
-    path: ['description'],
-    getValue: (ip) => ip?.description || '',
-    type: 'textarea',
-    placeholder: 'Describe the IP core...',
+    key: "description",
+    label: "Description",
+    path: ["description"],
+    getValue: (ip) => ip?.description || "",
+    type: "textarea",
+    placeholder: "Describe the IP core...",
   },
 ];
 
@@ -90,10 +97,13 @@ const METADATA_ROWS: MetadataRow[] = [
  * Uses table format matching other section editors
  * Supports vim-style navigation: j/k for rows, e to edit, Escape to cancel
  */
-export const MetadataEditor: React.FC<MetadataEditorProps> = ({ ipCore, onUpdate }) => {
+export const MetadataEditor: React.FC<MetadataEditorProps> = ({
+  ipCore,
+  onUpdate,
+}) => {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [editingKey, setEditingKey] = useState<string | null>(null);
-  const [draft, setDraft] = useState('');
+  const [draft, setDraft] = useState("");
   const containerRef = useRef<HTMLDivElement>(null);
 
   const handleEdit = useCallback(
@@ -104,7 +114,7 @@ export const MetadataEditor: React.FC<MetadataEditorProps> = ({ ipCore, onUpdate
         setEditingKey(key);
       }
     },
-    [ipCore]
+    [ipCore],
   );
 
   const handleSave = useCallback(() => {
@@ -113,13 +123,13 @@ export const MetadataEditor: React.FC<MetadataEditorProps> = ({ ipCore, onUpdate
       onUpdate(row.path, draft);
     }
     setEditingKey(null);
-    setDraft('');
+    setDraft("");
     setTimeout(() => containerRef.current?.focus(), 0);
   }, [editingKey, draft, onUpdate]);
 
   const handleCancel = useCallback(() => {
     setEditingKey(null);
-    setDraft('');
+    setDraft("");
     setTimeout(() => containerRef.current?.focus(), 0);
   }, []);
 
@@ -131,7 +141,9 @@ export const MetadataEditor: React.FC<MetadataEditorProps> = ({ ipCore, onUpdate
         if (!container) {
           return;
         }
-        const input = container.querySelector(`[data-edit-key="${editingKey}"]`) as HTMLElement;
+        const input = container.querySelector(
+          `[data-edit-key="${editingKey}"]`,
+        ) as HTMLElement;
         if (input) {
           input.focus();
         }
@@ -150,11 +162,11 @@ export const MetadataEditor: React.FC<MetadataEditorProps> = ({ ipCore, onUpdate
     const handleKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
       const isTyping = target.closest(
-        'input, textarea, select, [contenteditable="true"], vscode-text-field, vscode-text-area, vscode-dropdown'
+        'input, textarea, select, [contenteditable="true"], vscode-text-field, vscode-text-area, vscode-dropdown',
       );
 
       if (isTyping || editingKey !== null) {
-        if (e.key === 'Escape') {
+        if (e.key === "Escape") {
           e.preventDefault();
           handleCancel();
         }
@@ -167,26 +179,28 @@ export const MetadataEditor: React.FC<MetadataEditorProps> = ({ ipCore, onUpdate
 
       const key = e.key.toLowerCase();
 
-      if (key === 'j' || e.key === 'ArrowDown') {
+      if (key === "j" || e.key === "ArrowDown") {
         e.preventDefault();
-        setSelectedIndex((prev) => Math.min(prev + 1, METADATA_ROWS.length - 1));
-      } else if (key === 'k' || e.key === 'ArrowUp') {
+        setSelectedIndex((prev) =>
+          Math.min(prev + 1, METADATA_ROWS.length - 1),
+        );
+      } else if (key === "k" || e.key === "ArrowUp") {
         e.preventDefault();
         setSelectedIndex((prev) => Math.max(prev - 1, 0));
-      } else if (key === 'e' || e.key === 'Enter') {
+      } else if (key === "e" || e.key === "Enter") {
         e.preventDefault();
         handleEdit(METADATA_ROWS[selectedIndex].key);
-      } else if (key === 'g') {
+      } else if (key === "g") {
         e.preventDefault();
         setSelectedIndex(0);
-      } else if (e.key === 'G' && e.shiftKey) {
+      } else if (e.key === "G" && e.shiftKey) {
         e.preventDefault();
         setSelectedIndex(METADATA_ROWS.length - 1);
       }
     };
 
-    container.addEventListener('keydown', handleKeyDown);
-    return () => container.removeEventListener('keydown', handleKeyDown);
+    container.addEventListener("keydown", handleKeyDown);
+    return () => container.removeEventListener("keydown", handleKeyDown);
   }, [selectedIndex, editingKey, handleEdit, handleCancel]);
 
   const renderEditField = (row: MetadataRow) => {
@@ -199,7 +213,7 @@ export const MetadataEditor: React.FC<MetadataEditorProps> = ({ ipCore, onUpdate
       onCancel: handleCancel,
     };
 
-    if (row.type === 'select') {
+    if (row.type === "select") {
       return (
         <div className="flex items-center gap-2">
           <SelectField
@@ -214,8 +228,8 @@ export const MetadataEditor: React.FC<MetadataEditorProps> = ({ ipCore, onUpdate
             onClick={handleSave}
             className="px-3 py-1 rounded text-xs"
             style={{
-              background: 'var(--vscode-button-background)',
-              color: 'var(--vscode-button-foreground)',
+              background: "var(--vscode-button-background)",
+              color: "var(--vscode-button-foreground)",
             }}
           >
             Save
@@ -224,8 +238,8 @@ export const MetadataEditor: React.FC<MetadataEditorProps> = ({ ipCore, onUpdate
             onClick={handleCancel}
             className="px-3 py-1 rounded text-xs"
             style={{
-              background: 'var(--vscode-button-secondaryBackground)',
-              color: 'var(--vscode-button-foreground)',
+              background: "var(--vscode-button-secondaryBackground)",
+              color: "var(--vscode-button-foreground)",
             }}
           >
             Cancel
@@ -234,7 +248,7 @@ export const MetadataEditor: React.FC<MetadataEditorProps> = ({ ipCore, onUpdate
       );
     }
 
-    if (row.type === 'textarea') {
+    if (row.type === "textarea") {
       return (
         <div className="flex flex-col gap-2">
           <TextAreaField
@@ -251,8 +265,8 @@ export const MetadataEditor: React.FC<MetadataEditorProps> = ({ ipCore, onUpdate
               onClick={handleSave}
               className="px-3 py-1 rounded text-xs"
               style={{
-                background: 'var(--vscode-button-background)',
-                color: 'var(--vscode-button-foreground)',
+                background: "var(--vscode-button-background)",
+                color: "var(--vscode-button-foreground)",
               }}
             >
               Save
@@ -261,8 +275,8 @@ export const MetadataEditor: React.FC<MetadataEditorProps> = ({ ipCore, onUpdate
               onClick={handleCancel}
               className="px-3 py-1 rounded text-xs"
               style={{
-                background: 'var(--vscode-button-secondaryBackground)',
-                color: 'var(--vscode-button-foreground)',
+                background: "var(--vscode-button-secondaryBackground)",
+                color: "var(--vscode-button-foreground)",
               }}
             >
               Cancel
@@ -290,9 +304,9 @@ export const MetadataEditor: React.FC<MetadataEditorProps> = ({ ipCore, onUpdate
           className="px-3 py-1 rounded text-xs"
           style={{
             background: canSave
-              ? 'var(--vscode-button-background)'
-              : 'var(--vscode-button-secondaryBackground)',
-            color: 'var(--vscode-button-foreground)',
+              ? "var(--vscode-button-background)"
+              : "var(--vscode-button-secondaryBackground)",
+            color: "var(--vscode-button-foreground)",
             opacity: canSave ? 1 : 0.5,
           }}
         >
@@ -302,8 +316,8 @@ export const MetadataEditor: React.FC<MetadataEditorProps> = ({ ipCore, onUpdate
           onClick={handleCancel}
           className="px-3 py-1 rounded text-xs"
           style={{
-            background: 'var(--vscode-button-secondaryBackground)',
-            color: 'var(--vscode-button-foreground)',
+            background: "var(--vscode-button-secondaryBackground)",
+            color: "var(--vscode-button-foreground)",
           }}
         >
           Cancel
@@ -328,21 +342,29 @@ export const MetadataEditor: React.FC<MetadataEditorProps> = ({ ipCore, onUpdate
 
       <div
         className="rounded overflow-hidden"
-        style={{ border: '1px solid var(--vscode-panel-border)' }}
+        style={{ border: "1px solid var(--vscode-panel-border)" }}
       >
         <table className="w-full">
           <thead>
             <tr
               style={{
-                background: 'var(--vscode-editor-background)',
-                borderBottom: '1px solid var(--vscode-panel-border)',
+                background: "var(--vscode-editor-background)",
+                borderBottom: "1px solid var(--vscode-panel-border)",
               }}
             >
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase opacity-70" style={{ width: '150px' }}>
+              <th
+                className="px-4 py-3 text-left text-xs font-semibold uppercase opacity-70"
+                style={{ width: "150px" }}
+              >
                 Field
               </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase opacity-70">Value</th>
-              <th className="px-4 py-3 text-right text-xs font-semibold uppercase opacity-70" style={{ width: '80px' }}>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase opacity-70">
+                Value
+              </th>
+              <th
+                className="px-4 py-3 text-right text-xs font-semibold uppercase opacity-70"
+                style={{ width: "80px" }}
+              >
                 Actions
               </th>
             </tr>
@@ -361,18 +383,24 @@ export const MetadataEditor: React.FC<MetadataEditorProps> = ({ ipCore, onUpdate
                   onDoubleClick={() => handleEdit(row.key)}
                   style={{
                     background: isEditing
-                      ? 'var(--vscode-list-activeSelectionBackground)'
+                      ? "var(--vscode-list-activeSelectionBackground)"
                       : isSelected
-                        ? 'var(--vscode-list-inactiveSelectionBackground)'
-                        : 'transparent',
-                    borderBottom: '1px solid var(--vscode-panel-border)',
-                    cursor: 'pointer',
+                        ? "var(--vscode-list-inactiveSelectionBackground)"
+                        : "transparent",
+                    borderBottom: "1px solid var(--vscode-panel-border)",
+                    cursor: "pointer",
                   }}
                 >
-                  <td className="px-4 py-3 text-sm font-medium" style={{ opacity: 0.8 }}>
+                  <td
+                    className="px-4 py-3 text-sm font-medium"
+                    style={{ opacity: 0.8 }}
+                  >
                     {row.label}
                     {row.required && (
-                      <span style={{ color: 'var(--vscode-errorForeground)' }}> *</span>
+                      <span style={{ color: "var(--vscode-errorForeground)" }}>
+                        {" "}
+                        *
+                      </span>
                     )}
                   </td>
                   <td className="px-4 py-3 text-sm">
@@ -381,7 +409,10 @@ export const MetadataEditor: React.FC<MetadataEditorProps> = ({ ipCore, onUpdate
                     ) : (
                       <span
                         className="font-mono"
-                        style={{ whiteSpace: row.type === 'textarea' ? 'pre-wrap' : 'normal' }}
+                        style={{
+                          whiteSpace:
+                            row.type === "textarea" ? "pre-wrap" : "normal",
+                        }}
                       >
                         {value || <span style={{ opacity: 0.5 }}>—</span>}
                       </span>

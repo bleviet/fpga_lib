@@ -1,7 +1,15 @@
-import React from 'react';
-import { FormField, SelectField, NumberField, CheckboxField } from '../../../shared/components';
-import { validateVhdlIdentifier, validateUniqueName } from '../../../shared/utils/validation';
-import { useVimTableNavigation } from '../../hooks/useVimTableNavigation';
+import React from "react";
+import {
+  FormField,
+  SelectField,
+  NumberField,
+  CheckboxField,
+} from "../../../shared/components";
+import {
+  validateVhdlIdentifier,
+  validateUniqueName,
+} from "../../../shared/utils/validation";
+import { useVimTableNavigation } from "../../hooks/useVimTableNavigation";
 
 interface Parameter {
   name: string;
@@ -16,19 +24,22 @@ interface ParametersTableProps {
 }
 
 const createEmptyParameter = (): Parameter => ({
-  name: '',
-  dataType: 'integer',
+  name: "",
+  dataType: "integer",
   defaultValue: 0,
-  description: '',
+  description: "",
 });
 
-const COLUMN_KEYS = ['name', 'dataType', 'defaultValue', 'description'];
+const COLUMN_KEYS = ["name", "dataType", "defaultValue", "description"];
 
 /**
  * Editable table for IP Core parameters
  * Vim-style: h/j/k/l navigate cells, e edit, d delete, o add
  */
-export const ParametersTable: React.FC<ParametersTableProps> = ({ parameters, onUpdate }) => {
+export const ParametersTable: React.FC<ParametersTableProps> = ({
+  parameters,
+  onUpdate,
+}) => {
   const {
     selectedIndex,
     activeColumn,
@@ -47,42 +58,47 @@ export const ParametersTable: React.FC<ParametersTableProps> = ({ parameters, on
   } = useVimTableNavigation<Parameter>({
     items: parameters,
     onUpdate,
-    dataKey: 'parameters',
+    dataKey: "parameters",
     createEmptyItem: createEmptyParameter,
     columnKeys: COLUMN_KEYS,
   });
 
   const handleDataTypeChange = (newType: string) => {
-    let newDefault: any = '';
-    if (newType === 'integer') {
+    let newDefault: any = "";
+    if (newType === "integer") {
       newDefault = 0;
-    } else if (newType === 'boolean') {
+    } else if (newType === "boolean") {
       newDefault = false;
-    } else if (newType === 'string') {
-      newDefault = '';
+    } else if (newType === "string") {
+      newDefault = "";
     }
     setDraft({ ...draft, dataType: newType, defaultValue: newDefault });
   };
 
-  const existingNames = parameters.map((p) => p.name).filter((_, i) => i !== editingIndex);
+  const existingNames = parameters
+    .map((p) => p.name)
+    .filter((_, i) => i !== editingIndex);
   const nameError =
-    validateVhdlIdentifier(draft.name) || validateUniqueName(draft.name, existingNames);
+    validateVhdlIdentifier(draft.name) ||
+    validateUniqueName(draft.name, existingNames);
   const canSave = !nameError;
 
   const renderDefaultValueField = () => {
     switch (draft.dataType) {
-      case 'integer':
+      case "integer":
         return (
           <NumberField
             label=""
-            value={typeof draft.defaultValue === 'number' ? draft.defaultValue : 0}
+            value={
+              typeof draft.defaultValue === "number" ? draft.defaultValue : 0
+            }
             onChange={(v: number) => setDraft({ ...draft, defaultValue: v })}
             data-edit-key="defaultValue"
             onSave={canSave ? handleSave : undefined}
             onCancel={handleCancel}
           />
         );
-      case 'boolean':
+      case "boolean":
         return (
           <CheckboxField
             label="True"
@@ -95,7 +111,7 @@ export const ParametersTable: React.FC<ParametersTableProps> = ({ parameters, on
         return (
           <FormField
             label=""
-            value={String(draft.defaultValue || '')}
+            value={String(draft.defaultValue || "")}
             onChange={(v: string) => setDraft({ ...draft, defaultValue: v })}
             placeholder="default value"
             data-edit-key="defaultValue"
@@ -107,21 +123,21 @@ export const ParametersTable: React.FC<ParametersTableProps> = ({ parameters, on
   };
 
   const formatDefaultValue = (param: Parameter): string => {
-    if (param.dataType === 'boolean') {
-      return param.defaultValue ? 'true' : 'false';
+    if (param.dataType === "boolean") {
+      return param.defaultValue ? "true" : "false";
     }
-    if (param.dataType === 'integer') {
+    if (param.dataType === "integer") {
       return String(param.defaultValue ?? 0);
     }
     // For string type, show the value or empty string
-    return String(param.defaultValue ?? '');
+    return String(param.defaultValue ?? "");
   };
 
   const renderEditRow = (isNew: boolean) => (
     <tr
       style={{
-        background: 'var(--vscode-list-activeSelectionBackground)',
-        borderBottom: '1px solid var(--vscode-panel-border)',
+        background: "var(--vscode-list-activeSelectionBackground)",
+        borderBottom: "1px solid var(--vscode-panel-border)",
       }}
       data-row-idx={editingIndex ?? parameters.length}
     >
@@ -143,9 +159,9 @@ export const ParametersTable: React.FC<ParametersTableProps> = ({ parameters, on
           label=""
           value={draft.dataType}
           options={[
-            { value: 'integer', label: 'integer' },
-            { value: 'boolean', label: 'boolean' },
-            { value: 'string', label: 'string' },
+            { value: "integer", label: "integer" },
+            { value: "boolean", label: "boolean" },
+            { value: "string", label: "string" },
           ]}
           onChange={handleDataTypeChange}
           data-edit-key="dataType"
@@ -157,7 +173,7 @@ export const ParametersTable: React.FC<ParametersTableProps> = ({ parameters, on
       <td className="px-4 py-3">
         <FormField
           label=""
-          value={draft.description || ''}
+          value={draft.description || ""}
           onChange={(v: string) => setDraft({ ...draft, description: v })}
           placeholder="Optional description"
           data-edit-key="description"
@@ -172,20 +188,20 @@ export const ParametersTable: React.FC<ParametersTableProps> = ({ parameters, on
           className="px-3 py-1 rounded text-xs mr-2"
           style={{
             background: canSave
-              ? 'var(--vscode-button-background)'
-              : 'var(--vscode-button-secondaryBackground)',
-            color: 'var(--vscode-button-foreground)',
+              ? "var(--vscode-button-background)"
+              : "var(--vscode-button-secondaryBackground)",
+            color: "var(--vscode-button-foreground)",
             opacity: canSave ? 1 : 0.5,
           }}
         >
-          {isNew ? 'Add' : 'Save'}
+          {isNew ? "Add" : "Save"}
         </button>
         <button
           onClick={handleCancel}
           className="px-3 py-1 rounded text-xs"
           style={{
-            background: 'var(--vscode-button-secondaryBackground)',
-            color: 'var(--vscode-button-foreground)',
+            background: "var(--vscode-button-secondaryBackground)",
+            color: "var(--vscode-button-foreground)",
           }}
         >
           Cancel
@@ -200,7 +216,7 @@ export const ParametersTable: React.FC<ParametersTableProps> = ({ parameters, on
         <div>
           <h2 className="text-xl font-medium">Parameters</h2>
           <p className="text-sm mt-1" style={{ opacity: 0.7 }}>
-            {parameters.length} parameter{parameters.length !== 1 ? 's' : ''} •
+            {parameters.length} parameter{parameters.length !== 1 ? "s" : ""} •
             <span className="ml-2 text-xs font-mono" style={{ opacity: 0.5 }}>
               h/j/k/l: navigate • e: edit • d: delete • o: add
             </span>
@@ -213,9 +229,9 @@ export const ParametersTable: React.FC<ParametersTableProps> = ({ parameters, on
           style={{
             background:
               isAdding || editingIndex !== null
-                ? 'var(--vscode-button-secondaryBackground)'
-                : 'var(--vscode-button-background)',
-            color: 'var(--vscode-button-foreground)',
+                ? "var(--vscode-button-secondaryBackground)"
+                : "var(--vscode-button-background)",
+            color: "var(--vscode-button-foreground)",
             opacity: isAdding || editingIndex !== null ? 0.5 : 1,
           }}
         >
@@ -225,52 +241,76 @@ export const ParametersTable: React.FC<ParametersTableProps> = ({ parameters, on
 
       <div
         className="rounded overflow-hidden"
-        style={{ border: '1px solid var(--vscode-panel-border)' }}
+        style={{ border: "1px solid var(--vscode-panel-border)" }}
       >
         <table className="w-full">
           <thead>
             <tr
               style={{
-                background: 'var(--vscode-editor-background)',
-                borderBottom: '1px solid var(--vscode-panel-border)',
+                background: "var(--vscode-editor-background)",
+                borderBottom: "1px solid var(--vscode-panel-border)",
               }}
             >
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase opacity-70">Name</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase opacity-70">Data Type</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase opacity-70">Default Value</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase opacity-70">Description</th>
-              <th className="px-4 py-3 text-right text-xs font-semibold uppercase opacity-70">Actions</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase opacity-70">
+                Name
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase opacity-70">
+                Data Type
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase opacity-70">
+                Default Value
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase opacity-70">
+                Description
+              </th>
+              <th className="px-4 py-3 text-right text-xs font-semibold uppercase opacity-70">
+                Actions
+              </th>
             </tr>
           </thead>
           <tbody>
             {parameters.map((param, index) => {
               if (editingIndex === index) {
-                return <React.Fragment key={index}>{renderEditRow(false)}</React.Fragment>;
+                return (
+                  <React.Fragment key={index}>
+                    {renderEditRow(false)}
+                  </React.Fragment>
+                );
               }
               const rowProps = getRowProps(index);
               return (
-                <tr key={index} {...rowProps} onDoubleClick={() => handleEdit(index)}>
-                  <td className="px-4 py-3 text-sm font-mono" {...getCellProps(index, 'name')}>
+                <tr
+                  key={index}
+                  {...rowProps}
+                  onDoubleClick={() => handleEdit(index)}
+                >
+                  <td
+                    className="px-4 py-3 text-sm font-mono"
+                    {...getCellProps(index, "name")}
+                  >
                     {param.name}
                   </td>
-                  <td className="px-4 py-3 text-sm" {...getCellProps(index, 'dataType')}>
+                  <td
+                    className="px-4 py-3 text-sm"
+                    {...getCellProps(index, "dataType")}
+                  >
                     {param.dataType}
                   </td>
                   <td
                     className="px-4 py-3 text-sm font-mono"
-                    {...getCellProps(index, 'defaultValue')}
+                    {...getCellProps(index, "defaultValue")}
                   >
                     {formatDefaultValue(param)}
                   </td>
                   <td
                     className="px-4 py-3 text-sm"
-                    {...getCellProps(index, 'description')}
+                    {...getCellProps(index, "description")}
                     style={{
-                      ...getCellProps(index, 'description').style,
+                      ...getCellProps(index, "description").style,
                       opacity: param.description ? 1 : 0.5,
                     }}
                   >
-                    {param.description || '—'}
+                    {param.description || "—"}
                   </td>
                   <td className="px-4 py-3 text-right">
                     <button
@@ -291,7 +331,7 @@ export const ParametersTable: React.FC<ParametersTableProps> = ({ parameters, on
                       }}
                       disabled={isAdding || editingIndex !== null}
                       className="p-1"
-                      style={{ color: 'var(--vscode-errorForeground)' }}
+                      style={{ color: "var(--vscode-errorForeground)" }}
                       title="Delete (d)"
                     >
                       <span className="codicon codicon-trash"></span>
@@ -303,7 +343,11 @@ export const ParametersTable: React.FC<ParametersTableProps> = ({ parameters, on
             {isAdding && renderEditRow(true)}
             {parameters.length === 0 && !isAdding && (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-sm" style={{ opacity: 0.6 }}>
+                <td
+                  colSpan={5}
+                  className="px-4 py-8 text-center text-sm"
+                  style={{ opacity: 0.6 }}
+                >
                   No parameters defined. Press 'o' or click "Add Parameter".
                 </td>
               </tr>

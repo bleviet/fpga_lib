@@ -8,17 +8,17 @@ bus interface detection, clock/reset classification, and structured output.
 import argparse
 import sys
 from pathlib import Path
-from typing import Optional, Dict, Any, List
+from typing import Any, Dict, List, Optional
 
 import yaml
 
-from ipcore_lib.parser.hdl.vhdl_parser import VHDLParser
-from ipcore_lib.parser.hdl.bus_detector import BusInterfaceDetector
-from ipcore_lib.model.core import IpCore
 from ipcore_lib.model.base import VLNV
-from ipcore_lib.model.port import Port, PortDirection
 from ipcore_lib.model.bus import BusInterface
 from ipcore_lib.model.clock_reset import Clock, Reset
+from ipcore_lib.model.core import IpCore
+from ipcore_lib.model.port import Port, PortDirection
+from ipcore_lib.parser.hdl.bus_detector import BusInterfaceDetector
+from ipcore_lib.parser.hdl.vhdl_parser import VHDLParser
 
 
 class IpYamlGenerator:
@@ -70,12 +70,7 @@ class IpYamlGenerator:
         ip_core = result["entity"]
 
         # Update VLNV with user-provided values
-        ip_core.vlnv = VLNV(
-            vendor=vendor,
-            library=library,
-            name=ip_core.vlnv.name,
-            version=version
-        )
+        ip_core.vlnv = VLNV(vendor=vendor, library=library, name=ip_core.vlnv.name, version=version)
 
         # Detect bus interfaces
         bus_interfaces = []
@@ -107,9 +102,7 @@ class IpYamlGenerator:
 
         return yaml.dump(yaml_data, default_flow_style=False, sort_keys=False, allow_unicode=True)
 
-    def _get_bus_port_names(
-        self, bus_interfaces: List[BusInterface], ports: List[Port]
-    ) -> set:
+    def _get_bus_port_names(self, bus_interfaces: List[BusInterface], ports: List[Port]) -> set:
         """Get names of ports that belong to detected bus interfaces."""
         bus_port_names = set()
         for bus in bus_interfaces:
@@ -143,39 +136,26 @@ class IpYamlGenerator:
 
         # Clocks
         if clocks:
-            data["clocks"] = [
-                {"name": c.name, "description": c.description or ""}
-                for c in clocks
-            ]
+            data["clocks"] = [{"name": c.name, "description": c.description or ""} for c in clocks]
 
         # Resets
         if resets:
             data["resets"] = [
-                {
-                    "name": r.name,
-                    "polarity": r.polarity.value,
-                    "description": r.description or ""
-                }
+                {"name": r.name, "polarity": r.polarity.value, "description": r.description or ""}
                 for r in resets
             ]
 
         # User ports (not part of bus interfaces)
         if user_ports:
-            data["ports"] = [
-                self._port_to_dict(p) for p in user_ports
-            ]
+            data["ports"] = [self._port_to_dict(p) for p in user_ports]
 
         # Bus interfaces
         if bus_interfaces:
-            data["busInterfaces"] = [
-                self._bus_interface_to_dict(b) for b in bus_interfaces
-            ]
+            data["busInterfaces"] = [self._bus_interface_to_dict(b) for b in bus_interfaces]
 
         # Parameters (from generics)
         if ip_core.parameters:
-            data["parameters"] = [
-                self._parameter_to_dict(p) for p in ip_core.parameters
-            ]
+            data["parameters"] = [self._parameter_to_dict(p) for p in ip_core.parameters]
 
         # Memory maps reference
         if memmap_path:
@@ -187,12 +167,7 @@ class IpYamlGenerator:
             {
                 "name": "RTL_Sources",
                 "description": "RTL source files",
-                "files": [
-                    {
-                        "path": str(vhdl_path.name),
-                        "type": "vhdl"
-                    }
-                ]
+                "files": [{"path": str(vhdl_path.name), "type": "vhdl"}],
             }
         ]
 
@@ -208,9 +183,9 @@ class IpYamlGenerator:
 
         # Generate logicalName from port name (remove common prefixes, uppercase)
         logical_name = port.name.upper()
-        for prefix in ['I_', 'O_', 'IO_']:
+        for prefix in ["I_", "O_", "IO_"]:
             if logical_name.startswith(prefix):
-                logical_name = logical_name[len(prefix):]
+                logical_name = logical_name[len(prefix) :]
                 break
         d["logicalName"] = logical_name
 
@@ -244,7 +219,7 @@ class IpYamlGenerator:
             return None
 
         # Match pattern: (PARAM-1 downto 0) or (PARAM downto 0)
-        match = re.search(r'\((\w+)(?:\s*-\s*1)?\s+downto\s+0\)', type_str, re.IGNORECASE)
+        match = re.search(r"\((\w+)(?:\s*-\s*1)?\s+downto\s+0\)", type_str, re.IGNORECASE)
         if match:
             param = match.group(1)
             # If it's a number, return None (let caller use port.width)
@@ -265,7 +240,7 @@ class IpYamlGenerator:
         if isinstance(value, str):
             # Try to convert string to int or float
             try:
-                if '.' in value:
+                if "." in value:
                     value = float(value)
                 else:
                     value = int(value)
@@ -304,54 +279,28 @@ class IpYamlGenerator:
 def main():
     """CLI entry point."""
     parser = argparse.ArgumentParser(
-        description="Generate IP core YAML from VHDL source file",
-        prog="ip_yaml_generator"
+        description="Generate IP core YAML from VHDL source file", prog="ip_yaml_generator"
     )
+    parser.add_argument("vhdl_file", type=Path, help="Path to VHDL source file")
     parser.add_argument(
-        "vhdl_file",
-        type=Path,
-        help="Path to VHDL source file"
-    )
-    parser.add_argument(
-        "-o", "--output",
+        "-o",
+        "--output",
         type=Path,
         default=None,
-        help="Output .ip.yml path (default: {entity_name}.ip.yml)"
+        help="Output .ip.yml path (default: {entity_name}.ip.yml)",
     )
     parser.add_argument(
-        "--vendor",
-        type=str,
-        default="user",
-        help="VLNV vendor name (default: user)"
+        "--vendor", type=str, default="user", help="VLNV vendor name (default: user)"
+    )
+    parser.add_argument("--library", type=str, default="ip", help="VLNV library name (default: ip)")
+    parser.add_argument("--version", type=str, default="1.0", help="VLNV version (default: 1.0)")
+    parser.add_argument(
+        "--no-detect-bus", action="store_true", help="Disable automatic bus interface detection"
     )
     parser.add_argument(
-        "--library",
-        type=str,
-        default="ip",
-        help="VLNV library name (default: ip)"
+        "--memmap", type=Path, default=None, help="Path to memory map file to reference"
     )
-    parser.add_argument(
-        "--version",
-        type=str,
-        default="1.0",
-        help="VLNV version (default: 1.0)"
-    )
-    parser.add_argument(
-        "--no-detect-bus",
-        action="store_true",
-        help="Disable automatic bus interface detection"
-    )
-    parser.add_argument(
-        "--memmap",
-        type=Path,
-        default=None,
-        help="Path to memory map file to reference"
-    )
-    parser.add_argument(
-        "-f", "--force",
-        action="store_true",
-        help="Overwrite existing output file"
-    )
+    parser.add_argument("-f", "--force", action="store_true", help="Overwrite existing output file")
 
     args = parser.parse_args()
 
@@ -380,11 +329,11 @@ def main():
         output_path = args.output
     else:
         # Extract entity name from content
-        lines = yaml_content.split('\n')
+        lines = yaml_content.split("\n")
         entity_name = None
         for line in lines:
-            if 'name:' in line and entity_name is None:
-                entity_name = line.split(':')[-1].strip()
+            if "name:" in line and entity_name is None:
+                entity_name = line.split(":")[-1].strip()
                 break
         output_path = args.vhdl_file.parent / f"{entity_name or 'output'}.ip.yml"
 
@@ -395,7 +344,7 @@ def main():
         sys.exit(1)
 
     # Write output
-    with open(output_path, 'w') as f:
+    with open(output_path, "w") as f:
         f.write(yaml_content)
 
     print(f"Generated: {output_path}")

@@ -1,14 +1,14 @@
-import React, { useRef } from 'react';
-import { FormField, SelectField } from '../../../shared/components';
+import React, { useRef } from "react";
+import { FormField, SelectField } from "../../../shared/components";
 import {
   validateVhdlIdentifier,
   validateUniqueName,
-} from '../../../shared/utils/validation';
-import { useVimTableNavigation } from '../../hooks/useVimTableNavigation';
+} from "../../../shared/utils/validation";
+import { useVimTableNavigation } from "../../hooks/useVimTableNavigation";
 
 interface Clock {
-  name: string;          // Physical port name
-  logicalName?: string;  // Standard logical name (CLK)
+  name: string; // Physical port name
+  logicalName?: string; // Standard logical name (CLK)
   frequency?: string;
   direction?: string;
 }
@@ -25,39 +25,44 @@ interface ClocksTableProps {
 }
 
 const createEmptyClock = (): Clock => ({
-  name: '',
-  logicalName: 'CLK',
-  frequency: '',
-  direction: 'input',
+  name: "",
+  logicalName: "CLK",
+  frequency: "",
+  direction: "input",
 });
 
 // Normalize direction from in/out to input/output
 const normalizeClock = (clock: Clock): Clock => {
   const dirMap: { [key: string]: string } = {
-    in: 'input',
-    out: 'output',
-    input: 'input',
-    output: 'output',
+    in: "input",
+    out: "output",
+    input: "input",
+    output: "output",
   };
-  return { ...clock, direction: dirMap[clock.direction || 'input'] || 'input' };
+  return { ...clock, direction: dirMap[clock.direction || "input"] || "input" };
 };
 
 // Helper to display normalized direction
 const displayDirection = (dir?: string): string => {
   const dirMap: { [key: string]: string } = {
-    in: 'input',
-    out: 'output',
-    input: 'input',
-    output: 'output',
+    in: "input",
+    out: "output",
+    input: "input",
+    output: "output",
   };
-  return dirMap[dir || 'input'] || 'input';
+  return dirMap[dir || "input"] || "input";
 };
 
-const COLUMN_KEYS = ['name', 'logicalName', 'frequency', 'direction', 'usedBy'];
+const COLUMN_KEYS = ["name", "logicalName", "frequency", "direction", "usedBy"];
 
 // Helper to find which interfaces use a clock
-const getUsedByInterfaces = (clockName: string, busInterfaces: BusInterface[]): string[] => {
-  return busInterfaces.filter((bus) => bus.associatedClock === clockName).map((bus) => bus.name);
+const getUsedByInterfaces = (
+  clockName: string,
+  busInterfaces: BusInterface[],
+): string[] => {
+  return busInterfaces
+    .filter((bus) => bus.associatedClock === clockName)
+    .map((bus) => bus.name);
 };
 
 /**
@@ -93,22 +98,25 @@ export const ClocksTable: React.FC<ClocksTableProps> = ({
   } = useVimTableNavigation<Clock>({
     items: clocks,
     onUpdate,
-    dataKey: 'clocks',
+    dataKey: "clocks",
     createEmptyItem: createEmptyClock,
     normalizeItem: normalizeClock,
     columnKeys: COLUMN_KEYS,
   });
 
-  const existingNames = clocks.map((c) => c.name).filter((_, i) => i !== editingIndex);
+  const existingNames = clocks
+    .map((c) => c.name)
+    .filter((_, i) => i !== editingIndex);
   const nameError =
-    validateVhdlIdentifier(draft.name) || validateUniqueName(draft.name, existingNames);
+    validateVhdlIdentifier(draft.name) ||
+    validateUniqueName(draft.name, existingNames);
   const canSave = !nameError;
 
   const renderEditRow = (isNew: boolean) => (
     <tr
       style={{
-        background: 'var(--vscode-list-activeSelectionBackground)',
-        borderBottom: '1px solid var(--vscode-panel-border)',
+        background: "var(--vscode-list-activeSelectionBackground)",
+        borderBottom: "1px solid var(--vscode-panel-border)",
       }}
       data-row-idx={editingIndex ?? clocks.length}
     >
@@ -128,7 +136,7 @@ export const ClocksTable: React.FC<ClocksTableProps> = ({
       <td className="px-4 py-3">
         <FormField
           label=""
-          value={draft.logicalName || 'CLK'}
+          value={draft.logicalName || "CLK"}
           onChange={(v: string) => setDraft({ ...draft, logicalName: v })}
           placeholder="CLK"
           data-edit-key="logicalName"
@@ -139,7 +147,7 @@ export const ClocksTable: React.FC<ClocksTableProps> = ({
       <td className="px-4 py-3">
         <FormField
           label=""
-          value={draft.frequency || ''}
+          value={draft.frequency || ""}
           onChange={(v: string) => setDraft({ ...draft, frequency: v })}
           placeholder="100 MHz"
           data-edit-key="frequency"
@@ -150,10 +158,10 @@ export const ClocksTable: React.FC<ClocksTableProps> = ({
       <td className="px-4 py-3">
         <SelectField
           label=""
-          value={draft.direction || 'input'}
+          value={draft.direction || "input"}
           options={[
-            { value: 'input', label: 'input' },
-            { value: 'output', label: 'output' },
+            { value: "input", label: "input" },
+            { value: "output", label: "output" },
           ]}
           onChange={(v: string) => setDraft({ ...draft, direction: v })}
           data-edit-key="direction"
@@ -169,20 +177,20 @@ export const ClocksTable: React.FC<ClocksTableProps> = ({
             className="px-3 py-1 rounded text-xs font-medium"
             style={{
               background: canSave
-                ? 'var(--vscode-button-background)'
-                : 'var(--vscode-button-secondaryBackground)',
-              color: 'var(--vscode-button-foreground)',
+                ? "var(--vscode-button-background)"
+                : "var(--vscode-button-secondaryBackground)",
+              color: "var(--vscode-button-foreground)",
               opacity: canSave ? 1 : 0.5,
             }}
           >
-            {isNew ? 'Add' : 'Save'}
+            {isNew ? "Add" : "Save"}
           </button>
           <button
             onClick={handleCancel}
             className="px-3 py-1 rounded text-xs font-medium"
             style={{
-              background: 'var(--vscode-button-secondaryBackground)',
-              color: 'var(--vscode-button-foreground)',
+              background: "var(--vscode-button-secondaryBackground)",
+              color: "var(--vscode-button-foreground)",
             }}
           >
             Cancel
@@ -198,7 +206,7 @@ export const ClocksTable: React.FC<ClocksTableProps> = ({
         <div>
           <h2 className="text-xl font-medium">Clocks</h2>
           <p className="text-sm mt-1" style={{ opacity: 0.7 }}>
-            {clocks.length} clock{clocks.length !== 1 ? 's' : ''} •
+            {clocks.length} clock{clocks.length !== 1 ? "s" : ""} •
             <span className="ml-2 text-xs font-mono" style={{ opacity: 0.5 }}>
               h/j/k/l: navigate • e: edit • d: delete • o: add
             </span>
@@ -211,9 +219,9 @@ export const ClocksTable: React.FC<ClocksTableProps> = ({
           style={{
             background:
               isAdding || editingIndex !== null
-                ? 'var(--vscode-button-secondaryBackground)'
-                : 'var(--vscode-button-background)',
-            color: 'var(--vscode-button-foreground)',
+                ? "var(--vscode-button-secondaryBackground)"
+                : "var(--vscode-button-background)",
+            color: "var(--vscode-button-foreground)",
             opacity: isAdding || editingIndex !== null ? 0.5 : 1,
           }}
         >
@@ -224,50 +232,82 @@ export const ClocksTable: React.FC<ClocksTableProps> = ({
 
       <div
         className="rounded overflow-hidden"
-        style={{ border: '1px solid var(--vscode-panel-border)' }}
+        style={{ border: "1px solid var(--vscode-panel-border)" }}
       >
         <table className="w-full">
           <thead>
             <tr
               style={{
-                background: 'var(--vscode-editor-background)',
-                borderBottom: '1px solid var(--vscode-panel-border)',
+                background: "var(--vscode-editor-background)",
+                borderBottom: "1px solid var(--vscode-panel-border)",
               }}
             >
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase opacity-70">Physical Name</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase opacity-70">Logical Name</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase opacity-70">Frequency</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase opacity-70">Direction</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase opacity-70">Used By</th>
-              <th className="px-4 py-3 text-right text-xs font-semibold uppercase opacity-70">Actions</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase opacity-70">
+                Physical Name
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase opacity-70">
+                Logical Name
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase opacity-70">
+                Frequency
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase opacity-70">
+                Direction
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase opacity-70">
+                Used By
+              </th>
+              <th className="px-4 py-3 text-right text-xs font-semibold uppercase opacity-70">
+                Actions
+              </th>
             </tr>
           </thead>
           <tbody>
             {clocks.map((clock, index) => {
               if (editingIndex === index) {
-                return <React.Fragment key={index}>{renderEditRow(false)}</React.Fragment>;
+                return (
+                  <React.Fragment key={index}>
+                    {renderEditRow(false)}
+                  </React.Fragment>
+                );
               }
 
               const rowProps = getRowProps(index);
               const usedBy = getUsedByInterfaces(clock.name, busInterfaces);
               return (
-                <tr key={index} {...rowProps} onDoubleClick={() => handleEdit(index)}>
-                  <td className="px-4 py-3 text-sm font-mono" {...getCellProps(index, 'name')}>
+                <tr
+                  key={index}
+                  {...rowProps}
+                  onDoubleClick={() => handleEdit(index)}
+                >
+                  <td
+                    className="px-4 py-3 text-sm font-mono"
+                    {...getCellProps(index, "name")}
+                  >
                     {clock.name}
                   </td>
                   <td
                     className="px-4 py-3 text-sm font-mono"
-                    {...getCellProps(index, 'logicalName')}
+                    {...getCellProps(index, "logicalName")}
                   >
-                    {clock.logicalName || 'CLK'}
+                    {clock.logicalName || "CLK"}
                   </td>
-                  <td className="px-4 py-3 text-sm" {...getCellProps(index, 'frequency')}>
-                    {clock.frequency || '—'}
+                  <td
+                    className="px-4 py-3 text-sm"
+                    {...getCellProps(index, "frequency")}
+                  >
+                    {clock.frequency || "—"}
                   </td>
-                  <td className="px-4 py-3 text-sm" {...getCellProps(index, 'direction')}>
+                  <td
+                    className="px-4 py-3 text-sm"
+                    {...getCellProps(index, "direction")}
+                  >
                     {displayDirection(clock.direction)}
                   </td>
-                  <td className="px-4 py-3 text-sm" {...getCellProps(index, 'usedBy')}>
+                  <td
+                    className="px-4 py-3 text-sm"
+                    {...getCellProps(index, "usedBy")}
+                  >
                     {usedBy.length > 0 ? (
                       <div className="flex flex-wrap gap-1">
                         {usedBy.map((name, i) => (
@@ -275,8 +315,8 @@ export const ClocksTable: React.FC<ClocksTableProps> = ({
                             key={i}
                             className="px-2 py-0.5 rounded text-xs font-mono"
                             style={{
-                              background: 'var(--vscode-badge-background)',
-                              color: 'var(--vscode-badge-foreground)',
+                              background: "var(--vscode-badge-background)",
+                              color: "var(--vscode-badge-foreground)",
                             }}
                           >
                             {name}
@@ -296,7 +336,9 @@ export const ClocksTable: React.FC<ClocksTableProps> = ({
                         }}
                         disabled={isAdding || editingIndex !== null}
                         className="p-1 rounded"
-                        style={{ opacity: isAdding || editingIndex !== null ? 0.3 : 1 }}
+                        style={{
+                          opacity: isAdding || editingIndex !== null ? 0.3 : 1,
+                        }}
                         title="Edit (e)"
                       >
                         <span className="codicon codicon-edit"></span>
@@ -309,7 +351,7 @@ export const ClocksTable: React.FC<ClocksTableProps> = ({
                         disabled={isAdding || editingIndex !== null}
                         className="p-1 rounded"
                         style={{
-                          color: 'var(--vscode-errorForeground)',
+                          color: "var(--vscode-errorForeground)",
                           opacity: isAdding || editingIndex !== null ? 0.3 : 1,
                         }}
                         title="Delete (d)"
@@ -326,8 +368,13 @@ export const ClocksTable: React.FC<ClocksTableProps> = ({
 
             {clocks.length === 0 && !isAdding && (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-sm" style={{ opacity: 0.6 }}>
-                  No clocks defined. Press 'o' or click "Add Clock" to create one.
+                <td
+                  colSpan={5}
+                  className="px-4 py-8 text-center text-sm"
+                  style={{ opacity: 0.6 }}
+                >
+                  No clocks defined. Press 'o' or click "Add Clock" to create
+                  one.
                 </td>
               </tr>
             )}

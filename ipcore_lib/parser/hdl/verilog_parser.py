@@ -2,36 +2,39 @@
 Verilog Parser module using pyparsing to parse Verilog module declarations.
 """
 
-from typing import Dict, List, Optional, Tuple, Any
 import re
+from typing import Any, Dict, List, Optional, Tuple
+
 from pyparsing import (
-    Word,
-    alphas,
-    alphanums,
-    Keyword,
-    Forward,
-    Group,
-    Optional as Opt,
-    QuotedString,
-    Suppress,
-    ZeroOrMore,
-    delimitedList,
-    oneOf,
-    White,
-    Literal,
-    SkipTo,
-    LineEnd,
-    StringEnd,
-    ParserElement,
-    nums,
-    CharsNotIn,
-    pythonStyleComment,
-    cppStyleComment,
     CaselessKeyword,
     CaselessLiteral,
+    CharsNotIn,
+    Forward,
+    Group,
+    Keyword,
+    LineEnd,
+    Literal,
+)
+from pyparsing import Optional as Opt
+from pyparsing import (
+    ParserElement,
+    QuotedString,
+    SkipTo,
+    StringEnd,
+    Suppress,
+    White,
+    Word,
+    ZeroOrMore,
+    alphanums,
+    alphas,
+    cppStyleComment,
+    delimitedList,
+    nums,
+    oneOf,
+    pythonStyleComment,
 )
 
-from ipcore_lib.model import IpCore, Port, PortDirection, VLNV
+from ipcore_lib.model import VLNV, IpCore, Port, PortDirection
 
 # Enable packrat parsing for better performance
 ParserElement.set_default_whitespace_chars(" \t\n\r")
@@ -77,9 +80,7 @@ class VerilogParser:
             + Opt(self.vector_range).set_results_name("range")
             + self.data_type
             + self.identifier.set_results_name("name")
-            + Opt(
-                Suppress(CaselessLiteral(",")) | Suppress(CaselessLiteral(";"))
-            )
+            + Opt(Suppress(CaselessLiteral(",")) | Suppress(CaselessLiteral(";")))
         ).set_results_name("port_decl")
 
         # Verilog port declaration without range
@@ -87,9 +88,7 @@ class VerilogParser:
             self.direction
             + self.data_type
             + self.identifier.set_results_name("name")
-            + Opt(
-                Suppress(CaselessLiteral(",")) | Suppress(CaselessLiteral(";"))
-            )
+            + Opt(Suppress(CaselessLiteral(",")) | Suppress(CaselessLiteral(";")))
         ).set_results_name("port_decl")
 
         self.port_decl = self.port_decl_with_range | self.port_decl_no_range
@@ -164,9 +163,7 @@ class VerilogParser:
             # Extract module name - handle modules with special /* AUTOARG */ comment
             # This pattern is more robust for modules with special comments
             module_pattern = r"module\s+(\w+)\s*\((.*?)\);"
-            module_match = re.search(
-                module_pattern, verilog_text, re.IGNORECASE | re.DOTALL
-            )
+            module_match = re.search(module_pattern, verilog_text, re.IGNORECASE | re.DOTALL)
 
             if module_match:
                 module_name = module_match.group(1)
@@ -179,7 +176,9 @@ class VerilogParser:
 
                 # Parse ANSI-style port declarations with a more flexible regex pattern
                 # This handles: input/output/inout, with optional reg/wire/logic, optional bit range, and name
-                ansi_port_pattern = r"(input|output|inout)\s+(reg|wire|logic)?\s*(?:\[(\d+)\s*:\s*(\d+)\])?\s*(\w+)"
+                ansi_port_pattern = (
+                    r"(input|output|inout)\s+(reg|wire|logic)?\s*(?:\[(\d+)\s*:\s*(\d+)\])?\s*(\w+)"
+                )
                 ansi_ports = re.findall(ansi_port_pattern, ports_text, re.IGNORECASE)
 
                 if ansi_ports:
@@ -207,11 +206,11 @@ class VerilogParser:
                     # Non-ANSI style parsing logic here...
                     # Simplified regex based port finding for non-ANSI
                     port_names = [p.strip() for p in re.split(r",\s*", ports_text) if p.strip()]
-                    
+
                     # Look for port declarations in module body
                     decl_pattern = r"(input|output|inout)(?:\s+(?:reg|wire|logic))?(?:\s*\[(\d+)\s*:\s*(\d+)\])?(?:\s+(\w+))"
                     port_decls = re.findall(decl_pattern, verilog_text, re.IGNORECASE)
-                    
+
                     port_dict = {}
                     for decl in port_decls:
                         d_str = decl[0].lower()
@@ -219,7 +218,7 @@ class VerilogParser:
                         lsb = int(decl[2]) if decl[2] else None
                         p_name = decl[3]
                         port_dict[p_name] = (d_str, msb, lsb)
-                        
+
                     for p_name in port_names:
                         if p_name in port_dict:
                             d_str, msb, lsb = port_dict[p_name]
@@ -234,7 +233,7 @@ class VerilogParser:
                     api_version="1.0",
                     vlnv=vlnv,
                     description=f"Parsed from Verilog module {module_name}",
-                    ports=ports
+                    ports=ports,
                 )
                 return result
 
@@ -279,8 +278,8 @@ class VerilogParser:
 
         # Create type string and calculate width
         width = 1
-        type_str = "std_logic" # Default assumption matching basic wire/reg
-        
+        type_str = "std_logic"  # Default assumption matching basic wire/reg
+
         if msb is not None and lsb is not None:
             width = abs(msb - lsb) + 1
             type_str = f"std_logic_vector({msb} downto {lsb})"
@@ -289,12 +288,7 @@ class VerilogParser:
             # Let's use Verilog syntax for type info to be accurate
             type_str = f"[{msb}:{lsb}]"
 
-        return Port(
-            name=name, 
-            direction=direction, 
-            width=width,
-            type=type_str
-        )
+        return Port(name=name, direction=direction, width=width, type=type_str)
 
     def _create_ip_core(self, module_data) -> IpCore:
         """
@@ -321,10 +315,10 @@ class VerilogParser:
             # But let's assume packrat parser worked if we are here
             # Actually pyparsing results for ZeroOrMore(self.port_decl) should be adjacent?
             # self.module_non_ansi_decl includes ZeroOrMore(self.port_decl)
-            
+
             # Extract port definitions from the broader results if possible
             # But module_data might not structurally holding them nicely if they are top level items
-            # in module_non_ansi_decl structure. 
+            # in module_non_ansi_decl structure.
             # Pyparsing 'results name' behavior can be tricky.
             pass
 
@@ -333,7 +327,7 @@ class VerilogParser:
             api_version="1.0",
             vlnv=vlnv,
             description=f"Parsed from Verilog module {module_name}",
-            ports=ports
+            ports=ports,
         )
         return ip_core
 
@@ -349,7 +343,7 @@ class VerilogParser:
         """
         name = port_decl["name"]
         direction_str = port_decl[0].lower()
-        
+
         direction_map = {
             "input": PortDirection.IN,
             "output": PortDirection.OUT,
@@ -362,6 +356,5 @@ class VerilogParser:
         if "range" in port_decl and port_decl["range"]:
             msb = int(port_decl["range"][0])
             lsb = int(port_decl["range"][1])
-            
-        return self._create_port(name, direction_str, msb, lsb)
 
+        return self._create_port(name, direction_str, msb, lsb)

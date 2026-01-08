@@ -2,20 +2,19 @@
 Test cases for the VHDL parser module.
 """
 
-import os
 import difflib
-import pytest
-from pyparsing import Word, alphas, alphanums
+import os
 
-from ipcore_lib.parser.hdl.vhdl_parser import VHDLParser
+import pytest
+from pyparsing import Word, alphanums, alphas
+
 from ipcore_lib.generator.hdl.vhdl_generator import VHDLGenerator
 from ipcore_lib.model import IpCore, Port, PortDirection
+from ipcore_lib.parser.hdl.vhdl_parser import VHDLParser
 
 
 class TestVHDLParser:
     """Test suite for VHDL parser functionality."""
-
-
 
     def test_parse_entity_simple(self):
         """Test parsing a simple VHDL entity."""
@@ -173,7 +172,7 @@ end entity counter;
         # Verify generics/parameters
         # Parameters are stored as a list in IpCore
         assert len(result["entity"].parameters) == 2
-        
+
         param_names = [p.name for p in result["entity"].parameters]
         assert "WIDTH" in param_names
         assert "RESET_VALUE" in param_names
@@ -208,11 +207,11 @@ end entity counter;
             "neorv32_core",
             "neorv32_cfs.vhd",
         )
-        
+
         # Check if file exists, skip if not (might not be present in fresh checkout environment)
         if not os.path.exists(file_path):
             pytest.skip(f"Test file not found: {file_path}")
-            
+
         result = parser.parse_file(file_path)
 
         # Verify entity was parsed

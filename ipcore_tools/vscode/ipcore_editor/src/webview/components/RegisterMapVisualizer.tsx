@@ -1,5 +1,5 @@
-import React, { useMemo } from 'react';
-import { FIELD_COLORS, FIELD_COLOR_KEYS } from '../shared/colors';
+import React, { useMemo } from "react";
+import { FIELD_COLORS, FIELD_COLOR_KEYS } from "../shared/colors";
 
 interface RegisterMapVisualizerProps {
   registers: any[];
@@ -19,7 +19,7 @@ function toHex(n: number): string {
 const RegisterMapVisualizer: React.FC<RegisterMapVisualizerProps> = ({
   registers,
   hoveredRegIndex = null,
-  setHoveredRegIndex = () => { },
+  setHoveredRegIndex = () => {},
   baseAddress = 0,
 }) => {
   // Group registers
@@ -60,8 +60,8 @@ const RegisterMapVisualizer: React.FC<RegisterMapVisualizerProps> = ({
             return (
               <div
                 key={group.idx}
-                className={`relative flex flex-col items-center justify-end select-none ${isHovered ? 'z-10' : ''}`}
-                style={{ width: `${group.widthPercent}%`, minWidth: '120px' }}
+                className={`relative flex flex-col items-center justify-end select-none ${isHovered ? "z-10" : ""}`}
+                style={{ width: `${group.widthPercent}%`, minWidth: "120px" }}
                 onMouseEnter={() => setHoveredRegIndex(group.idx)}
                 onMouseLeave={() => setHoveredRegIndex(null)}
               >
@@ -70,10 +70,12 @@ const RegisterMapVisualizer: React.FC<RegisterMapVisualizerProps> = ({
                   style={{
                     background: FIELD_COLORS[group.color],
                     opacity: 1,
-                    transform: isHovered ? 'translateY(-2px)' : undefined,
-                    filter: isHovered ? 'saturate(1.15) brightness(1.05)' : undefined,
+                    transform: isHovered ? "translateY(-2px)" : undefined,
+                    filter: isHovered
+                      ? "saturate(1.15) brightness(1.05)"
+                      : undefined,
                     boxShadow: isHovered
-                      ? '0 0 0 2px var(--vscode-focusBorder), 0 10px 20px color-mix(in srgb, var(--vscode-foreground) 22%, transparent)'
+                      ? "0 0 0 2px var(--vscode-focusBorder), 0 10px 20px color-mix(in srgb, var(--vscode-foreground) 22%, transparent)"
                       : undefined,
                   }}
                 >
@@ -87,9 +89,9 @@ const RegisterMapVisualizer: React.FC<RegisterMapVisualizerProps> = ({
                 <div
                   className="absolute -top-10 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded border shadow text-xs whitespace-nowrap pointer-events-none"
                   style={{
-                    background: 'var(--vscode-editorWidget-background)',
-                    color: 'var(--vscode-foreground)',
-                    borderColor: 'var(--vscode-panel-border)',
+                    background: "var(--vscode-editorWidget-background)",
+                    color: "var(--vscode-foreground)",
+                    borderColor: "var(--vscode-panel-border)",
                   }}
                 >
                   <div className="font-bold">

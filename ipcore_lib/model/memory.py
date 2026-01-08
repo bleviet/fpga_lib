@@ -6,19 +6,21 @@ For runtime register access, use ipcore_lib.runtime.register classes.
 
 Naming convention:
 - Classes here use *Def suffix (e.g., RegisterDef, BitFieldDef) to indicate
-  they are definitions/schemas, not runtime objects.
+    they are definitions/schemas, not runtime objects.
 - Use to_runtime_*() methods to convert to runtime objects.
 """
 
-from typing import List, Optional, Union, Dict, Any, ForwardRef, TYPE_CHECKING
-from pydantic import BaseModel, Field, field_validator, computed_field
 from enum import Enum
+from typing import TYPE_CHECKING, Any, Dict, ForwardRef, List, Optional, Union
+
+from pydantic import BaseModel, Field, computed_field, field_validator
 
 if TYPE_CHECKING:
-    from ipcore_lib.runtime.register import AbstractBusInterface, Register as RuntimeRegister
+    from ipcore_lib.runtime.register import AbstractBusInterface
+    from ipcore_lib.runtime.register import Register as RuntimeRegister
 
 # Forward reference for recursive register definition
-RegisterDef = ForwardRef('RegisterDef')
+RegisterDef = ForwardRef("RegisterDef")
 
 
 class AccessType(str, Enum):
@@ -58,13 +60,13 @@ class AccessType(str, Enum):
     def to_runtime_access(self) -> str:
         """Convert to runtime AccessType string value (ro, wo, rw, rw1c)."""
         mapping = {
-            self.READ_ONLY: 'ro',
-            self.WRITE_ONLY: 'wo',
-            self.READ_WRITE: 'rw',
-            self.WRITE_1_TO_CLEAR: 'rw1c',
-            self.READ_WRITE_1_TO_CLEAR: 'rw1c',
+            self.READ_ONLY: "ro",
+            self.WRITE_ONLY: "wo",
+            self.READ_WRITE: "rw",
+            self.WRITE_1_TO_CLEAR: "rw1c",
+            self.READ_WRITE_1_TO_CLEAR: "rw1c",
         }
-        return mapping.get(self, 'rw')
+        return mapping.get(self, "rw")
 
 
 class BitFieldDef(BaseModel):
@@ -75,7 +77,9 @@ class BitFieldDef(BaseModel):
     """
 
     name: str = Field(..., description="Bit field name")
-    bit_offset: Optional[int] = Field(default=None, description="Starting bit position (LSB = 0)", ge=0)
+    bit_offset: Optional[int] = Field(
+        default=None, description="Starting bit position (LSB = 0)", ge=0
+    )
     bit_width: Optional[int] = Field(default=None, description="Number of bits", ge=1)
     bits: Optional[str] = Field(default=None, description="Bit range string e.g. [7:0]")
     access: AccessType = Field(default=AccessType.READ_WRITE, description="Access type")
@@ -96,37 +100,37 @@ class BitFieldDef(BaseModel):
     def to_runtime_bitfield(self):
         """Convert to a runtime BitField object from core.register."""
         from ipcore_lib.runtime.register import BitField as RuntimeBitField
-        
+
         # Resolve bit_offset and bit_width from bits string if needed
         offset = self.bit_offset
         width = self.bit_width
-        
+
         if offset is None and self.bits:
             # Parse bits string like "[7:4]" or "7:4"
-            bits_str = self.bits.strip('[]')
-            if ':' in bits_str:
-                high, low = bits_str.split(':')
+            bits_str = self.bits.strip("[]")
+            if ":" in bits_str:
+                high, low = bits_str.split(":")
                 offset = int(low)
                 width = int(high) - int(low) + 1
             else:
                 offset = int(bits_str)
                 width = 1
-        
+
         # Default values if still None
         if offset is None:
             offset = 0
         if width is None:
             width = 1
-        
+
         return RuntimeBitField(
             name=self.name,
             offset=offset,
             width=width,
             access=self.access.to_runtime_access(),
             description=self.description,
-            reset_value=self.reset_value
+            reset_value=self.reset_value,
         )
-    
+
     model_config = {"extra": "ignore", "validate_assignment": True}
 
 
@@ -138,15 +142,19 @@ class RegisterDef(BaseModel):
     """
 
     name: str = Field(..., description="Register name")
-    address_offset: Optional[int] = Field(default=None, alias="offset", description="Offset from address block base", ge=0)
+    address_offset: Optional[int] = Field(
+        default=None, alias="offset", description="Offset from address block base", ge=0
+    )
     size: int = Field(default=32, description="Register width in bits")
     access: AccessType = Field(default=AccessType.READ_WRITE, description="Default access type")
     reset_value: Optional[int] = Field(default=0, description="Reset value for entire register")
     description: str = Field(default="", description="Register description")
     fields: List[BitFieldDef] = Field(default_factory=list, description="Bit fields")
-    
+
     # Recursion support for register groups/arrays
-    registers: List['RegisterDef'] = Field(default_factory=list, description="Child registers (for groups)")
+    registers: List["RegisterDef"] = Field(
+        default_factory=list, description="Child registers (for groups)"
+    )
     count: Optional[int] = Field(default=1, description="Array replication count")
     stride: Optional[int] = Field(default=None, description="Array replication stride")
 
@@ -161,25 +169,25 @@ class RegisterDef(BaseModel):
     def to_runtime_register(self, bus: "AbstractBusInterface", base_offset: int = 0):
         """
         Convert to a runtime Register object from core.register.
-        
+
         Args:
             bus: Bus interface for hardware communication
             base_offset: Base address offset to add to register offset
-            
+
         Returns:
             Runtime Register object
         """
         from ipcore_lib.runtime.register import Register as RuntimeRegister
-        
+
         offset = (self.address_offset or 0) + base_offset
         runtime_fields = [f.to_runtime_bitfield() for f in self.fields]
-        
+
         return RuntimeRegister(
             name=self.name,
             offset=offset,
             bus=bus,
             fields=runtime_fields,
-            description=self.description
+            description=self.description,
         )
 
     model_config = {"extra": "ignore", "validate_assignment": True, "populate_by_name": True}
@@ -220,16 +228,16 @@ class RegisterArrayDef(BaseModel):
     def to_runtime_array(self, bus: "AbstractBusInterface"):
         """Convert to a runtime RegisterArrayAccessor from core.register."""
         from ipcore_lib.runtime.register import RegisterArrayAccessor
-        
+
         runtime_fields = [f.to_runtime_bitfield() for f in self.template.fields]
-        
+
         return RegisterArrayAccessor(
             name=self.name,
             base_offset=self.base_address,
             count=self.count,
             stride=self.stride,
             field_template=runtime_fields,
-            bus_interface=bus
+            bus_interface=bus,
         )
 
     @computed_field
@@ -252,22 +260,26 @@ class BlockUsage(str, Enum):
 class AddressBlock(BaseModel):
     """
     Contiguous address block within a memory map (Pydantic model).
-    
+
     Can contain registers, memory, or reserved space.
     """
 
     name: str = Field(..., description="Block name")
-    base_address: Optional[int] = Field(default=0, alias="offset", description="Block starting address", ge=0)
-    range: Optional[Union[int, str]] = Field(default=None, description="Block size (bytes or '4K', '1M', etc.)")
+    base_address: Optional[int] = Field(
+        default=0, alias="offset", description="Block starting address", ge=0
+    )
+    range: Optional[Union[int, str]] = Field(
+        default=None, description="Block size (bytes or '4K', '1M', etc.)"
+    )
     usage: BlockUsage = Field(default=BlockUsage.REGISTERS, description="Block usage type")
     access: AccessType = Field(default=AccessType.READ_WRITE, description="Default access")
     description: str = Field(default="", description="Block description")
-    
+
     default_reg_width: int = Field(default=32, description="Default register width")
 
     # Content
     registers: List[RegisterDef] = Field(default_factory=list, description="Registers in block")
-    
+
     model_config = {"extra": "ignore", "validate_assignment": True, "populate_by_name": True}
 
     @property
@@ -277,11 +289,15 @@ class AddressBlock(BaseModel):
         if isinstance(range_val, str):
             # Simple parsing for common suffixes
             suffix = range_val[-1].upper()
-            if suffix == 'K': range_val = int(range_val[:-1]) * 1024
-            elif suffix == 'M': range_val = int(range_val[:-1]) * 1024 * 1024
-            elif suffix == 'G': range_val = int(range_val[:-1]) * 1024 * 1024 * 1024
-            else: range_val = int(range_val)
-        
+            if suffix == "K":
+                range_val = int(range_val[:-1]) * 1024
+            elif suffix == "M":
+                range_val = int(range_val[:-1]) * 1024 * 1024
+            elif suffix == "G":
+                range_val = int(range_val[:-1]) * 1024 * 1024 * 1024
+            else:
+                range_val = int(range_val)
+
         # Default to 0 size if None (though parser provides default)
         size = range_val if range_val is not None else 0
         return self.base_address + size
@@ -294,7 +310,7 @@ class AddressBlock(BaseModel):
     def hex_range(self) -> str:
         """Get range as hex string."""
         return f"[{hex(self.base_address)} : {hex(self.end_address)}]"
-    
+
 
 # Update forward refs
 RegisterDef.model_rebuild()
@@ -318,9 +334,7 @@ class MemoryMap(BaseModel):
 
     name: str = Field(..., description="Memory map name")
     description: str = Field(default="", description="Memory map description")
-    address_blocks: List[AddressBlock] = Field(
-        default_factory=list, description="Address blocks"
-    )
+    address_blocks: List[AddressBlock] = Field(default_factory=list, description="Address blocks")
 
     def model_post_init(self, __context: Any) -> None:
         """Validate memory map after initialization."""
@@ -339,8 +353,10 @@ class MemoryMap(BaseModel):
         # If range is missing (validation pending or failed), skip check to avoid crash
         if block1.range is None or block2.range is None:
             return False
-            
-        return not (block1.end_address <= block2.base_address or block2.end_address <= block1.base_address)
+
+        return not (
+            block1.end_address <= block2.base_address or block2.end_address <= block1.base_address
+        )
 
     def get_block_at_address(self, address: int) -> Optional[AddressBlock]:
         """Find address block containing given address."""

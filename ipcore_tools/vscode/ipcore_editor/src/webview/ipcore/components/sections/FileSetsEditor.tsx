@@ -1,7 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { FormField, TextAreaField, SelectField } from '../../../shared/components';
-import { validateRequired } from '../../../shared/utils/validation';
-import { vscode } from '../../../vscode';
+import React, { useState, useEffect } from "react";
+import {
+  FormField,
+  TextAreaField,
+  SelectField,
+} from "../../../shared/components";
+import { validateRequired } from "../../../shared/utils/validation";
+import { vscode } from "../../../vscode";
 
 interface FileEntry {
   path: string;
@@ -24,27 +28,35 @@ interface FileSetsEditorProps {
  * Editor for IP Core file sets
  * Supports adding/editing file sets and files within them
  */
-export const FileSetsEditor: React.FC<FileSetsEditorProps> = ({ fileSets, onUpdate }) => {
+export const FileSetsEditor: React.FC<FileSetsEditorProps> = ({
+  fileSets,
+  onUpdate,
+}) => {
   const [expandedSets, setExpandedSets] = useState<Set<number>>(new Set([0]));
   const [editingSet, setEditingSet] = useState<number | null>(null);
-  const [editingFile, setEditingFile] = useState<{ setIdx: number; fileIdx: number } | null>(null);
+  const [editingFile, setEditingFile] = useState<{
+    setIdx: number;
+    fileIdx: number;
+  } | null>(null);
   const [isAddingSet, setIsAddingSet] = useState(false);
   const [isAddingFile, setIsAddingFile] = useState<number | null>(null);
-  const [fileExistence, setFileExistence] = useState<{ [key: string]: boolean }>({});
+  const [fileExistence, setFileExistence] = useState<{
+    [key: string]: boolean;
+  }>({});
 
-  const [setDraft, setSetDraft] = useState({ name: '', description: '' });
-  const [fileDraft, setFileDraft] = useState({ path: '', type: 'verilog' });
+  const [setDraft, setSetDraft] = useState({ name: "", description: "" });
+  const [fileDraft, setFileDraft] = useState({ path: "", type: "verilog" });
 
   const fileTypeOptions = [
-    { value: 'verilog', label: 'Verilog' },
-    { value: 'vhdl', label: 'VHDL' },
-    { value: 'systemverilog', label: 'SystemVerilog' },
-    { value: 'c', label: 'C' },
-    { value: 'cpp', label: 'C++' },
-    { value: 'tcl', label: 'TCL' },
-    { value: 'python', label: 'Python' },
-    { value: 'pdf', label: 'PDF' },
-    { value: 'text', label: 'Text' },
+    { value: "verilog", label: "Verilog" },
+    { value: "vhdl", label: "VHDL" },
+    { value: "systemverilog", label: "SystemVerilog" },
+    { value: "c", label: "C" },
+    { value: "cpp", label: "C++" },
+    { value: "tcl", label: "TCL" },
+    { value: "python", label: "Python" },
+    { value: "pdf", label: "PDF" },
+    { value: "text", label: "Text" },
   ];
 
   const toggleSet = (idx: number) => {
@@ -59,8 +71,8 @@ export const FileSetsEditor: React.FC<FileSetsEditorProps> = ({ fileSets, onUpda
 
   // Check file existence when fileSets change
   useEffect(() => {
-    const allPaths = fileSets.flatMap(fs => {
-      const paths = (fs.files || []).map(f => f.path);
+    const allPaths = fileSets.flatMap((fs) => {
+      const paths = (fs.files || []).map((f) => f.path);
       if (fs.import) paths.push(fs.import);
       return paths;
     });
@@ -68,21 +80,21 @@ export const FileSetsEditor: React.FC<FileSetsEditorProps> = ({ fileSets, onUpda
 
     // Send message to extension to check file existence
     vscode?.postMessage({
-      type: 'checkFilesExist',
+      type: "checkFilesExist",
       paths: allPaths,
     });
 
     // Listen for response
     const handler = (event: MessageEvent) => {
       const message = event.data;
-      if (message.type === 'filesExistResult' && message.results) {
-        setFileExistence(prev => ({ ...prev, ...message.results }));
-        window.removeEventListener('message', handler);
+      if (message.type === "filesExistResult" && message.results) {
+        setFileExistence((prev) => ({ ...prev, ...message.results }));
+        window.removeEventListener("message", handler);
       }
     };
-    window.addEventListener('message', handler);
+    window.addEventListener("message", handler);
 
-    return () => window.removeEventListener('message', handler);
+    return () => window.removeEventListener("message", handler);
   }, [fileSets]);
 
   // Open file in editor
@@ -93,25 +105,25 @@ export const FileSetsEditor: React.FC<FileSetsEditorProps> = ({ fileSets, onUpda
       return;
     }
     vscode?.postMessage({
-      type: 'command',
-      command: 'openFile',
+      type: "command",
+      command: "openFile",
       path: filePath,
     });
   };
 
   const handleAddSet = () => {
     setIsAddingSet(true);
-    setSetDraft({ name: '', description: '' });
+    setSetDraft({ name: "", description: "" });
   };
 
   const handleSaveSet = () => {
     if (isAddingSet) {
       const newSet: FileSet = { ...setDraft, files: [] };
-      onUpdate(['fileSets'], [...fileSets, newSet]);
+      onUpdate(["fileSets"], [...fileSets, newSet]);
     } else if (editingSet !== null) {
       const updated = [...fileSets];
       updated[editingSet] = { ...updated[editingSet], ...setDraft };
-      onUpdate(['fileSets'], updated);
+      onUpdate(["fileSets"], updated);
     }
     setIsAddingSet(false);
     setEditingSet(null);
@@ -120,43 +132,47 @@ export const FileSetsEditor: React.FC<FileSetsEditorProps> = ({ fileSets, onUpda
   const handleDeleteSet = (idx: number) => {
     // Remove confirmation - webview confirm() may not work properly
     onUpdate(
-      ['fileSets'],
-      fileSets.filter((_, i) => i !== idx)
+      ["fileSets"],
+      fileSets.filter((_, i) => i !== idx),
     );
   };
 
   const handleBrowseFile = (setIdx: number) => {
     // Send message to extension to open file picker
     vscode?.postMessage({
-      type: 'selectFiles',
+      type: "selectFiles",
       multi: true,
     });
 
     // Listen for response
     const handler = (event: MessageEvent) => {
       const message = event.data;
-      if (message.type === 'filesSelected' && message.files && message.files.length > 0) {
+      if (
+        message.type === "filesSelected" &&
+        message.files &&
+        message.files.length > 0
+      ) {
         // Auto-detect file type based on extension
         const detectFileType = (filePath: string): string => {
-          const ext = filePath.split('.').pop()?.toLowerCase();
+          const ext = filePath.split(".").pop()?.toLowerCase();
           const typeMap: { [key: string]: string } = {
-            v: 'verilog',
-            vh: 'verilog',
-            sv: 'systemverilog',
-            vhd: 'vhdl',
-            vhdl: 'vhdl',
-            c: 'c',
-            h: 'c',
-            cpp: 'cpp',
-            hpp: 'cpp',
-            cc: 'cpp',
-            tcl: 'tcl',
-            py: 'python',
-            pdf: 'pdf',
-            txt: 'text',
-            md: 'text',
+            v: "verilog",
+            vh: "verilog",
+            sv: "systemverilog",
+            vhd: "vhdl",
+            vhdl: "vhdl",
+            c: "c",
+            h: "c",
+            cpp: "cpp",
+            hpp: "cpp",
+            cc: "cpp",
+            tcl: "tcl",
+            py: "python",
+            pdf: "pdf",
+            txt: "text",
+            md: "text",
           };
-          return typeMap[ext || ''] || 'text';
+          return typeMap[ext || ""] || "text";
         };
 
         // Add all selected files
@@ -169,20 +185,20 @@ export const FileSetsEditor: React.FC<FileSetsEditorProps> = ({ fileSets, onUpda
         const updatedFiles = [...(fileSet.files || []), ...newFiles];
         const updated = [...fileSets];
         updated[setIdx] = { ...fileSet, files: updatedFiles };
-        onUpdate(['fileSets'], updated);
+        onUpdate(["fileSets"], updated);
 
         // Close the add file form
         setIsAddingFile(null);
 
-        window.removeEventListener('message', handler);
+        window.removeEventListener("message", handler);
       }
     };
-    window.addEventListener('message', handler);
+    window.addEventListener("message", handler);
   };
 
   const handleAddFile = (setIdx: number) => {
     setIsAddingFile(setIdx);
-    setFileDraft({ path: '', type: 'verilog' });
+    setFileDraft({ path: "", type: "verilog" });
   };
 
   const handleSaveFile = (setIdx: number) => {
@@ -191,13 +207,13 @@ export const FileSetsEditor: React.FC<FileSetsEditorProps> = ({ fileSets, onUpda
       const updatedFiles = [...(fileSet.files || []), fileDraft];
       const updated = [...fileSets];
       updated[setIdx] = { ...fileSet, files: updatedFiles };
-      onUpdate(['fileSets'], updated);
+      onUpdate(["fileSets"], updated);
     } else if (editingFile && editingFile.setIdx === setIdx) {
       const updatedFiles = [...(fileSet.files || [])];
       updatedFiles[editingFile.fileIdx] = fileDraft;
       const updated = [...fileSets];
       updated[setIdx] = { ...fileSet, files: updatedFiles };
-      onUpdate(['fileSets'], updated);
+      onUpdate(["fileSets"], updated);
     }
     setIsAddingFile(null);
     setEditingFile(null);
@@ -209,7 +225,7 @@ export const FileSetsEditor: React.FC<FileSetsEditorProps> = ({ fileSets, onUpda
     const updatedFiles = (fileSet.files || []).filter((_, i) => i !== fileIdx);
     const updated = [...fileSets];
     updated[setIdx] = { ...fileSet, files: updatedFiles };
-    onUpdate(['fileSets'], updated);
+    onUpdate(["fileSets"], updated);
   };
 
   return (
@@ -218,7 +234,7 @@ export const FileSetsEditor: React.FC<FileSetsEditorProps> = ({ fileSets, onUpda
         <div>
           <h2 className="text-xl font-medium">File Sets</h2>
           <p className="text-sm mt-1" style={{ opacity: 0.7 }}>
-            {fileSets.length} file set{fileSets.length !== 1 ? 's' : ''}
+            {fileSets.length} file set{fileSets.length !== 1 ? "s" : ""}
           </p>
         </div>
         <button
@@ -228,9 +244,9 @@ export const FileSetsEditor: React.FC<FileSetsEditorProps> = ({ fileSets, onUpda
           style={{
             background:
               isAddingSet || editingSet !== null
-                ? 'var(--vscode-button-secondaryBackground)'
-                : 'var(--vscode-button-background)',
-            color: 'var(--vscode-button-foreground)',
+                ? "var(--vscode-button-secondaryBackground)"
+                : "var(--vscode-button-background)",
+            color: "var(--vscode-button-foreground)",
             opacity: isAddingSet || editingSet !== null ? 0.5 : 1,
           }}
         >
@@ -245,45 +261,53 @@ export const FileSetsEditor: React.FC<FileSetsEditorProps> = ({ fileSets, onUpda
             key={setIdx}
             className="rounded overflow-hidden"
             style={{
-              border: '1px solid var(--vscode-panel-border)',
-              background: 'var(--vscode-editor-background)',
+              border: "1px solid var(--vscode-panel-border)",
+              background: "var(--vscode-editor-background)",
             }}
           >
             {/* File Set Header */}
             <div
               className="px-4 py-3 flex items-center justify-between cursor-pointer"
               style={{
-                background: 'var(--vscode-sideBar-background)',
+                background: "var(--vscode-sideBar-background)",
                 borderBottom: expandedSets.has(setIdx)
-                  ? '1px solid var(--vscode-panel-border)'
-                  : 'none',
+                  ? "1px solid var(--vscode-panel-border)"
+                  : "none",
               }}
               onClick={() => toggleSet(setIdx)}
             >
               <div className="flex items-center gap-3 flex-1">
                 <span
-                  className={`codicon codicon-chevron-${expandedSets.has(setIdx) ? 'down' : 'right'}`}
+                  className={`codicon codicon-chevron-${expandedSets.has(setIdx) ? "down" : "right"}`}
                 ></span>
                 <div>
-                  <p className="font-medium text-sm">{fileSet.name || '(imported)'}</p>
+                  <p className="font-medium text-sm">
+                    {fileSet.name || "(imported)"}
+                  </p>
                   {fileSet.description && (
                     <p className="text-xs mt-1" style={{ opacity: 0.7 }}>
                       {fileSet.description}
                     </p>
                   )}
                   {fileSet.import && (
-                    <p className="text-xs mt-1 font-mono" style={{ opacity: 0.7 }}>
+                    <p
+                      className="text-xs mt-1 font-mono"
+                      style={{ opacity: 0.7 }}
+                    >
                       Import: {fileSet.import}
                     </p>
                   )}
                 </div>
               </div>
-              <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+              <div
+                className="flex items-center gap-2"
+                onClick={(e) => e.stopPropagation()}
+              >
                 <span
                   className="text-xs px-2 py-1 rounded"
                   style={{
-                    background: 'var(--vscode-badge-background)',
-                    color: 'var(--vscode-badge-foreground)',
+                    background: "var(--vscode-badge-background)",
+                    color: "var(--vscode-badge-foreground)",
                   }}
                 >
                   {fileSet.files?.length || 0} files
@@ -293,7 +317,10 @@ export const FileSetsEditor: React.FC<FileSetsEditorProps> = ({ fileSets, onUpda
                     <button
                       onClick={() => {
                         setEditingSet(setIdx);
-                        setSetDraft({ name: fileSet.name, description: fileSet.description || '' });
+                        setSetDraft({
+                          name: fileSet.name,
+                          description: fileSet.description || "",
+                        });
                       }}
                       className="p-1"
                       title="Edit"
@@ -303,7 +330,7 @@ export const FileSetsEditor: React.FC<FileSetsEditorProps> = ({ fileSets, onUpda
                     <button
                       onClick={() => handleDeleteSet(setIdx)}
                       className="p-1"
-                      style={{ color: 'var(--vscode-errorForeground)' }}
+                      style={{ color: "var(--vscode-errorForeground)" }}
                       title="Delete"
                     >
                       <span className="codicon codicon-trash"></span>
@@ -320,13 +347,15 @@ export const FileSetsEditor: React.FC<FileSetsEditorProps> = ({ fileSets, onUpda
                   <div
                     className="p-4 rounded border-l-4"
                     style={{
-                      background: fileExistence[fileSet.import!] === false
-                        ? 'rgba(255, 0, 0, 0.1)'
-                        : 'var(--vscode-editor-background)',
-                      border: '1px solid var(--vscode-panel-border)',
-                      borderLeftColor: fileExistence[fileSet.import!] === false
-                        ? 'var(--vscode-errorForeground)'
-                        : 'var(--vscode-textLink-foreground)',
+                      background:
+                        fileExistence[fileSet.import!] === false
+                          ? "rgba(255, 0, 0, 0.1)"
+                          : "var(--vscode-editor-background)",
+                      border: "1px solid var(--vscode-panel-border)",
+                      borderLeftColor:
+                        fileExistence[fileSet.import!] === false
+                          ? "var(--vscode-errorForeground)"
+                          : "var(--vscode-textLink-foreground)",
                     }}
                   >
                     <div className="flex items-center justify-between mb-4">
@@ -336,8 +365,8 @@ export const FileSetsEditor: React.FC<FileSetsEditorProps> = ({ fileSets, onUpda
                           <span
                             className="text-xs px-1.5 py-0.5 rounded"
                             style={{
-                              background: 'var(--vscode-errorForeground)',
-                              color: 'white',
+                              background: "var(--vscode-errorForeground)",
+                              color: "white",
                             }}
                           >
                             Missing
@@ -347,10 +376,12 @@ export const FileSetsEditor: React.FC<FileSetsEditorProps> = ({ fileSets, onUpda
                     </div>
 
                     <p className="text-sm mb-4" style={{ opacity: 0.8 }}>
-                      Linked file:{' '}
+                      Linked file:{" "}
                       <code
                         className="px-1 py-0.5 rounded"
-                        style={{ background: 'var(--vscode-textBlockQuote-background)' }}
+                        style={{
+                          background: "var(--vscode-textBlockQuote-background)",
+                        }}
                       >
                         {fileSet.import}
                       </code>
@@ -360,8 +391,8 @@ export const FileSetsEditor: React.FC<FileSetsEditorProps> = ({ fileSets, onUpda
                       onClick={() => handleOpenFile(fileSet.import!)}
                       className="px-4 py-2 rounded text-sm flex items-center gap-2"
                       style={{
-                        background: 'var(--vscode-button-background)',
-                        color: 'var(--vscode-button-foreground)',
+                        background: "var(--vscode-button-background)",
+                        color: "var(--vscode-button-foreground)",
                       }}
                     >
                       <span className="codicon codicon-go-to-file"></span>
@@ -369,7 +400,10 @@ export const FileSetsEditor: React.FC<FileSetsEditorProps> = ({ fileSets, onUpda
                     </button>
 
                     {fileExistence[fileSet.import!] === false && (
-                      <div className="mt-3 text-xs flex items-center gap-2" style={{ color: 'var(--vscode-errorForeground)' }}>
+                      <div
+                        className="mt-3 text-xs flex items-center gap-2"
+                        style={{ color: "var(--vscode-errorForeground)" }}
+                      >
                         <span className="codicon codicon-error"></span>
                         <span>File not found on disk</span>
                       </div>
@@ -380,19 +414,25 @@ export const FileSetsEditor: React.FC<FileSetsEditorProps> = ({ fileSets, onUpda
                     <div className="space-y-2">
                       {(fileSet.files || []).map((file, fileIdx) => {
                         const isEditing =
-                          editingFile?.setIdx === setIdx && editingFile?.fileIdx === fileIdx;
+                          editingFile?.setIdx === setIdx &&
+                          editingFile?.fileIdx === fileIdx;
 
                         if (isEditing) {
                           return (
                             <div
                               key={fileIdx}
                               className="flex items-center gap-2 p-2 rounded"
-                              style={{ background: 'var(--vscode-list-activeSelectionBackground)' }}
+                              style={{
+                                background:
+                                  "var(--vscode-list-activeSelectionBackground)",
+                              }}
                             >
                               <FormField
                                 label=""
                                 value={fileDraft.path}
-                                onChange={(v: string) => setFileDraft({ ...fileDraft, path: v })}
+                                onChange={(v: string) =>
+                                  setFileDraft({ ...fileDraft, path: v })
+                                }
                                 placeholder="path/to/file.v"
                                 required
                                 onSave={() => handleSaveFile(setIdx)}
@@ -402,7 +442,9 @@ export const FileSetsEditor: React.FC<FileSetsEditorProps> = ({ fileSets, onUpda
                                 label=""
                                 value={fileDraft.type}
                                 options={fileTypeOptions}
-                                onChange={(v: string) => setFileDraft({ ...fileDraft, type: v })}
+                                onChange={(v: string) =>
+                                  setFileDraft({ ...fileDraft, type: v })
+                                }
                                 onSave={() => handleSaveFile(setIdx)}
                                 onCancel={() => setEditingFile(null)}
                               />
@@ -410,8 +452,8 @@ export const FileSetsEditor: React.FC<FileSetsEditorProps> = ({ fileSets, onUpda
                                 onClick={() => handleSaveFile(setIdx)}
                                 className="px-3 py-1 rounded text-xs"
                                 style={{
-                                  background: 'var(--vscode-button-background)',
-                                  color: 'var(--vscode-button-foreground)',
+                                  background: "var(--vscode-button-background)",
+                                  color: "var(--vscode-button-foreground)",
                                 }}
                               >
                                 Save
@@ -420,8 +462,9 @@ export const FileSetsEditor: React.FC<FileSetsEditorProps> = ({ fileSets, onUpda
                                 onClick={() => setEditingFile(null)}
                                 className="px-3 py-1 rounded text-xs"
                                 style={{
-                                  background: 'var(--vscode-button-secondaryBackground)',
-                                  color: 'var(--vscode-button-foreground)',
+                                  background:
+                                    "var(--vscode-button-secondaryBackground)",
+                                  color: "var(--vscode-button-foreground)",
                                 }}
                               >
                                 Cancel
@@ -435,37 +478,52 @@ export const FileSetsEditor: React.FC<FileSetsEditorProps> = ({ fileSets, onUpda
                             key={fileIdx}
                             className="flex items-center justify-between p-2 rounded hover:opacity-80"
                             style={{
-                              background: fileExistence[file.path] === false
-                                ? 'rgba(255, 0, 0, 0.15)'
-                                : 'var(--vscode-input-background)',
-                              borderLeft: fileExistence[file.path] === false
-                                ? '3px solid var(--vscode-errorForeground)'
-                                : 'none',
+                              background:
+                                fileExistence[file.path] === false
+                                  ? "rgba(255, 0, 0, 0.15)"
+                                  : "var(--vscode-input-background)",
+                              borderLeft:
+                                fileExistence[file.path] === false
+                                  ? "3px solid var(--vscode-errorForeground)"
+                                  : "none",
                             }}
                           >
                             <div className="flex items-center gap-3 flex-1 min-w-0">
                               <span
                                 className="codicon codicon-file"
                                 style={{
-                                  color: fileExistence[file.path] === false
-                                    ? 'var(--vscode-errorForeground)'
-                                    : undefined
+                                  color:
+                                    fileExistence[file.path] === false
+                                      ? "var(--vscode-errorForeground)"
+                                      : undefined,
                                 }}
                               ></span>
                               <span
                                 className="text-sm font-mono truncate"
                                 style={{
-                                  cursor: fileExistence[file.path] !== false ? 'pointer' : 'not-allowed',
-                                  color: fileExistence[file.path] === false
-                                    ? 'var(--vscode-errorForeground)'
-                                    : 'var(--vscode-textLink-foreground)',
-                                  textDecoration: fileExistence[file.path] !== false ? 'underline' : 'line-through',
-                                  opacity: fileExistence[file.path] === false ? 0.8 : 1,
+                                  cursor:
+                                    fileExistence[file.path] !== false
+                                      ? "pointer"
+                                      : "not-allowed",
+                                  color:
+                                    fileExistence[file.path] === false
+                                      ? "var(--vscode-errorForeground)"
+                                      : "var(--vscode-textLink-foreground)",
+                                  textDecoration:
+                                    fileExistence[file.path] !== false
+                                      ? "underline"
+                                      : "line-through",
+                                  opacity:
+                                    fileExistence[file.path] === false
+                                      ? 0.8
+                                      : 1,
                                 }}
                                 onClick={() => handleOpenFile(file.path)}
-                                title={fileExistence[file.path] === false
-                                  ? `File not found: ${file.path}`
-                                  : `Click to open: ${file.path}`}
+                                title={
+                                  fileExistence[file.path] === false
+                                    ? `File not found: ${file.path}`
+                                    : `Click to open: ${file.path}`
+                                }
                               >
                                 {file.path}
                               </span>
@@ -473,8 +531,8 @@ export const FileSetsEditor: React.FC<FileSetsEditorProps> = ({ fileSets, onUpda
                                 <span
                                   className="text-xs px-1.5 py-0.5 rounded"
                                   style={{
-                                    background: 'var(--vscode-errorForeground)',
-                                    color: 'white',
+                                    background: "var(--vscode-errorForeground)",
+                                    color: "white",
                                   }}
                                 >
                                   Missing
@@ -483,8 +541,8 @@ export const FileSetsEditor: React.FC<FileSetsEditorProps> = ({ fileSets, onUpda
                               <span
                                 className="text-xs px-2 py-0.5 rounded"
                                 style={{
-                                  background: 'var(--vscode-badge-background)',
-                                  color: 'var(--vscode-badge-foreground)',
+                                  background: "var(--vscode-badge-background)",
+                                  color: "var(--vscode-badge-foreground)",
                                 }}
                               >
                                 {file.type}
@@ -502,9 +560,13 @@ export const FileSetsEditor: React.FC<FileSetsEditorProps> = ({ fileSets, onUpda
                                 <span className="codicon codicon-edit"></span>
                               </button>
                               <button
-                                onClick={() => handleDeleteFile(setIdx, fileIdx)}
+                                onClick={() =>
+                                  handleDeleteFile(setIdx, fileIdx)
+                                }
                                 className="p-1"
-                                style={{ color: 'var(--vscode-errorForeground)' }}
+                                style={{
+                                  color: "var(--vscode-errorForeground)",
+                                }}
                                 title="Delete"
                               >
                                 <span className="codicon codicon-trash"></span>
@@ -518,14 +580,17 @@ export const FileSetsEditor: React.FC<FileSetsEditorProps> = ({ fileSets, onUpda
                       {isAddingFile === setIdx && (
                         <div
                           className="flex items-center gap-2 p-3 rounded"
-                          style={{ background: 'var(--vscode-list-activeSelectionBackground)' }}
+                          style={{
+                            background:
+                              "var(--vscode-list-activeSelectionBackground)",
+                          }}
                         >
                           <button
                             onClick={() => handleBrowseFile(setIdx)}
                             className="flex-1 px-4 py-2 rounded text-sm flex items-center justify-center gap-2"
                             style={{
-                              background: 'var(--vscode-button-background)',
-                              color: 'var(--vscode-button-foreground)',
+                              background: "var(--vscode-button-background)",
+                              color: "var(--vscode-button-foreground)",
                             }}
                           >
                             <span className="codicon codicon-folder-opened"></span>
@@ -535,8 +600,9 @@ export const FileSetsEditor: React.FC<FileSetsEditorProps> = ({ fileSets, onUpda
                             onClick={() => setIsAddingFile(null)}
                             className="px-3 py-2 rounded text-sm"
                             style={{
-                              background: 'var(--vscode-button-secondaryBackground)',
-                              color: 'var(--vscode-button-foreground)',
+                              background:
+                                "var(--vscode-button-secondaryBackground)",
+                              color: "var(--vscode-button-foreground)",
                             }}
                           >
                             Cancel
@@ -554,17 +620,21 @@ export const FileSetsEditor: React.FC<FileSetsEditorProps> = ({ fileSets, onUpda
                         style={{
                           background:
                             editingFile !== null || isAddingFile !== null
-                              ? 'var(--vscode-button-secondaryBackground)'
-                              : 'var(--vscode-button-background)',
-                          color: 'var(--vscode-button-foreground)',
-                          opacity: editingFile !== null || isAddingFile !== null ? 0.5 : 1,
+                              ? "var(--vscode-button-secondaryBackground)"
+                              : "var(--vscode-button-background)",
+                          color: "var(--vscode-button-foreground)",
+                          opacity:
+                            editingFile !== null || isAddingFile !== null
+                              ? 0.5
+                              : 1,
                         }}
                       >
                         <span className="codicon codicon-add"></span>
                         Add File
                       </button>
                     )}
-                  </>)}
+                  </>
+                )}
               </div>
             )}
           </div>
@@ -575,8 +645,8 @@ export const FileSetsEditor: React.FC<FileSetsEditorProps> = ({ fileSets, onUpda
           <div
             className="p-4 rounded space-y-3"
             style={{
-              border: '1px solid var(--vscode-panel-border)',
-              background: 'var(--vscode-list-activeSelectionBackground)',
+              border: "1px solid var(--vscode-panel-border)",
+              background: "var(--vscode-list-activeSelectionBackground)",
             }}
           >
             <FormField
@@ -591,8 +661,10 @@ export const FileSetsEditor: React.FC<FileSetsEditorProps> = ({ fileSets, onUpda
             />
             <TextAreaField
               label="Description"
-              value={setDraft.description || ''}
-              onChange={(v: string) => setSetDraft({ ...setDraft, description: v })}
+              value={setDraft.description || ""}
+              onChange={(v: string) =>
+                setSetDraft({ ...setDraft, description: v })
+              }
               placeholder="Optional description"
               rows={2}
               onSave={setDraft.name ? handleSaveSet : undefined}
@@ -605,9 +677,9 @@ export const FileSetsEditor: React.FC<FileSetsEditorProps> = ({ fileSets, onUpda
                 className="px-4 py-2 rounded text-sm"
                 style={{
                   background: setDraft.name
-                    ? 'var(--vscode-button-background)'
-                    : 'var(--vscode-button-secondaryBackground)',
-                  color: 'var(--vscode-button-foreground)',
+                    ? "var(--vscode-button-background)"
+                    : "var(--vscode-button-secondaryBackground)",
+                  color: "var(--vscode-button-foreground)",
                   opacity: setDraft.name ? 1 : 0.5,
                 }}
               >
@@ -617,8 +689,8 @@ export const FileSetsEditor: React.FC<FileSetsEditorProps> = ({ fileSets, onUpda
                 onClick={() => setIsAddingSet(false)}
                 className="px-4 py-2 rounded text-sm"
                 style={{
-                  background: 'var(--vscode-button-secondaryBackground)',
-                  color: 'var(--vscode-button-foreground)',
+                  background: "var(--vscode-button-secondaryBackground)",
+                  color: "var(--vscode-button-foreground)",
                 }}
               >
                 Cancel
@@ -632,8 +704,8 @@ export const FileSetsEditor: React.FC<FileSetsEditorProps> = ({ fileSets, onUpda
           <div
             className="p-4 rounded space-y-3"
             style={{
-              border: '1px solid var(--vscode-panel-border)',
-              background: 'var(--vscode-list-activeSelectionBackground)',
+              border: "1px solid var(--vscode-panel-border)",
+              background: "var(--vscode-list-activeSelectionBackground)",
             }}
           >
             <h3 className="font-semibold">Edit File Set</h3>
@@ -649,8 +721,10 @@ export const FileSetsEditor: React.FC<FileSetsEditorProps> = ({ fileSets, onUpda
             />
             <TextAreaField
               label="Description"
-              value={setDraft.description || ''}
-              onChange={(v: string) => setSetDraft({ ...setDraft, description: v })}
+              value={setDraft.description || ""}
+              onChange={(v: string) =>
+                setSetDraft({ ...setDraft, description: v })
+              }
               placeholder="Optional description"
               rows={2}
               onSave={setDraft.name ? handleSaveSet : undefined}
@@ -663,9 +737,9 @@ export const FileSetsEditor: React.FC<FileSetsEditorProps> = ({ fileSets, onUpda
                 className="px-4 py-2 rounded text-sm"
                 style={{
                   background: setDraft.name
-                    ? 'var(--vscode-button-background)'
-                    : 'var(--vscode-button-secondaryBackground)',
-                  color: 'var(--vscode-button-foreground)',
+                    ? "var(--vscode-button-background)"
+                    : "var(--vscode-button-secondaryBackground)",
+                  color: "var(--vscode-button-foreground)",
                   opacity: setDraft.name ? 1 : 0.5,
                 }}
               >
@@ -675,8 +749,8 @@ export const FileSetsEditor: React.FC<FileSetsEditorProps> = ({ fileSets, onUpda
                 onClick={() => setEditingSet(null)}
                 className="px-4 py-2 rounded text-sm"
                 style={{
-                  background: 'var(--vscode-button-secondaryBackground)',
-                  color: 'var(--vscode-button-foreground)',
+                  background: "var(--vscode-button-secondaryBackground)",
+                  color: "var(--vscode-button-foreground)",
                 }}
               >
                 Cancel
@@ -691,6 +765,6 @@ export const FileSetsEditor: React.FC<FileSetsEditorProps> = ({ fileSets, onUpda
           </div>
         )}
       </div>
-    </div >
+    </div>
   );
 };

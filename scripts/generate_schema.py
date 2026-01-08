@@ -9,6 +9,7 @@ sys.path.insert(0, str(project_root))
 from ipcore_lib.model.core import IpCore
 from ipcore_lib.model.memory import MemoryMap
 
+
 def generate_schema():
     output_dir = project_root / "vscode-extension" / "schemas"
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -30,6 +31,7 @@ def generate_schema():
         print(f"Generated {output_dir / 'memory_map.schema.json'}")
     except Exception as e:
         print(f"Error generating MemoryMap schema: {e}")
+
 
 if __name__ == "__main__":
     generate_schema()

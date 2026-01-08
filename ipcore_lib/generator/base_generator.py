@@ -5,11 +5,12 @@ Provides abstract interface for language-specific generators (VHDL, Verilog, etc
 to implement, ensuring consistent API across all generators.
 """
 
-from abc import ABC, abstractmethod
-from typing import Dict, Optional, Union
-from pathlib import Path
-from jinja2 import Environment, FileSystemLoader
 import os
+from abc import ABC, abstractmethod
+from pathlib import Path
+from typing import Dict, Optional, Union
+
+from jinja2 import Environment, FileSystemLoader
 
 # Support both legacy IPCore and new IpCore models
 from ipcore_lib.model.core import IpCore
@@ -29,7 +30,7 @@ class BaseGenerator(ABC):
 
         Args:
             template_dir: Optional custom template directory.
-                          Defaults to 'templates' subdirectory of concrete generator.
+                                                    Defaults to 'templates' subdirectory of concrete generator.
         """
         if template_dir is None:
             # Default: templates directory relative to concrete class file
@@ -117,10 +118,7 @@ class BaseGenerator(ABC):
         return files
 
     def write_files(
-        self,
-        ip_core: IpCore,
-        output_dir: Union[str, Path],
-        bus_type: str = "axil"
+        self, ip_core: IpCore, output_dir: Union[str, Path], bus_type: str = "axil"
     ) -> Dict[str, Path]:
         """
         Generate and write all HDL files to output directory.

@@ -5,359 +5,383 @@
  * to integrate with VS Code's progress notifications and output panel.
  */
 
-import * as vscode from 'vscode';
-import * as cp from 'child_process';
-import * as path from 'path';
+import * as vscode from "vscode";
+import * as cp from "child_process";
+import * as path from "path";
 
 export interface GenerateResult {
-    success: boolean;
-    files?: Record<string, string>;
-    count?: number;
-    busType?: string;
-    error?: string;
+  success: boolean;
+  files?: Record<string, string>;
+  count?: number;
+  busType?: string;
+  error?: string;
 }
 
 export interface GenerateOptions {
-    vendor?: 'none' | 'intel' | 'xilinx' | 'both';
-    includeTestbench?: boolean;
-    includeRegs?: boolean;
-    updateYaml?: boolean;
+  vendor?: "none" | "intel" | "xilinx" | "both";
+  includeTestbench?: boolean;
+  includeRegs?: boolean;
+  updateYaml?: boolean;
 }
 
 export interface ParseResult {
-    success: boolean;
-    output?: string;
-    error?: string;
+  success: boolean;
+  output?: string;
+  error?: string;
 }
 
 export interface ParseOptions {
-    vendor?: string;
-    library?: string;
-    version?: string;
-    detectBus?: boolean;
-    memmap?: string;
+  vendor?: string;
+  library?: string;
+  version?: string;
+  detectBus?: boolean;
+  memmap?: string;
 }
 
 export interface BusInfo {
-    key: string;
-    vlnv: string;
-    vendor: string;
-    library: string;
-    name: string;
-    version: string;
-    requiredPorts: number;
-    optionalPorts: number;
-    suggestedPrefixes: Record<string, string>;
+  key: string;
+  vlnv: string;
+  vendor: string;
+  library: string;
+  name: string;
+  version: string;
+  requiredPorts: number;
+  optionalPorts: number;
+  suggestedPrefixes: Record<string, string>;
 }
 
 export interface BusListResult {
-    success: boolean;
-    buses?: BusInfo[];
-    library?: Record<string, { ports: Array<{ name: string; direction?: string; width?: number; presence?: string }> }>;
-    error?: string;
+  success: boolean;
+  buses?: BusInfo[];
+  library?: Record<
+    string,
+    {
+      ports: Array<{
+        name: string;
+        direction?: string;
+        width?: number;
+        presence?: string;
+      }>;
+    }
+  >;
+  error?: string;
 }
 
 export class PythonBackend {
-    private pythonPath: string;
-    private projectRoot: string;
-    private outputChannel: vscode.OutputChannel;
+  private pythonPath: string;
+  private projectRoot: string;
+  private outputChannel: vscode.OutputChannel;
 
-    constructor() {
-        this.pythonPath = this.findPython();
-        this.projectRoot = this.findProjectRoot();
-        this.outputChannel = vscode.window.createOutputChannel('FPGA Generator');
+  constructor() {
+    this.pythonPath = this.findPython();
+    this.projectRoot = this.findProjectRoot();
+    this.outputChannel = vscode.window.createOutputChannel("FPGA Generator");
+  }
+
+  private findPython(): string {
+    // Check VS Code Python extension setting first
+    const pythonConfig = vscode.workspace.getConfiguration("python");
+    const configuredPath = pythonConfig.get<string>("defaultInterpreterPath");
+    if (configuredPath) {
+      return configuredPath;
+    }
+    // Default to python3 on Unix, python on Windows
+    return process.platform === "win32" ? "python" : "python3";
+  }
+
+  /**
+   * Find the ipcore_lib project root by looking for ipcore_lib/ directory
+   */
+  private findProjectRoot(): string {
+    const workspaceRoot =
+      vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || "";
+
+    // Try to find ipcore_lib directory by walking up from workspace root
+    let current = workspaceRoot;
+    for (let i = 0; i < 5; i++) {
+      const fpgaLibDir = path.join(current, "ipcore_lib");
+      const scriptsDir = path.join(current, "scripts");
+      try {
+        // Check if both ipcore_lib and scripts directories exist
+        const fs = require("fs");
+        if (fs.existsSync(fpgaLibDir) && fs.existsSync(scriptsDir)) {
+          return current;
+        }
+      } catch {
+        // Ignore
+      }
+      const parent = path.dirname(current);
+      if (parent === current) break;
+      current = parent;
     }
 
-    private findPython(): string {
-        // Check VS Code Python extension setting first
-        const pythonConfig = vscode.workspace.getConfiguration('python');
-        const configuredPath = pythonConfig.get<string>('defaultInterpreterPath');
-        if (configuredPath) {
-            return configuredPath;
-        }
-        // Default to python3 on Unix, python on Windows
-        return process.platform === 'win32' ? 'python' : 'python3';
+    // Fallback to workspace root
+    return workspaceRoot;
+  }
+
+  /**
+   * Check if Python backend is available
+   */
+  async isAvailable(): Promise<boolean> {
+    try {
+      this.outputChannel.appendLine(`[DEBUG] Python: ${this.pythonPath}`);
+      this.outputChannel.appendLine(
+        `[DEBUG] Project root: ${this.projectRoot}`,
+      );
+
+      const result = await this.runPython([
+        "-c",
+        'import ipcore_lib; print("ok")',
+      ]);
+      const available = result.stdout.includes("ok");
+
+      if (!available) {
+        this.outputChannel.appendLine(
+          `[DEBUG] ipcore_lib import failed. stdout: ${result.stdout}, stderr: ${result.stderr}`,
+        );
+      }
+
+      return available;
+    } catch (error) {
+      this.outputChannel.appendLine(`[DEBUG] isAvailable error: ${error}`);
+      return false;
+    }
+  }
+
+  /**
+   * Generate VHDL using Python backend with progress streaming
+   */
+  async generateVHDL(
+    inputPath: string,
+    outputDir: string,
+    options: GenerateOptions = {},
+    progress?: vscode.Progress<{ message?: string; increment?: number }>,
+  ): Promise<GenerateResult> {
+    // Call ipcore.py with generate subcommand
+    const scriptPath = path.join(this.projectRoot, "scripts", "ipcore.py");
+    const args = [
+      scriptPath,
+      "generate",
+      inputPath,
+      "--output",
+      outputDir,
+      "--vendor",
+      options.vendor || "both",
+      "--json",
+      "--progress",
+    ];
+
+    if (options.includeTestbench === false) {
+      args.push("--no-testbench");
+    }
+    if (options.includeRegs === false) {
+      args.push("--no-regs");
+    }
+    if (options.updateYaml === false) {
+      args.push("--no-update-yaml");
     }
 
-    /**
-     * Find the ipcore_lib project root by looking for ipcore_lib/ directory
-     */
-    private findProjectRoot(): string {
-        const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || '';
+    const timestamp = new Date().toISOString();
+    this.outputChannel.appendLine(
+      `[${timestamp}] Running: ${this.pythonPath} ${args.join(" ")}`,
+    );
+    this.outputChannel.show(true);
 
-        // Try to find ipcore_lib directory by walking up from workspace root
-        let current = workspaceRoot;
-        for (let i = 0; i < 5; i++) {
-            const fpgaLibDir = path.join(current, 'ipcore_lib');
-            const scriptsDir = path.join(current, 'scripts');
-            try {
-                // Check if both ipcore_lib and scripts directories exist
-                const fs = require('fs');
-                if (fs.existsSync(fpgaLibDir) && fs.existsSync(scriptsDir)) {
-                    return current;
-                }
-            } catch {
-                // Ignore
-            }
-            const parent = path.dirname(current);
-            if (parent === current) break;
-            current = parent;
-        }
+    try {
+      const result = await this.runPythonWithProgress(args, progress);
 
-        // Fallback to workspace root
-        return workspaceRoot;
+      if (result.stderr) {
+        this.outputChannel.appendLine("--- STDERR ---");
+        this.outputChannel.appendLine(result.stderr);
+      }
+
+      const parsed = JSON.parse(result.stdout);
+      this.outputChannel.appendLine(
+        `✓ Generated ${parsed.count} files (bus: ${parsed.busType})`,
+      );
+      return parsed;
+    } catch (error) {
+      this.outputChannel.appendLine(`✗ Error: ${error}`);
+      return {
+        success: false,
+        error: `Python backend error: ${error}`,
+      };
+    }
+  }
+  /**
+   * Parse VHDL file and generate IP core YAML
+   */
+  async parseVHDL(
+    vhdlPath: string,
+    outputPath?: string,
+    options: ParseOptions = {},
+    progress?: vscode.Progress<{ message?: string; increment?: number }>,
+  ): Promise<ParseResult> {
+    const scriptPath = path.join(this.projectRoot, "scripts", "ipcore.py");
+    const args = [scriptPath, "parse", vhdlPath, "--json", "--force"];
+
+    if (outputPath) {
+      args.push("--output", outputPath);
+    }
+    if (options.vendor) {
+      args.push("--vendor", options.vendor);
+    }
+    if (options.library) {
+      args.push("--library", options.library);
+    }
+    if (options.version) {
+      args.push("--version", options.version);
+    }
+    if (options.detectBus === false) {
+      args.push("--no-detect-bus");
+    }
+    if (options.memmap) {
+      args.push("--memmap", options.memmap);
     }
 
-    /**
-     * Check if Python backend is available
-     */
-    async isAvailable(): Promise<boolean> {
-        try {
-            this.outputChannel.appendLine(`[DEBUG] Python: ${this.pythonPath}`);
-            this.outputChannel.appendLine(`[DEBUG] Project root: ${this.projectRoot}`);
+    const timestamp = new Date().toISOString();
+    this.outputChannel.appendLine(
+      `[${timestamp}] Running: ${this.pythonPath} ${args.join(" ")}`,
+    );
+    this.outputChannel.show(true);
 
-            const result = await this.runPython(['-c', 'import ipcore_lib; print("ok")']);
-            const available = result.stdout.includes('ok');
+    try {
+      progress?.report({ message: "Parsing VHDL file..." });
+      const result = await this.runPython(args);
 
-            if (!available) {
-                this.outputChannel.appendLine(`[DEBUG] ipcore_lib import failed. stdout: ${result.stdout}, stderr: ${result.stderr}`);
-            }
+      if (result.stderr) {
+        this.outputChannel.appendLine("--- STDERR ---");
+        this.outputChannel.appendLine(result.stderr);
+      }
 
-            return available;
-        } catch (error) {
-            this.outputChannel.appendLine(`[DEBUG] isAvailable error: ${error}`);
-            return false;
-        }
+      const parsed = JSON.parse(result.stdout);
+      if (parsed.success) {
+        this.outputChannel.appendLine(`✓ Created ${parsed.output}`);
+      }
+      return parsed;
+    } catch (error) {
+      this.outputChannel.appendLine(`✗ Error: ${error}`);
+      return {
+        success: false,
+        error: `Python backend error: ${error}`,
+      };
     }
+  }
 
-    /**
-     * Generate VHDL using Python backend with progress streaming
-     */
-    async generateVHDL(
-        inputPath: string,
-        outputDir: string,
-        options: GenerateOptions = {},
-        progress?: vscode.Progress<{ message?: string; increment?: number }>
-    ): Promise<GenerateResult> {
-        // Call ipcore.py with generate subcommand
-        const scriptPath = path.join(this.projectRoot, 'scripts', 'ipcore.py');
-        const args = [
-            scriptPath,
-            'generate',
-            inputPath,
-            '--output', outputDir,
-            '--vendor', options.vendor || 'both',
-            '--json',
-            '--progress',
-        ];
+  /**
+   * List available bus types from the bus library
+   */
+  async listBuses(): Promise<BusListResult> {
+    const scriptPath = path.join(this.projectRoot, "scripts", "ipcore.py");
+    const args = [scriptPath, "list-buses", "--json"];
 
-        if (options.includeTestbench === false) {
-            args.push('--no-testbench');
-        }
-        if (options.includeRegs === false) {
-            args.push('--no-regs');
-        }
-        if (options.updateYaml === false) {
-            args.push('--no-update-yaml');
-        }
-
-        const timestamp = new Date().toISOString();
-        this.outputChannel.appendLine(`[${timestamp}] Running: ${this.pythonPath} ${args.join(' ')}`);
-        this.outputChannel.show(true);
-
-        try {
-            const result = await this.runPythonWithProgress(args, progress);
-
-            if (result.stderr) {
-                this.outputChannel.appendLine('--- STDERR ---');
-                this.outputChannel.appendLine(result.stderr);
-            }
-
-            const parsed = JSON.parse(result.stdout);
-            this.outputChannel.appendLine(`✓ Generated ${parsed.count} files (bus: ${parsed.busType})`);
-            return parsed;
-        } catch (error) {
-            this.outputChannel.appendLine(`✗ Error: ${error}`);
-            return {
-                success: false,
-                error: `Python backend error: ${error}`
-            };
-        }
+    try {
+      const result = await this.runPython(args);
+      return JSON.parse(result.stdout);
+    } catch (error) {
+      this.outputChannel.appendLine(`✗ Error listing buses: ${error}`);
+      return {
+        success: false,
+        error: `Python backend error: ${error}`,
+      };
     }
-    /**
-     * Parse VHDL file and generate IP core YAML
-     */
-    async parseVHDL(
-        vhdlPath: string,
-        outputPath?: string,
-        options: ParseOptions = {},
-        progress?: vscode.Progress<{ message?: string; increment?: number }>
-    ): Promise<ParseResult> {
-        const scriptPath = path.join(this.projectRoot, 'scripts', 'ipcore.py');
-        const args = [
-            scriptPath,
-            'parse',
-            vhdlPath,
-            '--json',
-            '--force',
-        ];
+  }
 
-        if (outputPath) {
-            args.push('--output', outputPath);
+  private runPython(
+    args: string[],
+  ): Promise<{ stdout: string; stderr: string }> {
+    return new Promise((resolve, reject) => {
+      const proc = cp.spawn(this.pythonPath, args, {
+        cwd: this.projectRoot,
+        env: { ...process.env, PYTHONPATH: this.projectRoot },
+      });
+
+      let stdout = "";
+      let stderr = "";
+
+      proc.stdout.on("data", (data) => {
+        stdout += data;
+      });
+      proc.stderr.on("data", (data) => {
+        stderr += data;
+      });
+
+      proc.on("close", (code) => {
+        if (code === 0) {
+          resolve({ stdout, stderr });
+        } else {
+          reject(new Error(stderr || `Exit code ${code}`));
         }
-        if (options.vendor) {
-            args.push('--vendor', options.vendor);
+      });
+
+      proc.on("error", reject);
+    });
+  }
+
+  /**
+   * Run Python with progress streaming
+   */
+  private runPythonWithProgress(
+    args: string[],
+    progress?: vscode.Progress<{ message?: string; increment?: number }>,
+  ): Promise<{ stdout: string; stderr: string }> {
+    return new Promise((resolve, reject) => {
+      const proc = cp.spawn(this.pythonPath, args, {
+        cwd: this.projectRoot,
+        env: { ...process.env, PYTHONPATH: this.projectRoot },
+      });
+
+      let stdout = "";
+      let stderr = "";
+
+      proc.stdout.on("data", (data) => {
+        const text = data.toString();
+        stdout += text;
+
+        // Parse progress lines (format: "PROGRESS: message")
+        const lines = text.split("\n");
+        for (const line of lines) {
+          if (line.startsWith("PROGRESS:")) {
+            const message = line.replace("PROGRESS:", "").trim();
+            progress?.report({ message, increment: 10 });
+            this.outputChannel.appendLine(`  ${message}`);
+          }
         }
-        if (options.library) {
-            args.push('--library', options.library);
+      });
+
+      proc.stderr.on("data", (data) => {
+        stderr += data;
+        this.outputChannel.appendLine(data.toString());
+      });
+
+      proc.on("close", (code) => {
+        // Filter out PROGRESS lines and extract JSON
+        const lines = stdout
+          .split("\n")
+          .filter((line) => !line.startsWith("PROGRESS:") && line.trim());
+        // Find the JSON object (line starting with {)
+        const jsonLine = lines.find((line) => line.trim().startsWith("{"));
+        const jsonOutput = jsonLine || "{}";
+
+        this.outputChannel.appendLine(
+          `[DEBUG] Extracted JSON: ${jsonOutput.substring(0, 100)}...`,
+        );
+
+        if (code === 0) {
+          resolve({ stdout: jsonOutput, stderr });
+        } else {
+          reject(new Error(stderr || `Exit code ${code}`));
         }
-        if (options.version) {
-            args.push('--version', options.version);
-        }
-        if (options.detectBus === false) {
-            args.push('--no-detect-bus');
-        }
-        if (options.memmap) {
-            args.push('--memmap', options.memmap);
-        }
+      });
 
-        const timestamp = new Date().toISOString();
-        this.outputChannel.appendLine(`[${timestamp}] Running: ${this.pythonPath} ${args.join(' ')}`);
-        this.outputChannel.show(true);
+      proc.on("error", reject);
+    });
+  }
 
-        try {
-            progress?.report({ message: 'Parsing VHDL file...' });
-            const result = await this.runPython(args);
-
-            if (result.stderr) {
-                this.outputChannel.appendLine('--- STDERR ---');
-                this.outputChannel.appendLine(result.stderr);
-            }
-
-            const parsed = JSON.parse(result.stdout);
-            if (parsed.success) {
-                this.outputChannel.appendLine(`✓ Created ${parsed.output}`);
-            }
-            return parsed;
-        } catch (error) {
-            this.outputChannel.appendLine(`✗ Error: ${error}`);
-            return {
-                success: false,
-                error: `Python backend error: ${error}`
-            };
-        }
-    }
-
-    /**
-     * List available bus types from the bus library
-     */
-    async listBuses(): Promise<BusListResult> {
-        const scriptPath = path.join(this.projectRoot, 'scripts', 'ipcore.py');
-        const args = [
-            scriptPath,
-            'list-buses',
-            '--json',
-        ];
-
-        try {
-            const result = await this.runPython(args);
-            return JSON.parse(result.stdout);
-        } catch (error) {
-            this.outputChannel.appendLine(`✗ Error listing buses: ${error}`);
-            return {
-                success: false,
-                error: `Python backend error: ${error}`
-            };
-        }
-    }
-
-    private runPython(args: string[]): Promise<{ stdout: string; stderr: string }> {
-        return new Promise((resolve, reject) => {
-            const proc = cp.spawn(this.pythonPath, args, {
-                cwd: this.projectRoot,
-                env: { ...process.env, PYTHONPATH: this.projectRoot }
-            });
-
-            let stdout = '';
-            let stderr = '';
-
-            proc.stdout.on('data', (data) => { stdout += data; });
-            proc.stderr.on('data', (data) => { stderr += data; });
-
-            proc.on('close', (code) => {
-                if (code === 0) {
-                    resolve({ stdout, stderr });
-                } else {
-                    reject(new Error(stderr || `Exit code ${code}`));
-                }
-            });
-
-            proc.on('error', reject);
-        });
-    }
-
-    /**
-     * Run Python with progress streaming
-     */
-    private runPythonWithProgress(
-        args: string[],
-        progress?: vscode.Progress<{ message?: string; increment?: number }>
-    ): Promise<{ stdout: string; stderr: string }> {
-        return new Promise((resolve, reject) => {
-            const proc = cp.spawn(this.pythonPath, args, {
-                cwd: this.projectRoot,
-                env: { ...process.env, PYTHONPATH: this.projectRoot }
-            });
-
-            let stdout = '';
-            let stderr = '';
-
-            proc.stdout.on('data', (data) => {
-                const text = data.toString();
-                stdout += text;
-
-                // Parse progress lines (format: "PROGRESS: message")
-                const lines = text.split('\n');
-                for (const line of lines) {
-                    if (line.startsWith('PROGRESS:')) {
-                        const message = line.replace('PROGRESS:', '').trim();
-                        progress?.report({ message, increment: 10 });
-                        this.outputChannel.appendLine(`  ${message}`);
-                    }
-                }
-            });
-
-            proc.stderr.on('data', (data) => {
-                stderr += data;
-                this.outputChannel.appendLine(data.toString());
-            });
-
-            proc.on('close', (code) => {
-                // Filter out PROGRESS lines and extract JSON
-                const lines = stdout.split('\n').filter(line =>
-                    !line.startsWith('PROGRESS:') && line.trim()
-                );
-                // Find the JSON object (line starting with {)
-                const jsonLine = lines.find(line => line.trim().startsWith('{'));
-                const jsonOutput = jsonLine || '{}';
-
-                this.outputChannel.appendLine(`[DEBUG] Extracted JSON: ${jsonOutput.substring(0, 100)}...`);
-
-                if (code === 0) {
-                    resolve({ stdout: jsonOutput, stderr });
-                } else {
-                    reject(new Error(stderr || `Exit code ${code}`));
-                }
-            });
-
-            proc.on('error', reject);
-        });
-    }
-
-    /**
-     * Dispose resources
-     */
-    dispose(): void {
-        this.outputChannel.dispose();
-    }
+  /**
+   * Dispose resources
+   */
+  dispose(): void {
+    this.outputChannel.dispose();
+  }
 }

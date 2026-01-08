@@ -8,17 +8,17 @@ Generates:
 - Bus wrapper (AXI-Lite or Avalon-MM)
 """
 
-from typing import Dict, List, Optional, Any
-from pathlib import Path
 import os
-import yaml
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 
+import yaml
 from jinja2 import Environment, FileSystemLoader
 
-from ipcore_lib.model.core import IpCore
-from ipcore_lib.model.memory import MemoryMap, Register, BitField
-from ipcore_lib.model.fileset import FileSet, File, FileType
 from ipcore_lib.generator.base_generator import BaseGenerator
+from ipcore_lib.model.core import IpCore
+from ipcore_lib.model.fileset import File, FileSet, FileType
+from ipcore_lib.model.memory import BitField, MemoryMap, Register
 
 
 class VHDLGenerator(BaseGenerator):
@@ -32,12 +32,12 @@ class VHDLGenerator(BaseGenerator):
     - Bus wrapper (AXI-Lite or Avalon-MM)
     """
 
-    SUPPORTED_BUS_TYPES = ['axil', 'avmm']
+    SUPPORTED_BUS_TYPES = ["axil", "avmm"]
 
     # Mapping from bus_definitions.yml type names to generator bus_type codes
     BUS_TYPE_MAP = {
-        'AXI4L': 'axil',
-        'AVALON_MM': 'avmm',
+        "AXI4L": "axil",
+        "AVALON_MM": "avmm",
     }
 
     def __init__(self, template_dir: Optional[str] = None):
@@ -49,7 +49,9 @@ class VHDLGenerator(BaseGenerator):
 
     def _load_bus_definitions(self) -> Dict[str, Any]:
         """Load bus definitions from ipcore_spec/common/bus_definitions.yml."""
-        bus_defs_path = Path(__file__).parent.parent.parent.parent / "ipcore_spec/common/bus_definitions.yml"
+        bus_defs_path = (
+            Path(__file__).parent.parent.parent.parent / "ipcore_spec/common/bus_definitions.yml"
+        )
         if bus_defs_path.exists():
             with open(bus_defs_path) as f:
                 return yaml.safe_load(f)
@@ -61,17 +63,17 @@ class VHDLGenerator(BaseGenerator):
         For address and data ports, use parameterized widths (C_ADDR_WIDTH, C_DATA_WIDTH).
         """
         # Parameterized ports
-        if logical_name in ['AWADDR', 'ARADDR', 'address']:
-            return 'std_logic_vector(C_ADDR_WIDTH-1 downto 0)'
-        if logical_name in ['WDATA', 'RDATA', 'writedata', 'readdata']:
-            return 'std_logic_vector(C_DATA_WIDTH-1 downto 0)'
-        if logical_name == 'WSTRB':
-            return 'std_logic_vector((C_DATA_WIDTH/8)-1 downto 0)'
+        if logical_name in ["AWADDR", "ARADDR", "address"]:
+            return "std_logic_vector(C_ADDR_WIDTH-1 downto 0)"
+        if logical_name in ["WDATA", "RDATA", "writedata", "readdata"]:
+            return "std_logic_vector(C_DATA_WIDTH-1 downto 0)"
+        if logical_name == "WSTRB":
+            return "std_logic_vector((C_DATA_WIDTH/8)-1 downto 0)"
 
         # Standard widths
         if width == 1:
-            return 'std_logic'
-        return f'std_logic_vector({width - 1} downto 0)'
+            return "std_logic"
+        return f"std_logic_vector({width - 1} downto 0)"
 
     def _get_active_bus_ports(
         self,
@@ -79,7 +81,7 @@ class VHDLGenerator(BaseGenerator):
         use_optional_ports: List[str],
         physical_prefix: str,
         mode: str,
-        port_width_overrides: Optional[Dict[str, int]] = None
+        port_width_overrides: Optional[Dict[str, int]] = None,
     ) -> List[Dict[str, Any]]:
         """
         Get list of active bus ports based on required + selected optional ports.
@@ -94,64 +96,67 @@ class VHDLGenerator(BaseGenerator):
             List of port dictionaries for template rendering
         """
         bus_def = self.bus_definitions.get(bus_type_name.upper(), {})
-        ports = bus_def.get('ports', [])
+        ports = bus_def.get("ports", [])
         active_ports = []
 
         for port in ports:
-            logical_name = port['name']
+            logical_name = port["name"]
 
             # Skip clock/reset (handled separately)
-            if logical_name in ['ACLK', 'ARESETn', 'clk', 'reset']:
+            if logical_name in ["ACLK", "ARESETn", "clk", "reset"]:
                 continue
 
-            presence = port.get('presence', 'required')
-            is_required = presence == 'required'
+            presence = port.get("presence", "required")
+            is_required = presence == "required"
             is_selected = logical_name in use_optional_ports
 
             if is_required or is_selected:
                 # Get direction from bus definition
-                direction = port.get('direction', 'in')
+                direction = port.get("direction", "in")
 
                 # Flip direction for slave mode (bus def is from master perspective)
-                if mode == 'slave':
-                    direction = 'in' if direction == 'out' else 'out'
+                if mode == "slave":
+                    direction = "in" if direction == "out" else "out"
 
-                width = port.get('width', 1)
-                
+                width = port.get("width", 1)
+
                 # Apply width overrides
                 if port_width_overrides and logical_name in port_width_overrides:
                     width = port_width_overrides[logical_name]
 
-                active_ports.append({
-                    'logical_name': logical_name,
-                    'name': f"{physical_prefix}{logical_name.lower()}",
-                    'direction': direction,
-                    'width': width,
-                    'type': self._get_vhdl_port_type(width, logical_name),
-                })
+                active_ports.append(
+                    {
+                        "logical_name": logical_name,
+                        "name": f"{physical_prefix}{logical_name.lower()}",
+                        "direction": direction,
+                        "width": width,
+                        "type": self._get_vhdl_port_type(width, logical_name),
+                    }
+                )
 
         return active_ports
 
     def _parse_bits(self, bits: str) -> dict:
         """Parse bit string [M:N] or [N] into offset and width."""
         import re
+
         if not bits:
-            return {'offset': 0, 'width': 1}
+            return {"offset": 0, "width": 1}
 
         # Handle [M:N]
-        match_range = re.search(r'\[(\d+):(\d+)\]', bits)
+        match_range = re.search(r"\[(\d+):(\d+)\]", bits)
         if match_range:
             high = int(match_range.group(1))
             low = int(match_range.group(2))
-            return {'offset': low, 'width': abs(high - low) + 1}
+            return {"offset": low, "width": abs(high - low) + 1}
 
         # Handle [N]
-        match_single = re.search(r'\[(\d+)\]', bits)
+        match_single = re.search(r"\[(\d+)\]", bits)
         if match_single:
             bit = int(match_single.group(1))
-            return {'offset': bit, 'width': 1}
+            return {"offset": bit, "width": 1}
 
-        return {'offset': 0, 'width': 1}
+        return {"offset": 0, "width": 1}
 
     def _prepare_registers(self, ip_core: IpCore) -> List[Dict[str, Any]]:
         """
@@ -160,18 +165,22 @@ class VHDLGenerator(BaseGenerator):
         registers = []
 
         def process_register(reg, base_offset, prefix):
-            current_offset = base_offset + (getattr(reg, 'address_offset', None) or getattr(reg, 'offset', None) or 0)
-            reg_name = reg.name if hasattr(reg, 'name') else 'REG'
+            current_offset = base_offset + (
+                getattr(reg, "address_offset", None) or getattr(reg, "offset", None) or 0
+            )
+            reg_name = reg.name if hasattr(reg, "name") else "REG"
 
             # Check for nested registers (array/group)
-            nested_regs = getattr(reg, 'registers', [])
+            nested_regs = getattr(reg, "registers", [])
             if nested_regs:
-                count = getattr(reg, 'count', 1) or 1
-                stride = getattr(reg, 'stride', 0) or 0
+                count = getattr(reg, "count", 1) or 1
+                stride = getattr(reg, "stride", 0) or 0
 
                 for i in range(count):
                     instance_offset = current_offset + (i * stride)
-                    instance_prefix = f"{prefix}{reg_name}_{i}_" if count > 1 else f"{prefix}{reg_name}_"
+                    instance_prefix = (
+                        f"{prefix}{reg_name}_{i}_" if count > 1 else f"{prefix}{reg_name}_"
+                    )
 
                     for child in nested_regs:
                         process_register(child, instance_offset, instance_prefix)
@@ -179,60 +188,76 @@ class VHDLGenerator(BaseGenerator):
 
             # Leaf register processing
             fields = []
-            for field in getattr(reg, 'fields', []):
+            for field in getattr(reg, "fields", []):
                 # Handle bit parsing
-                bit_offset = getattr(field, 'bit_offset', None)
-                bit_width = getattr(field, 'bit_width', None)
+                bit_offset = getattr(field, "bit_offset", None)
+                bit_width = getattr(field, "bit_width", None)
 
                 if bit_offset is None or bit_width is None:
-                    bits_str = getattr(field, 'bits', '')
+                    bits_str = getattr(field, "bits", "")
                     parsed = self._parse_bits(bits_str)
-                    if bit_offset is None: bit_offset = parsed['offset']
-                    if bit_width is None: bit_width = parsed['width']
+                    if bit_offset is None:
+                        bit_offset = parsed["offset"]
+                    if bit_width is None:
+                        bit_width = parsed["width"]
 
                 # Access normalization
-                acc = getattr(field, 'access', 'read-write')
-                acc_str = acc.value if hasattr(acc, 'value') else str(acc)
-                reg_acc = getattr(reg, 'access', 'read-write')
-                reg_acc_str = reg_acc.value if hasattr(reg_acc, 'value') else str(reg_acc)
+                acc = getattr(field, "access", "read-write")
+                acc_str = acc.value if hasattr(acc, "value") else str(acc)
+                reg_acc = getattr(reg, "access", "read-write")
+                reg_acc_str = reg_acc.value if hasattr(reg_acc, "value") else str(reg_acc)
 
-                fields.append({
-                    'name': field.name,
-                    'offset': bit_offset,
-                    'width': bit_width,
-                    'access': acc_str.lower() if acc_str else reg_acc_str.lower(),
-                    'reset_value': field.reset_value if getattr(field, 'reset_value', None) is not None else 0,
-                    'description': getattr(field, 'description', '')
-                })
+                fields.append(
+                    {
+                        "name": field.name,
+                        "offset": bit_offset,
+                        "width": bit_width,
+                        "access": acc_str.lower() if acc_str else reg_acc_str.lower(),
+                        "reset_value": (
+                            field.reset_value
+                            if getattr(field, "reset_value", None) is not None
+                            else 0
+                        ),
+                        "description": getattr(field, "description", ""),
+                    }
+                )
 
-            reg_acc = getattr(reg, 'access', 'read-write')
-            reg_acc_str = reg_acc.value if hasattr(reg_acc, 'value') else str(reg_acc)
+            reg_acc = getattr(reg, "access", "read-write")
+            reg_acc_str = reg_acc.value if hasattr(reg_acc, "value") else str(reg_acc)
 
-            registers.append({
-                'name': prefix + reg_name,
-                'offset': current_offset,
-                'access': reg_acc_str.lower(),
-                'description': getattr(reg, 'description', ''),
-                'fields': fields
-            })
+            registers.append(
+                {
+                    "name": prefix + reg_name,
+                    "offset": current_offset,
+                    "access": reg_acc_str.lower(),
+                    "description": getattr(reg, "description", ""),
+                    "fields": fields,
+                }
+            )
 
         for mm in ip_core.memory_maps:
             for block in mm.address_blocks:
-                block_offset = getattr(block, 'base_address', 0) or getattr(block, 'offset', 0) or 0
+                block_offset = getattr(block, "base_address", 0) or getattr(block, "offset", 0) or 0
                 for reg in block.registers:
                     process_register(reg, block_offset, "")
 
-        return sorted(registers, key=lambda x: x['offset'])
+        return sorted(registers, key=lambda x: x["offset"])
 
     def _prepare_generics(self, ip_core: IpCore) -> List[Dict[str, Any]]:
         """Prepare generics/parameters for templates."""
         generics = []
         for param in ip_core.parameters:
-            generics.append({
-                'name': param.name,
-                'type': param.data_type.value if hasattr(param.data_type, 'value') else str(param.data_type),
-                'default_value': param.value
-            })
+            generics.append(
+                {
+                    "name": param.name,
+                    "type": (
+                        param.data_type.value
+                        if hasattr(param.data_type, "value")
+                        else str(param.data_type)
+                    ),
+                    "default_value": param.value,
+                }
+            )
         return generics
 
     def _prepare_user_ports(self, ip_core: IpCore) -> List[Dict[str, Any]]:
@@ -242,38 +267,42 @@ class VHDLGenerator(BaseGenerator):
 
         ports = []
         for port in ip_core.ports:
-            direction = port.direction.value if hasattr(port.direction, 'value') else str(port.direction)
-            width = port.width if hasattr(port, 'width') else 1
+            direction = (
+                port.direction.value if hasattr(port.direction, "value") else str(port.direction)
+            )
+            width = port.width if hasattr(port, "width") else 1
 
             # Check if width is a parameter reference (string) or a number
             is_parameterized = isinstance(width, str)
             if is_parameterized:
                 # Width is a parameter reference - use it directly in VHDL
-                port_type = f'std_logic_vector({width}-1 downto 0)'
+                port_type = f"std_logic_vector({width}-1 downto 0)"
                 width_expr = width  # Store the parameter name
                 numeric_width = None  # No numeric value for XML
                 # Get default value for the parameter to use in XML
                 default_value = param_defaults.get(width, 32) - 1
             elif width == 1:
-                port_type = 'std_logic'
+                port_type = "std_logic"
                 width_expr = None
                 numeric_width = 1
                 default_value = None
             else:
-                port_type = f'std_logic_vector({width-1} downto 0)'
+                port_type = f"std_logic_vector({width-1} downto 0)"
                 width_expr = None
                 numeric_width = width
                 default_value = None
 
-            ports.append({
-                'name': port.name.lower(),
-                'direction': direction.lower(),
-                'type': port_type,
-                'width': numeric_width,
-                'width_expr': width_expr,
-                'is_parameterized': is_parameterized,
-                'default_width': default_value
-            })
+            ports.append(
+                {
+                    "name": port.name.lower(),
+                    "direction": direction.lower(),
+                    "type": port_type,
+                    "width": numeric_width,
+                    "width_expr": width_expr,
+                    "is_parameterized": is_parameterized,
+                    "default_width": default_value,
+                }
+            )
         return ports
 
     def _expand_bus_interfaces(self, ip_core: IpCore) -> List[Dict[str, Any]]:
@@ -285,172 +314,193 @@ class VHDLGenerator(BaseGenerator):
             return []
 
         for iface in ip_core.bus_interfaces:
-            array_def = getattr(iface, 'array', None)
-            
+            array_def = getattr(iface, "array", None)
+
             if array_def:
-                count = getattr(array_def, 'count', 1)
-                start = getattr(array_def, 'index_start', 0)
-                
+                count = getattr(array_def, "count", 1)
+                start = getattr(array_def, "index_start", 0)
+
                 for i in range(count):
                     idx = start + i
-                    name_pattern = getattr(array_def, 'naming_pattern', f"{iface.name}_{{index}}")
+                    name_pattern = getattr(array_def, "naming_pattern", f"{iface.name}_{{index}}")
                     name = name_pattern.format(index=idx)
-                    
-                    prefix_pattern = getattr(array_def, 'physical_prefix_pattern', f"{iface.physical_prefix}{{index}}_")
+
+                    prefix_pattern = getattr(
+                        array_def, "physical_prefix_pattern", f"{iface.physical_prefix}{{index}}_"
+                    )
                     prefix = prefix_pattern.format(index=idx)
-                    
-                    expanded.append({
-                        'name': name,
-                        'type': iface.type,
-                        'mode': iface.mode.value if hasattr(iface.mode, 'value') else str(iface.mode),
-                        'physical_prefix': prefix,
-                        'use_optional_ports': iface.use_optional_ports or [],
-                        'port_width_overrides': iface.port_width_overrides or {},
-                        'associated_clock': iface.associated_clock,
-                        'associated_reset': iface.associated_reset,
-                    })
+
+                    expanded.append(
+                        {
+                            "name": name,
+                            "type": iface.type,
+                            "mode": (
+                                iface.mode.value
+                                if hasattr(iface.mode, "value")
+                                else str(iface.mode)
+                            ),
+                            "physical_prefix": prefix,
+                            "use_optional_ports": iface.use_optional_ports or [],
+                            "port_width_overrides": iface.port_width_overrides or {},
+                            "associated_clock": iface.associated_clock,
+                            "associated_reset": iface.associated_reset,
+                        }
+                    )
             else:
-                expanded.append({
-                    'name': iface.name,
-                    'type': iface.type,
-                    'mode': iface.mode.value if hasattr(iface.mode, 'value') else str(iface.mode),
-                    'physical_prefix': iface.physical_prefix or 's_axi_',
-                    'use_optional_ports': iface.use_optional_ports or [],
-                    'port_width_overrides': iface.port_width_overrides or {},
-                    'associated_clock': iface.associated_clock,
-                    'associated_reset': iface.associated_reset,
-                })
+                expanded.append(
+                    {
+                        "name": iface.name,
+                        "type": iface.type,
+                        "mode": (
+                            iface.mode.value if hasattr(iface.mode, "value") else str(iface.mode)
+                        ),
+                        "physical_prefix": iface.physical_prefix or "s_axi_",
+                        "use_optional_ports": iface.use_optional_ports or [],
+                        "port_width_overrides": iface.port_width_overrides or {},
+                        "associated_clock": iface.associated_clock,
+                        "associated_reset": iface.associated_reset,
+                    }
+                )
         return expanded
 
-    def _get_template_context(
-        self,
-        ip_core: IpCore,
-        bus_type: str = 'axil'
-    ) -> Dict[str, Any]:
+    def _get_template_context(self, ip_core: IpCore, bus_type: str = "axil") -> Dict[str, Any]:
         """Build common template context."""
         registers = self._prepare_registers(ip_core)
 
-        sw_access = ['read-write', 'write-only', 'rw', 'wo']
-        hw_access = ['read-only', 'ro']
+        sw_access = ["read-write", "write-only", "rw", "wo"]
+        hw_access = ["read-only", "ro"]
 
-        sw_registers = [r for r in registers if r['access'] in sw_access]
-        hw_registers = [r for r in registers if r['access'] in hw_access]
+        sw_registers = [r for r in registers if r["access"] in sw_access]
+        hw_registers = [r for r in registers if r["access"] in hw_access]
 
         # Extract clock and reset information
-        clock_port = ip_core.clocks[0].name if ip_core.clocks else 'clk'
-        reset_port = ip_core.resets[0].name if ip_core.resets else 'rst'
-        reset_polarity = ip_core.resets[0].polarity.value if ip_core.resets else 'activeHigh'
-        reset_active_high = 'High' in reset_polarity
+        clock_port = ip_core.clocks[0].name if ip_core.clocks else "clk"
+        reset_port = ip_core.resets[0].name if ip_core.resets else "rst"
+        reset_polarity = ip_core.resets[0].polarity.value if ip_core.resets else "activeHigh"
+        reset_active_high = "High" in reset_polarity
 
         # Generic expansion of ALL bus interfaces
         all_ifaces = self._expand_bus_interfaces(ip_core)
         expanded_bus_interfaces = []
         secondary_bus_ports = []
         bus_ports = []
-        bus_prefix = 's_axi'
+        bus_prefix = "s_axi"
 
         if all_ifaces:
-             # Primary bus is assumed to be the first one (index 0)
-             # This aligns with the 'bus_type' argument which typically controls the Wrapper generation for the Primary bus.
-             primary_iface = all_ifaces[0]
-             bus_prefix = primary_iface['physical_prefix'][:-1] if primary_iface['physical_prefix'].endswith('_') else primary_iface['physical_prefix']
+            # Primary bus is assumed to be the first one (index 0)
+            # This aligns with the 'bus_type' argument which typically controls the Wrapper generation for the Primary bus.
+            primary_iface = all_ifaces[0]
+            bus_prefix = (
+                primary_iface["physical_prefix"][:-1]
+                if primary_iface["physical_prefix"].endswith("_")
+                else primary_iface["physical_prefix"]
+            )
 
-             for i, iface in enumerate(all_ifaces):
-                 # Map type name
-                 bus_type_key = iface['type']
-                 if hasattr(bus_type_key, 'upper'): bus_type_key = bus_type_key.upper()
-                 
-                 if bus_type_key in ['AXIL', 'AXI4-LITE', 'AXI4LITE']: bus_type_key = 'AXI4L'
-                 elif bus_type_key in ['AVMM', 'AVALON-MM']: bus_type_key = 'AVALON_MM'
-                 elif bus_type_key == 'AXIS': bus_type_key = 'AXIS'
-                 elif bus_type_key == 'AVALON_ST': bus_type_key = 'AVALON_ST'
+            for i, iface in enumerate(all_ifaces):
+                # Map type name
+                bus_type_key = iface["type"]
+                if hasattr(bus_type_key, "upper"):
+                    bus_type_key = bus_type_key.upper()
 
-                 active_ports = self._get_active_bus_ports(
-                     bus_type_name=bus_type_key,
-                     use_optional_ports=iface['use_optional_ports'],
-                     physical_prefix=iface['physical_prefix'],
-                     mode=iface['mode'],
-                     port_width_overrides=iface['port_width_overrides']
-                 )
-                 
-                 # Store ports in the interface dict for templates
-                 iface['ports'] = active_ports
-                 expanded_bus_interfaces.append(iface)
+                if bus_type_key in ["AXIL", "AXI4-LITE", "AXI4LITE"]:
+                    bus_type_key = "AXI4L"
+                elif bus_type_key in ["AVMM", "AVALON-MM"]:
+                    bus_type_key = "AVALON_MM"
+                elif bus_type_key == "AXIS":
+                    bus_type_key = "AXIS"
+                elif bus_type_key == "AVALON_ST":
+                    bus_type_key = "AVALON_ST"
 
-                 if i == 0:
-                     # Primary bus ports (for wrapper)
-                     bus_ports = active_ports
-                 else:
-                     # Secondary bus ports (for core entity)
-                     secondary_bus_ports.extend(active_ports)
+                active_ports = self._get_active_bus_ports(
+                    bus_type_name=bus_type_key,
+                    use_optional_ports=iface["use_optional_ports"],
+                    physical_prefix=iface["physical_prefix"],
+                    mode=iface["mode"],
+                    port_width_overrides=iface["port_width_overrides"],
+                )
+
+                # Store ports in the interface dict for templates
+                iface["ports"] = active_ports
+                expanded_bus_interfaces.append(iface)
+
+                if i == 0:
+                    # Primary bus ports (for wrapper)
+                    bus_ports = active_ports
+                else:
+                    # Secondary bus ports (for core entity)
+                    secondary_bus_ports.extend(active_ports)
 
         return {
-            'entity_name': ip_core.vlnv.name.lower(),
-            'registers': registers,
-            'sw_registers': sw_registers,
-            'hw_registers': hw_registers,
-            'generics': self._prepare_generics(ip_core),
-            'user_ports': self._prepare_user_ports(ip_core),
-            'bus_type': bus_type,
-            'bus_ports': bus_ports,
-            'secondary_bus_ports': secondary_bus_ports,
-            'expanded_bus_interfaces': expanded_bus_interfaces,
-            'bus_prefix': bus_prefix if ip_core.bus_interfaces else 's_axi',
-            'data_width': 32,
-            'addr_width': 8,
-            'reg_width': 4,
-            'memory_maps': ip_core.memory_maps,
-            'clock_port': clock_port,
-            'reset_port': reset_port,
-            'reset_active_high': reset_active_high,
+            "entity_name": ip_core.vlnv.name.lower(),
+            "registers": registers,
+            "sw_registers": sw_registers,
+            "hw_registers": hw_registers,
+            "generics": self._prepare_generics(ip_core),
+            "user_ports": self._prepare_user_ports(ip_core),
+            "bus_type": bus_type,
+            "bus_ports": bus_ports,
+            "secondary_bus_ports": secondary_bus_ports,
+            "expanded_bus_interfaces": expanded_bus_interfaces,
+            "bus_prefix": bus_prefix if ip_core.bus_interfaces else "s_axi",
+            "data_width": 32,
+            "addr_width": 8,
+            "reg_width": 4,
+            "memory_maps": ip_core.memory_maps,
+            "clock_port": clock_port,
+            "reset_port": reset_port,
+            "reset_active_high": reset_active_high,
             # Relative path from tb/ directory to memmap file (2 levels up for structured output)
-            'memmap_relpath': f"../../{ip_core.vlnv.name.lower()}.mm.yml",
+            "memmap_relpath": f"../../{ip_core.vlnv.name.lower()}.mm.yml",
         }
 
     def generate_package(self, ip_core: IpCore) -> str:
         """Generate VHDL package with register types and conversion functions."""
-        template = self.env.get_template('package.vhdl.j2')
+        template = self.env.get_template("package.vhdl.j2")
         context = self._get_template_context(ip_core)
         return template.render(**context)
 
-    def generate_top(self, ip_core: IpCore, bus_type: str = 'axil') -> str:
+    def generate_top(self, ip_core: IpCore, bus_type: str = "axil") -> str:
         """Generate top-level entity that instantiates core and bus wrapper."""
         if bus_type not in self.SUPPORTED_BUS_TYPES:
-            raise ValueError(f"Unsupported bus type: {bus_type}. Supported: {self.SUPPORTED_BUS_TYPES}")
+            raise ValueError(
+                f"Unsupported bus type: {bus_type}. Supported: {self.SUPPORTED_BUS_TYPES}"
+            )
 
-        template = self.env.get_template('top.vhdl.j2')
+        template = self.env.get_template("top.vhdl.j2")
         context = self._get_template_context(ip_core, bus_type)
         return template.render(**context)
 
     def generate_core(self, ip_core: IpCore) -> str:
         """Generate core logic module (bus-agnostic)."""
-        template = self.env.get_template('core.vhdl.j2')
+        template = self.env.get_template("core.vhdl.j2")
         context = self._get_template_context(ip_core)
         return template.render(**context)
 
     def generate_bus_wrapper(self, ip_core: IpCore, bus_type: str) -> str:
         """Generate bus interface wrapper for register access."""
         if bus_type not in self.SUPPORTED_BUS_TYPES:
-            raise ValueError(f"Unsupported bus type: {bus_type}. Supported: {self.SUPPORTED_BUS_TYPES}")
+            raise ValueError(
+                f"Unsupported bus type: {bus_type}. Supported: {self.SUPPORTED_BUS_TYPES}"
+            )
 
-        template = self.env.get_template(f'bus_{bus_type}.vhdl.j2')
+        template = self.env.get_template(f"bus_{bus_type}.vhdl.j2")
         context = self._get_template_context(ip_core, bus_type)
         return template.render(**context)
 
     def generate_register_file(self, ip_core: IpCore) -> str:
         """Generate standalone register file (bus-agnostic)."""
-        template = self.env.get_template('register_file.vhdl.j2')
+        template = self.env.get_template("register_file.vhdl.j2")
         context = self._get_template_context(ip_core)
         return template.render(**context)
 
     def generate_all(
         self,
         ip_core: IpCore,
-        bus_type: str = 'axil',
+        bus_type: str = "axil",
         include_regs: bool = False,
         structured: bool = False,
-        vendor: str = 'none',
-        include_testbench: bool = False
+        vendor: str = "none",
+        include_testbench: bool = False,
     ) -> Dict[str, str]:
         """
         Generate all VHDL files for the IP core.
@@ -468,11 +518,7 @@ class VHDLGenerator(BaseGenerator):
         """
         if structured:
             return self.generate_all_with_structure(
-                ip_core,
-                bus_type,
-                include_regs,
-                vendor,
-                include_testbench
+                ip_core, bus_type, include_regs, vendor, include_testbench
             )
 
         name = ip_core.vlnv.name.lower()
@@ -489,42 +535,39 @@ class VHDLGenerator(BaseGenerator):
 
         return files
 
-    def generate_intel_hw_tcl(self, ip_core: IpCore, bus_type: str = 'axil') -> str:
+    def generate_intel_hw_tcl(self, ip_core: IpCore, bus_type: str = "axil") -> str:
         """Generate Intel Platform Designer _hw.tcl component file."""
-        template = self.env.get_template('intel_hw_tcl.j2')
+        template = self.env.get_template("intel_hw_tcl.j2")
         context = self._get_template_context(ip_core, bus_type)
         # Add VLNV info
-        context['vendor'] = ip_core.vlnv.vendor
-        context['library'] = ip_core.vlnv.library
-        context['version'] = ip_core.vlnv.version
-        context['description'] = ip_core.description if hasattr(ip_core, 'description') else ''
-        context['author'] = ip_core.vlnv.vendor
-        context['display_name'] = ip_core.vlnv.name.replace('_', ' ').title()
+        context["vendor"] = ip_core.vlnv.vendor
+        context["library"] = ip_core.vlnv.library
+        context["version"] = ip_core.vlnv.version
+        context["description"] = ip_core.description if hasattr(ip_core, "description") else ""
+        context["author"] = ip_core.vlnv.vendor
+        context["display_name"] = ip_core.vlnv.name.replace("_", " ").title()
         return template.render(**context)
 
     def generate_xilinx_component_xml(self, ip_core: IpCore) -> str:
         """Generate Xilinx Vivado IP-XACT component.xml."""
-        template = self.env.get_template('xilinx_component_xml.j2')
-        context = self._get_template_context(ip_core, 'axil')
+        template = self.env.get_template("xilinx_component_xml.j2")
+        context = self._get_template_context(ip_core, "axil")
         # Add VLNV info
-        context['vendor'] = ip_core.vlnv.vendor
-        context['library'] = ip_core.vlnv.library
-        context['version'] = ip_core.vlnv.version
-        context['description'] = ip_core.description if hasattr(ip_core, 'description') else ''
-        context['display_name'] = ip_core.vlnv.name.replace('_', ' ').title()
+        context["vendor"] = ip_core.vlnv.vendor
+        context["library"] = ip_core.vlnv.library
+        context["version"] = ip_core.vlnv.version
+        context["description"] = ip_core.description if hasattr(ip_core, "description") else ""
+        context["display_name"] = ip_core.vlnv.name.replace("_", " ").title()
         return template.render(**context)
 
     def generate_xilinx_xgui(self, ip_core: IpCore) -> str:
         """Generate Xilinx Vivado XGUI TCL file."""
-        template = self.env.get_template('xilinx_xgui.j2')
-        context = self._get_template_context(ip_core, 'axil')
+        template = self.env.get_template("xilinx_xgui.j2")
+        context = self._get_template_context(ip_core, "axil")
         return template.render(**context)
 
     def generate_vendor_files(
-        self,
-        ip_core: IpCore,
-        vendor: str = 'both',
-        bus_type: str = 'axil'
+        self, ip_core: IpCore, vendor: str = "both", bus_type: str = "axil"
     ) -> Dict[str, str]:
         """
         Generate vendor-specific integration files.
@@ -540,13 +583,13 @@ class VHDLGenerator(BaseGenerator):
         name = ip_core.vlnv.name.lower()
         files = {}
 
-        if vendor in ['intel', 'both']:
+        if vendor in ["intel", "both"]:
             files[f"{name}_hw.tcl"] = self.generate_intel_hw_tcl(ip_core, bus_type)
 
-        if vendor in ['xilinx', 'both']:
+        if vendor in ["xilinx", "both"]:
             files["component.xml"] = self.generate_xilinx_component_xml(ip_core)
             # Generate XGUI file with version in filename (e.g., component_v1_0_0.tcl)
-            version_str = ip_core.vlnv.version.replace('.', '_')
+            version_str = ip_core.vlnv.version.replace(".", "_")
             files[f"xilinx/xgui/{name}_v{version_str}.tcl"] = self.generate_xilinx_xgui(ip_core)
 
         return files
@@ -554,10 +597,10 @@ class VHDLGenerator(BaseGenerator):
     def generate_all_with_structure(
         self,
         ip_core: IpCore,
-        bus_type: str = 'axil',
+        bus_type: str = "axil",
         include_regs: bool = False,
-        vendor: str = 'none',
-        include_testbench: bool = False
+        vendor: str = "none",
+        include_testbench: bool = False,
     ) -> Dict[str, str]:
         """
         Generate all files with organized folder structure (VSCode extension compatible).
@@ -591,13 +634,13 @@ class VHDLGenerator(BaseGenerator):
             files[f"tb/Makefile"] = self.generate_cocotb_makefile(ip_core, bus_type)
 
         # Vendor integration files
-        if vendor in ['intel', 'both']:
+        if vendor in ["intel", "both"]:
             files[f"intel/{name}_hw.tcl"] = self.generate_intel_hw_tcl(ip_core, bus_type)
 
-        if vendor in ['xilinx', 'both']:
+        if vendor in ["xilinx", "both"]:
             files[f"xilinx/component.xml"] = self.generate_xilinx_component_xml(ip_core)
             # Generate XGUI file with version in filename
-            version_str = ip_core.vlnv.version.replace('.', '_')
+            version_str = ip_core.vlnv.version.replace(".", "_")
             files[f"xilinx/xgui/{name}_v{version_str}.tcl"] = self.generate_xilinx_xgui(ip_core)
 
         return files
@@ -607,8 +650,8 @@ class VHDLGenerator(BaseGenerator):
         ip_core_path: str,
         generated_files: Dict[str, str],
         include_regs: bool = False,
-        vendor: str = 'none',
-        include_testbench: bool = False
+        vendor: str = "none",
+        include_testbench: bool = False,
     ) -> bool:
         """
         Update the IP core YAML file with fileSets section based on generated files.
@@ -644,7 +687,7 @@ class VHDLGenerator(BaseGenerator):
             return False  # No update needed
 
         # Read the YAML file
-        with open(ip_path, 'r') as f:
+        with open(ip_path, "r") as f:
             yaml_content = f.read()
 
         # Load as dict to preserve comments and formatting
@@ -653,21 +696,18 @@ class VHDLGenerator(BaseGenerator):
         # Convert expected fileSets to dict format
         filesets_dict = [
             {
-                'name': fs.name,
-                'description': fs.description,
-                'files': [
-                    {'path': file.path, 'type': file.type.value}
-                    for file in fs.files
-                ]
+                "name": fs.name,
+                "description": fs.description,
+                "files": [{"path": file.path, "type": file.type.value} for file in fs.files],
             }
             for fs in expected_filesets
         ]
 
         # Update or add fileSets
-        yaml_data['fileSets'] = filesets_dict
+        yaml_data["fileSets"] = filesets_dict
 
         # Write back to file
-        with open(ip_path, 'w') as f:
+        with open(ip_path, "w") as f:
             yaml.dump(yaml_data, f, default_flow_style=False, sort_keys=False, indent=2)
 
         return True
@@ -678,7 +718,7 @@ class VHDLGenerator(BaseGenerator):
         generated_files: Dict[str, str],
         include_regs: bool,
         vendor: str,
-        include_testbench: bool
+        include_testbench: bool,
     ) -> List[FileSet]:
         """Build FileSet objects from generated files."""
         filesets = []
@@ -698,50 +738,48 @@ class VHDLGenerator(BaseGenerator):
 
         rtl_files.append(File(path=f"rtl/{name}.vhd", type=FileType.VHDL))
 
-        filesets.append(FileSet(
-            name="RTL_Sources",
-            description="RTL Sources",
-            files=rtl_files
-        ))
+        filesets.append(FileSet(name="RTL_Sources", description="RTL Sources", files=rtl_files))
 
         # Simulation Resources
         if include_testbench:
             sim_files = [
                 File(path=f"tb/{name}_test.py", type=FileType.PYTHON),
-                File(path="tb/Makefile", type=FileType.UNKNOWN)
+                File(path="tb/Makefile", type=FileType.UNKNOWN),
             ]
-            filesets.append(FileSet(
-                name="Simulation_Resources",
-                description="Simulation Files",
-                files=sim_files
-            ))
+            filesets.append(
+                FileSet(
+                    name="Simulation_Resources", description="Simulation Files", files=sim_files
+                )
+            )
 
         # Integration Files
-        if vendor != 'none':
+        if vendor != "none":
             integration_files = []
-            if vendor in ['intel', 'both']:
+            if vendor in ["intel", "both"]:
                 integration_files.append(File(path=f"intel/{name}_hw.tcl", type=FileType.TCL))
-            if vendor in ['xilinx', 'both']:
+            if vendor in ["xilinx", "both"]:
                 integration_files.append(File(path=f"xilinx/component.xml", type=FileType.XML))
                 # Add XGUI file - find it from generated_files
-                xgui_files = [f for f in generated_files.keys() if f.startswith("xilinx/xgui/") and f.endswith(".tcl")]
+                xgui_files = [
+                    f
+                    for f in generated_files.keys()
+                    if f.startswith("xilinx/xgui/") and f.endswith(".tcl")
+                ]
                 if xgui_files:
                     integration_files.append(File(path=xgui_files[0], type=FileType.TCL))
 
             if integration_files:
-                filesets.append(FileSet(
-                    name="Integration",
-                    description="Platform Integration Files",
-                    files=integration_files
-                ))
+                filesets.append(
+                    FileSet(
+                        name="Integration",
+                        description="Platform Integration Files",
+                        files=integration_files,
+                    )
+                )
 
         return filesets
 
-    def _filesets_match(
-        self,
-        existing: Optional[List[FileSet]],
-        expected: List[FileSet]
-    ) -> bool:
+    def _filesets_match(self, existing: Optional[List[FileSet]], expected: List[FileSet]) -> bool:
         """Check if existing fileSets match expected ones."""
         if not existing and not expected:
             return True
@@ -770,29 +808,25 @@ class VHDLGenerator(BaseGenerator):
 
         return True
 
-    def generate_cocotb_test(self, ip_core: IpCore, bus_type: str = 'axil') -> str:
+    def generate_cocotb_test(self, ip_core: IpCore, bus_type: str = "axil") -> str:
         """Generate cocotb Python test file."""
-        template = self.env.get_template('cocotb_test.py.j2')
+        template = self.env.get_template("cocotb_test.py.j2")
         context = self._get_template_context(ip_core, bus_type)
         return template.render(**context)
 
-    def generate_cocotb_makefile(self, ip_core: IpCore, bus_type: str = 'axil') -> str:
+    def generate_cocotb_makefile(self, ip_core: IpCore, bus_type: str = "axil") -> str:
         """Generate Makefile for cocotb simulation."""
-        template = self.env.get_template('cocotb_makefile.j2')
+        template = self.env.get_template("cocotb_makefile.j2")
         context = self._get_template_context(ip_core, bus_type)
         return template.render(**context)
 
     def generate_memmap_yaml(self, ip_core: IpCore) -> str:
         """Generate memory map YAML for Python driver."""
-        template = self.env.get_template('memmap.yml.j2')
+        template = self.env.get_template("memmap.yml.j2")
         context = self._get_template_context(ip_core)
         return template.render(**context)
 
-    def generate_testbench(
-        self,
-        ip_core: IpCore,
-        bus_type: str = 'axil'
-    ) -> Dict[str, str]:
+    def generate_testbench(self, ip_core: IpCore, bus_type: str = "axil") -> Dict[str, str]:
         """
         Generate testbench files for cocotb simulation.
 
@@ -811,7 +845,7 @@ class VHDLGenerator(BaseGenerator):
 
 
 # Backward compatibility: standalone function
-def generate_vhdl(ip_core: IpCore, bus_type: str = 'axil') -> Dict[str, str]:
+def generate_vhdl(ip_core: IpCore, bus_type: str = "axil") -> Dict[str, str]:
     """
     Generate VHDL files for an IP core.
 
