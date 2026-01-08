@@ -1622,6 +1622,28 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(
                   newFields[fieldIndex] = updatedField;
                   onUpdate(['fields'], newFields);
                 }}
+                onBatchUpdateFields={(updates) => {
+                  const newFields = [...fields];
+                  updates.forEach(({ idx, range }) => {
+                    const [hi, lo] = range;
+                    const field = newFields[idx];
+                    if (field) {
+                      newFields[idx] = {
+                        ...field,
+                        bit_range: range,
+                        bit_offset: lo,
+                        bit_width: hi - lo + 1,
+                      };
+                    }
+                  });
+                  // Sort by LSB to keep table clean
+                  newFields.sort((a, b) => {
+                    const aLo = a.bit_range ? a.bit_range[1] : (a.bit_offset ?? 0);
+                    const bLo = b.bit_range ? b.bit_range[1] : (b.bit_offset ?? 0);
+                    return aLo - bLo;
+                  });
+                  onUpdate(['fields'], newFields);
+                }}
                 onCreateField={(newField) => {
                   // Generate unique name
                   let maxN = 0;

@@ -9,6 +9,7 @@ interface BitFieldVisualizerProps {
   layout?: 'default' | 'pro';
   onUpdateFieldReset?: (fieldIndex: number, resetValue: number | null) => void;
   onUpdateFieldRange?: (fieldIndex: number, newRange: [number, number]) => void;
+  onBatchUpdateFields?: (updates: { idx: number; range: [number, number] }[]) => void;
   onCreateField?: (field: { bit_range: [number, number]; name: string }) => void;
 }
 
@@ -198,6 +199,18 @@ const SHIFT_DRAG_INITIAL: ShiftDragState = {
   maxBit: 31,
 };
 
+interface CtrlDragState {
+  active: boolean;
+  draggedFieldIndex: number | null;
+  previewSegments: ProSegment[] | null;
+}
+
+const CTRL_DRAG_INITIAL: CtrlDragState = {
+  active: false,
+  draggedFieldIndex: null,
+  previewSegments: null,
+};
+
 /**
  * Find the boundaries of the gap containing startBit.
  * Returns { minBit, maxBit } for the contiguous empty region.
@@ -269,6 +282,7 @@ const BitFieldVisualizer: React.FC<BitFieldVisualizerProps> = ({
   layout = 'default',
   onUpdateFieldReset,
   onUpdateFieldRange,
+  onBatchUpdateFields,
   onCreateField,
 }) => {
   const [valueView, setValueView] = useState<'hex' | 'dec'>('hex');
@@ -281,6 +295,9 @@ const BitFieldVisualizer: React.FC<BitFieldVisualizerProps> = ({
 
   // Shift-drag state for resizing/creating fields
   const [shiftDrag, setShiftDrag] = useState<ShiftDragState>(SHIFT_DRAG_INITIAL);
+
+  // Ctrl-drag state for reordering fields
+  const [ctrlDrag, setCtrlDrag] = useState<CtrlDragState>(CTRL_DRAG_INITIAL);
 
   useEffect(() => {
     if (!dragActive) {
@@ -331,6 +348,66 @@ const BitFieldVisualizer: React.FC<BitFieldVisualizerProps> = ({
       window.removeEventListener('blur', () => setShiftDrag(SHIFT_DRAG_INITIAL));
     };
   }, [shiftDrag, onUpdateFieldRange, onCreateField]);
+
+  // Ctrl-drag: cleanup on pointer up
+  useEffect(() => {
+    if (!ctrlDrag.active) {
+      return;
+    }
+    const commitCtrlDrag = () => {
+      if (ctrlDrag.previewSegments) {
+        // Commit the new layout
+        // Group by field index and update ranges
+        const updates: { idx: number; range: [number, number] }[] = [];
+
+        ctrlDrag.previewSegments.forEach(seg => {
+          if (seg.type === 'field') {
+            updates.push({ idx: seg.idx, range: [seg.end, seg.start] });
+          }
+        });
+
+        // Apply updates
+        if (onBatchUpdateFields && updates.length > 0) {
+          onBatchUpdateFields(updates);
+        } else if (onUpdateFieldRange) {
+          // Fallback (might cause race conditions)
+          updates.forEach(update => {
+            onUpdateFieldRange(update.idx, update.range);
+          });
+        }
+      }
+      setCtrlDrag(CTRL_DRAG_INITIAL);
+    };
+    window.addEventListener('pointerup', commitCtrlDrag);
+    window.addEventListener('pointercancel', () => setCtrlDrag(CTRL_DRAG_INITIAL));
+    window.addEventListener('blur', () => setCtrlDrag(CTRL_DRAG_INITIAL));
+    return () => {
+      window.removeEventListener('pointerup', commitCtrlDrag);
+      window.removeEventListener('pointercancel', () => setCtrlDrag(CTRL_DRAG_INITIAL));
+      window.removeEventListener('blur', () => setCtrlDrag(CTRL_DRAG_INITIAL));
+    };
+  }, [ctrlDrag, onUpdateFieldRange, onBatchUpdateFields]);
+
+  /**
+   * Handle Ctrl+PointerDown to start reorder mode.
+   */
+  const handleCtrlPointerDown = (bit: number, e: React.PointerEvent) => {
+    if (!e.ctrlKey) return;
+    if (e.button !== 0) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    const fieldAtBit = bits[bit];
+    if (fieldAtBit !== null) {
+      // Start reorder drag
+      setCtrlDrag({
+        active: true,
+        draggedFieldIndex: fieldAtBit,
+        previewSegments: buildProLayoutSegments(fields, registerSize),
+      });
+    }
+  };
 
   /**
    * Handle Shift+PointerDown to start resize or create mode.
@@ -391,6 +468,156 @@ const BitFieldVisualizer: React.FC<BitFieldVisualizerProps> = ({
     if (clampedBit !== shiftDrag.currentBit) {
       setShiftDrag((prev) => ({ ...prev, currentBit: clampedBit }));
     }
+  };
+
+  /**
+   * Handle pointer move during ctrl-drag (reordering).
+   */
+  const handleCtrlPointerMove = (bit: number) => {
+    if (!ctrlDrag.active || ctrlDrag.draggedFieldIndex === null) return;
+
+    // 1. Get original segments (MSB -> LSB)
+    const originalSegments = buildProLayoutSegments(fields, registerSize);
+
+    // 2. Find and remove dragged segment
+    const draggedSegIndex = originalSegments.findIndex(s => s.type === 'field' && s.idx === ctrlDrag.draggedFieldIndex);
+    if (draggedSegIndex === -1) return;
+
+    const draggedSeg = originalSegments[draggedSegIndex];
+    if (draggedSeg.type !== 'field') return; // Should not happen
+
+    // Width of the moving field
+    const draggedWidth = draggedSeg.end - draggedSeg.start + 1;
+
+    // Remove it from the list for calculations
+    const cleanSegments = [...originalSegments];
+    cleanSegments.splice(draggedSegIndex, 1);
+
+    // 3. Flatten the clean segments into a contiguous simulated layout (LSB based)
+    // We need to know where each remaining segment starts logicallly if we packed them from LSB=0
+    // But wait, we want to know their "virtual position" to hit-test against cursor?
+    // User cursor matches valid bit positions 0..31.
+    // If we remove an item, the visual cursor is still at "Bit X".
+    // We want to insert AT "Bit X".
+    // So we should look at the original layout without the dragged item, but 
+    // we assume the drag is "floating" over the layout.
+    // Actually, simpler: We iterate the clean list. We calculate "Target Bit" = cursor.
+    // But since the list has "holes" (where dragged item was), how do we map?
+    // Let's use the CLEAN list repacked.
+    // E.g. [F1, F2, F3]. Drag F2. Clean: [F1, F3]. Repacked Clean: F1(at 0), F3(at F1.w).
+    // If I hover bit 0, I hit F1.
+    // If I hover bit F1.w, I hit F3.
+    // This allows me to insert strictly based on available spots.
+
+    // Repack clean list to build coordinate space
+    let currentBit = 0;
+    const repackedClean = cleanSegments.slice().reverse().map(seg => {
+      const width = seg.end - seg.start + 1;
+      const newLo = currentBit;
+      const newHi = currentBit + width - 1;
+      currentBit += width;
+      return { ...seg, start: newLo, end: newHi, width };
+    }).reverse(); // Restore MSB->LSB order
+
+    // 4. Find insertion target in repacked list
+    // Since repackedClean covers 0 .. (32 - draggedWidth - 1), we constrain cursor
+    const maxCursor = Math.max(0, 32 - draggedWidth);
+    // We clamp the effective cursor to available space 
+    // But wait, user might drag to bit 31.
+    // If total width < 32 (implicit gap at top), we should just append at top.
+
+    // Let's iterate and find target
+    let effectiveCursor = Math.min(bit, currentBit); // Ensure we don't go beyond packed content
+
+    // If cursor is beyond current content (e.g. into top implicit gap), effectiveCursor is top.
+
+    // Find target segment covering effectiveCursor
+    const targetIdx = repackedClean.findIndex(s => effectiveCursor >= s.start && effectiveCursor <= s.end);
+
+    const newSegments: ProSegment[] = [];
+
+    // Helper to insert dragged segment
+    const insertDragged = () => {
+      newSegments.push(draggedSeg);
+    };
+
+    if (targetIdx === -1) {
+      // Cursor is above all content (implicit top gap)
+      // Just append at MSB side (start of list since MSB->LSB)
+      insertDragged(); // Insert as MSB
+      newSegments.push(...cleanSegments);
+    } else {
+      // We hit a segment.
+      const target = repackedClean[targetIdx];
+      const originalTarget = cleanSegments[targetIdx]; // Corresponding logic segment
+
+      const offsetInTarget = effectiveCursor - target.start;
+
+      if (target.type === 'field') {
+        // Insert Before or After based on center? 
+        // Since list is MSB->LSB:
+        // "Before" in array = Higher Bits (MSB side).
+        // "After" in array = Lower Bits (LSB side).
+        const msbSide = offsetInTarget > (target.width / 2);
+
+        // Split list at target
+        // [Segments BeforeTarget] [Target] [Segments AfterTarget]
+        const before = cleanSegments.slice(0, targetIdx);
+        const after = cleanSegments.slice(targetIdx + 1);
+
+        newSegments.push(...before);
+        if (msbSide) {
+          insertDragged();
+          newSegments.push(originalTarget);
+        } else {
+          newSegments.push(originalTarget);
+          insertDragged();
+        }
+        newSegments.push(...after);
+      } else {
+        // Target is GAP. Split it.
+        // Gap is [MSB ... LSB].
+        // offsetInTarget is from LSB side (target.start).
+        // target.start = LSB. target.end = MSB.
+        // effectiveCursor matches offset.
+        // We want dragged segment to land at offset.
+        // So split gap: [Gap Top] [Dragged] [Gap Bot].
+        // Gap Bot width = offset.
+        // Gap Top width = width - offset.
+
+        const botWidth = offsetInTarget;
+        const topWidth = target.width - offsetInTarget;
+
+        const before = cleanSegments.slice(0, targetIdx);
+        const after = cleanSegments.slice(targetIdx + 1);
+
+        newSegments.push(...before);
+
+        if (topWidth > 0) {
+          newSegments.push({ type: 'gap', start: 0, end: 0, width: topWidth } as any); // Dummy start/end
+        }
+
+        insertDragged();
+
+        if (botWidth > 0) {
+          newSegments.push({ type: 'gap', start: 0, end: 0, width: botWidth } as any); // Dummy start/end
+        }
+
+        newSegments.push(...after);
+      }
+    }
+
+    // 5. Final Repack for Preview
+    currentBit = 0;
+    const finalSegments = newSegments.slice().reverse().map(seg => {
+      const width = (seg as any).width || (seg.end - seg.start + 1);
+      const lo = currentBit;
+      const hi = currentBit + width - 1;
+      currentBit += width;
+      return { ...seg, start: lo, end: hi };
+    }).reverse();
+
+    setCtrlDrag(prev => ({ ...prev, previewSegments: finalSegments }));
   };
 
   const applyBit = (fieldIndex: number, localBit: number, desired: 0 | 1) => {
@@ -558,7 +785,9 @@ const BitFieldVisualizer: React.FC<BitFieldVisualizerProps> = ({
 
   if (layout === 'pro') {
     // Grouped, modern layout with floating labels and grid - includes gaps
-    const segments = buildProLayoutSegments(fields, registerSize);
+    const segments = (ctrlDrag.active && ctrlDrag.previewSegments)
+      ? ctrlDrag.previewSegments
+      : buildProLayoutSegments(fields, registerSize);
     return (
       <div className="w-full max-w-4xl">
         <div className="relative w-full flex items-start">
@@ -598,13 +827,20 @@ const BitFieldVisualizer: React.FC<BitFieldVisualizerProps> = ({
                             onPointerDown={(e) => {
                               if (e.shiftKey) {
                                 handleShiftPointerDown(bit, e);
+                                return;
+                              }
+                              if (e.ctrlKey) {
+                                handleCtrlPointerDown(bit, e);
+                                return;
                               }
                             }}
-                            onPointerMove={() => handleShiftPointerMove(bit)}
+                            onPointerMove={() => {
+                              handleShiftPointerMove(bit);
+                              handleCtrlPointerMove(bit);
+                            }}
                             onPointerEnter={() => {
-                              if (shiftDrag.active) {
-                                handleShiftPointerMove(bit);
-                              }
+                              if (shiftDrag.active) handleShiftPointerMove(bit);
+                              if (ctrlDrag.active) handleCtrlPointerMove(bit);
                             }}
                           >
                             <span className="text-sm font-mono vscode-muted select-none">
@@ -696,6 +932,11 @@ const BitFieldVisualizer: React.FC<BitFieldVisualizerProps> = ({
                               handleShiftPointerDown(bit, e);
                               return;
                             }
+                            // Ctrl-drag for reorder
+                            if (e.ctrlKey) {
+                              handleCtrlPointerDown(bit, e);
+                              return;
+                            }
                             // Normal bit toggle
                             if (!onUpdateFieldReset) {
                               return;
@@ -712,11 +953,18 @@ const BitFieldVisualizer: React.FC<BitFieldVisualizerProps> = ({
                             setDragLast(dragKey);
                             applyBit(group.idx, localBit, desired);
                           }}
-                          onPointerMove={() => handleShiftPointerMove(bit)}
+                          onPointerMove={() => {
+                            handleShiftPointerMove(bit);
+                            handleCtrlPointerMove(bit);
+                          }}
                           onPointerEnter={(e) => {
                             // Handle shift-drag move
                             if (shiftDrag.active) {
                               handleShiftPointerMove(bit);
+                              return;
+                            }
+                            if (ctrlDrag.active) {
+                              handleCtrlPointerMove(bit);
                               return;
                             }
                             // Normal bit drag

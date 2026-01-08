@@ -134,3 +134,90 @@ When the user releases the mouse:
     *   Call `onCreateField({ bit_range: [H, L] })`.
 
 This implementation ensures that "shrinking" a field is strictly equivalent to "selecting a sub-range" of that field, providing a predictable mental model for the user.
+
+---
+
+# Ctrl-Drag Bit Field Interaction: Reordering Implementation
+
+The "Ctrl-Drag" feature allows users to reorder fields and split gaps by treating the register as a list of movable segments.
+
+## 1. The Reorder Model
+
+Unlike Shift-Drag which modifies ranges in place, Ctrl-Drag treats the register as a collection of "Blocks" (Fields) and "Spacers" (Gaps).
+
+### Key Concepts
+*   **Gap Mutability**: Gaps are "first-class citizens" in the layout list but are *mutable*. They can be split, shrunk, or merged to accommodate field movements.
+*   **Conservation of Width**: Moving a field preserves its bit-width. The field is essentially "lifted" from the layout and "dropped" into a new location, pushing other elements aside (or splitting them).
+*   **Implicit Repacking**: The final bit positions of ALL fields are recalculated from LSB (0) upwards based on the new order of segments.
+
+---
+
+## 2. Reorder Algorithm (`handleCtrlPointerMove`)
+
+The core logic executes on every pointer move event to generate a live preview.
+
+### Step 1: Segmentation & Cleaning
+1.  **Generate Segments**: Call `buildProLayoutSegments` to get the current state `[S_n, ..., S_0]` (MSB to LSB).
+2.  **Extract Dragged Field**: Identify the field being dragged (`F_drag`).
+3.  **Remove & Merge**: Remove `F_drag` from the list. 
+    *   *Implicit Gap Creation*: Removing `F_drag` leaves a logical "hole".
+    *   *Simplification*: The algorithm works on a "Clean List" of remaining segments. Since we repack from LSB=0 later, any "hole" left by the dragged field naturally closes up if we don't insert a spacer.
+    *   *Wait*: Actually, the algorithm *keeps* the remaining segments in their relative order but repacks them tightly to create a coordinate space for the cursor.
+
+### Step 2: Hitting the Target
+1.  **Coordinate Space**: The "Clean List" is conceptually repacked from 0. This defines a mapping from `0..31` to `Segment Index`.
+2.  **Cursor Mapping**: The user's cursor bit `B` is mapped against this packed namespace.
+    *   `Target Segment T` is found such that `T.start <= B <= T.end`.
+
+### Step 3: Insertion & Splitting
+Once the Target `T` is identified, we insert `F_drag` relative to it.
+
+#### Case A: Target is a Field
+*   **Split Logic**: We cannot split a field. We insert *Before* or *After*.
+*   **Decision**: Check if cursor `B` is in the upper half or lower half of `T`.
+    *   Upper Half: Insert `F_drag` on the MSB side of `T`.
+    *   Lower Half: Insert `F_drag` on the LSB side of `T`.
+
+#### Case B: Target is a Gap
+*   **Split Logic**: A Gap can be split into `[Gap_Top] [F_drag] [Gap_Bot]`.
+*   **Calculation**:
+    *   `Offset = B - T.start` (Local offset in gap).
+    *   `Gap_Bot` width = `Offset`.
+    *   `Gap_Top` width = `T.width - Offset`.
+    *   If `Offset == 0`, `Gap_Bot` is empty (dropped).
+    *   If `Offset == T.width`, `Gap_Top` is empty (dropped).
+
+### Step 4: Final Repacking
+1.  Construct the new list: `[...Segments_Above, (Gap_Top), F_drag, (Gap_Bot), ...Segments_Below]`.
+2.  **Repack Loop**: Iterate from LSB (end of reverse list).
+    *   `Current_Bit = 0`.
+    *   For each segment:
+        *   `Seg.start = Current_Bit`.
+        *   `Seg.end = Current_Bit + Seg.width - 1`.
+        *   `Current_Bit += Seg.width`.
+3.  **Result**: A list of `previewSegments` with fully resolved bit ranges.
+
+---
+
+## 3. Atomic Commit Mechanism
+
+Since a reorder operation can change the bit ranges of *multiple* fields simultaneously (e.g., swapping two fields changes valid bits for both), updates must be atomic.
+
+### The Problem: Race Conditions
+If `onUpdateFieldRange` is called sequentially for multiple fields:
+1.  Update Field A -> Triggers Parent State Update.
+2.  Update Field B -> Triggers Parent State Update (using stale state from before Step 1).
+3.  Result: Step 1 is lost.
+
+### The Solution: `onBatchUpdateFields`
+We introduced a specific callback props for batch operations.
+
+```typescript
+onBatchUpdateFields: (updates: { idx: number; range: [number, number] }[]) => void
+```
+
+**Implementation in `DetailsPanel`**:
+1.  Clone `fields` array.
+2.  Apply all updates locally to the clone.
+3.  **Sort**: Re-sort the array by LSB to ensure logical table order.
+4.  **Single Commit**: Call `onUpdate(['fields'], newFields)` once.
