@@ -2738,6 +2738,9 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(
                 hoveredRegIndex={hoveredRegIndex}
                 setHoveredRegIndex={setHoveredRegIndex}
                 baseAddress={baseAddress}
+                onReorderRegisters={(newRegs) =>
+                  onUpdate(["registers"], newRegs)
+                }
               />
             </div>
           </div>
