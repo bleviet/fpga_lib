@@ -29,6 +29,11 @@
         "category": "FPGA IP Core"
       },
       {
+        "command": "fpga-ip-core.createIpCoreWithMemoryMap",
+        "title": "Create IP Core with Memory Map",
+        "category": "FPGA IP Core"
+      },
+      {
         "command": "fpga-ip-core.generateVHDL",
         "title": "Generate VHDL (AXI-Lite)",
         "category": "FPGA IP Core"
