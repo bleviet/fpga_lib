@@ -38,35 +38,17 @@ const RegisterMapVisualizer: React.FC<RegisterMapVisualizerProps> = ({
     });
   }, [registers, baseAddress]);
 
-  // Calculate visual widths (proportional to combined sizes)
-  const visualGroups = useMemo(() => {
-    const totalSize = groups.reduce((sum, g) => sum + g.size, 0);
-    if (totalSize === 0) {
-      return groups.map((g) => ({ ...g, widthPercent: 100 / groups.length }));
-    }
-    return groups.map((group) => {
-      const widthPercent = (group.size / totalSize) * 100;
-      return { ...group, widthPercent };
-    });
-  }, [groups]);
-
   return (
     <div className="w-full">
       <div className="relative w-full flex items-start overflow-x-auto pb-2">
         {/* Register grid background */}
-        <div className="relative flex flex-row items-end gap-0 pl-4 pr-2 pt-12 pb-2 min-h-[64px] min-w-max">
-          {visualGroups.map((group, groupIdx) => {
+        <div className="relative flex flex-row items-end gap-0 pl-4 pr-2 pt-12 pb-2 min-h-[64px] w-full">
+          {groups.map((group, groupIdx) => {
             const isHovered = hoveredRegIndex === group.idx;
-            // Responsive min-width: 80px on tablet/mobile, 120px on desktop
-            const minWidth =
-              typeof window !== "undefined" && window.innerWidth < 900
-                ? "80px"
-                : "120px";
             return (
               <div
                 key={group.idx}
-                className={`relative flex flex-col items-center justify-end select-none ${isHovered ? "z-10" : ""}`}
-                style={{ width: `${group.widthPercent}%`, minWidth }}
+                className={`relative flex-1 flex flex-col items-center justify-end select-none min-w-[120px] ${isHovered ? "z-10" : ""}`}
                 onMouseEnter={() => setHoveredRegIndex(group.idx)}
                 onMouseLeave={() => setHoveredRegIndex(null)}
               >
@@ -119,11 +101,6 @@ const RegisterMapVisualizer: React.FC<RegisterMapVisualizerProps> = ({
               </div>
             );
           })}
-        </div>
-      </div>
-      <div className="mt-3 flex items-center justify-end gap-3">
-        <div className="text-sm vscode-muted font-mono">
-          Base: {toHex(baseAddress)} | Registers: {registers.length}
         </div>
       </div>
     </div>

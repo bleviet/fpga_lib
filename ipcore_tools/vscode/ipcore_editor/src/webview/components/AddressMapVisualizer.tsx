@@ -52,36 +52,18 @@ const AddressMapVisualizer: React.FC<AddressMapVisualizerProps> = ({
     });
   }, [blocks]);
 
-  // Calculate visual widths (proportional to combined block sizes, not total address space)
-  const visualGroups = useMemo(() => {
-    const totalBlockSize = groups.reduce((sum, g) => sum + g.size, 0);
-    if (totalBlockSize === 0) {
-      return groups.map((g) => ({ ...g, widthPercent: 100 / groups.length }));
-    }
-    return groups.map((group) => {
-      const widthPercent = (group.size / totalBlockSize) * 100;
-      return { ...group, widthPercent };
-    });
-  }, [groups]);
-
   return (
     <div className="w-full">
       <div className="relative w-full flex items-start overflow-x-auto pb-2">
         {/* Address grid background */}
         {/* <div className="absolute inset-0 pointer-events-none fpga-bit-grid-bg bg-[size:32px_48px] rounded-lg" /> */}
-        <div className="relative flex flex-row items-end gap-0 pl-4 pr-2 pt-12 pb-2 min-h-[64px] min-w-max">
-          {visualGroups.map((group, groupIdx) => {
+        <div className="relative flex flex-row items-end gap-0 pl-4 pr-2 pt-12 pb-2 min-h-[64px] w-full">
+          {groups.map((group, groupIdx) => {
             const isHovered = hoveredBlockIndex === group.idx;
-            // Responsive min-width: 80px on tablet/mobile, 120px on desktop
-            const minWidth =
-              typeof window !== "undefined" && window.innerWidth < 900
-                ? "80px"
-                : "120px";
             return (
               <div
                 key={group.idx}
-                className={`relative flex flex-col items-center justify-end select-none ${isHovered ? "z-10" : ""}`}
-                style={{ width: `${group.widthPercent}%`, minWidth }}
+                className={`relative flex-1 flex flex-col items-center justify-end select-none min-w-[120px] ${isHovered ? "z-10" : ""}`}
                 onMouseEnter={() => setHoveredBlockIndex(group.idx)}
                 onMouseLeave={() => setHoveredBlockIndex(null)}
               >
@@ -140,11 +122,6 @@ const AddressMapVisualizer: React.FC<AddressMapVisualizerProps> = ({
               </div>
             );
           })}
-        </div>
-      </div>
-      <div className="mt-3 flex items-center justify-end gap-3">
-        <div className="text-sm vscode-muted font-mono">
-          Total Address Space: {toHex(maxAddress)}
         </div>
       </div>
     </div>

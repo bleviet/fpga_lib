@@ -860,7 +860,7 @@ const BitFieldVisualizer: React.FC<BitFieldVisualizerProps> = ({
       <div className="w-full">
         <div className="relative w-full flex items-start overflow-x-auto pb-2">
           {/* Bit grid background */}
-          <div className="relative flex flex-row items-end gap-0.5 pl-4 pr-2 pt-12 pb-2 min-h-[64px] min-w-max">
+          <div className="relative flex flex-row items-end gap-0.5 pl-4 pr-2 pt-12 pb-2 min-h-[64px] w-full min-w-max">
             {/* Render each segment (field or gap) */}
             {segments.map((segment, segIdx) => {
               const width = segment.end - segment.start + 1;
