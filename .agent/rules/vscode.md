@@ -23,7 +23,7 @@ trigger: always_on
 ## Manifest Integrity (`package.json`)
 - **Commands:** If you add a command in code, you MUST add it to `contributes.commands`.
   - Existing commands: `createIpCore`, `createMemoryMap`, `generateVHDL`, `generateVHDLWithBus`
-- **Custom Editors:** `fpgaMemoryMap.editor` (*.memmap.yml), `fpgaIpCore.editor` (*.yml)
+- **Custom Editors:** `fpgaMemoryMap.editor` (*.mm.yml), `fpgaIpCore.editor` (*.yml)
 - **Keybindings:** Check for conflicts before adding new keybindings.
 
 ## Architecture

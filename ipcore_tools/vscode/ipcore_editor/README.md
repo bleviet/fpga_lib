@@ -47,7 +47,7 @@ Press `F5` to launch the Extension Development Host.
 
 ### Opening Files
 
-1. Create or open a `.memmap.yml` file
+1. Create or open a `.mm.yml` file
 2. The visual editor opens automatically
 3. Use the split view to see YAML source alongside the editor
 
@@ -64,7 +64,7 @@ Press `F5` to launch the Extension Development Host.
 
 **Registers:**
 - Edit offset, access type, description
-- Insert with `Shift+O`/`Shift+I` 
+- Insert with `Shift+O`/`Shift+I`
 - Delete with `Shift+D`
 
 **Bit Fields:**
@@ -87,7 +87,7 @@ Press `F5` to launch the Extension Development Host.
 
 **Operations:**
 - `Shift+O` - Insert after selected item
-- `Shift+I` - Insert before selected item  
+- `Shift+I` - Insert before selected item
 - `Shift+D` - Delete selected item
 - `Alt+↑` / `Alt+↓` - Move field/block
 

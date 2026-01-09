@@ -21,7 +21,7 @@
 ### VSCode Extension (`ipcore_tools/vscode/ipcore_editor/`)
 * **Manifest:** `package.json` - Extension configuration, commands, and custom editors.
   * **Commands:** `createIpCore`, `createMemoryMap`, `generateVHDL`, `generateVHDLWithBus`
-  * **Custom Editors:** `fpgaMemoryMap.editor` (*.memmap.yml), `fpgaIpCore.editor` (*.yml)
+  * **Custom Editors:** `fpgaMemoryMap.editor` (*.mm.yml), `fpgaIpCore.editor` (*.yml)
 * **Entry Point:** `src/extension.ts` - Registers custom editor providers and commands on activation.
 * **Providers:** `src/providers/` - `MemoryMapEditorProvider`, `IpCoreEditorProvider` for visual YAML editing.
 * **Commands:** `src/commands/` - `FileCreationCommands.ts`, `GenerateCommands.ts` for file scaffolding and VHDL generation.

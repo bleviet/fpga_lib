@@ -1,5 +1,5 @@
-import * as vscode from 'vscode';
-import * as path from 'path';
+import * as vscode from "vscode";
+import * as path from "path";
 
 const IP_CORE_TEMPLATE = `apiVersion: 1.0
 vlnv:
@@ -46,14 +46,17 @@ const MEMORY_MAP_TEMPLATE = `- name: NEW_MEMORY_MAP
 `;
 
 export async function createIpCoreCommand(): Promise<void> {
-  await createFileWithTemplate('new_ip_core.yml', IP_CORE_TEMPLATE);
+  await createFileWithTemplate("new_ip_core.yml", IP_CORE_TEMPLATE);
 }
 
 export async function createMemoryMapCommand(): Promise<void> {
-  await createFileWithTemplate('new_memory_map.memmap.yml', MEMORY_MAP_TEMPLATE);
+  await createFileWithTemplate("new_memory_map.mm.yml", MEMORY_MAP_TEMPLATE);
 }
 
-async function createFileWithTemplate(defaultFileName: string, template: string): Promise<void> {
+async function createFileWithTemplate(
+  defaultFileName: string,
+  template: string,
+): Promise<void> {
   const workspaceFolders = vscode.workspace.workspaceFolders;
   let defaultUri: vscode.Uri | undefined;
 
@@ -63,21 +66,24 @@ async function createFileWithTemplate(defaultFileName: string, template: string)
 
   const uri = await vscode.window.showSaveDialog({
     defaultUri,
-    saveLabel: 'Create File',
+    saveLabel: "Create File",
     title: `Create ${defaultFileName}`,
     filters: {
-      'YAML Files': ['yml', 'yaml'],
+      "YAML Files": ["yml", "yaml"],
     },
   });
 
   if (uri) {
     try {
-      await vscode.workspace.fs.writeFile(uri, new Uint8Array(Buffer.from(template)));
+      await vscode.workspace.fs.writeFile(
+        uri,
+        new Uint8Array(Buffer.from(template)),
+      );
       const document = await vscode.workspace.openTextDocument(uri);
       await vscode.window.showTextDocument(document);
     } catch (error) {
       vscode.window.showErrorMessage(
-        `Failed to create file: ${error instanceof Error ? error.message : String(error)}`
+        `Failed to create file: ${error instanceof Error ? error.message : String(error)}`,
       );
     }
   }

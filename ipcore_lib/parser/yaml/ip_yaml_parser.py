@@ -362,7 +362,7 @@ class YamlIpCoreParser:
         Parse memory maps, handling imports.
 
         Supports both:
-        - memoryMaps: { import: "file.yml" } or { import: "file.memmap.yml" }
+        - memoryMaps: { import: "file.yml" } or { import: "file.mm.yml" }
         - memoryMaps: [{ name: "MAP1", ... }]
         """
         if not data:
@@ -385,7 +385,7 @@ class YamlIpCoreParser:
 
         Supports both:
         - Legacy multi-document format with registerTemplates
-        - New .memmap.yml format (list at root with addressBlocks)
+        - New .mm.yml format (list at root with addressBlocks)
         """
         if not file_path.exists():
             raise ParseError(f"Memory map file not found: {file_path}")
@@ -408,7 +408,7 @@ class YamlIpCoreParser:
             # Single document or new format
             map_data = docs[-1] if docs else []
 
-        # Check if map_data is a list (new .memmap.yml format) or dict (legacy)
+        # Check if map_data is a list (new .mm.yml format) or dict (legacy)
         if isinstance(map_data, list):
             # New format: list of memory maps with addressBlocks
             return self._parse_memory_map_list(map_data, file_path)
@@ -502,7 +502,7 @@ class YamlIpCoreParser:
                     current_offset += reg_data["reserved"]
                     continue
 
-                # Handle nested register arrays (new .memmap.yml format)
+                # Handle nested register arrays (new .mm.yml format)
                 # Example: TIMER with count=4 containing nested CTRL, STATUS registers
                 if "registers" in reg_data and "count" in reg_data:
                     expanded_regs = self._expand_nested_register_array(
@@ -573,7 +573,7 @@ class YamlIpCoreParser:
         self, array_spec: Dict[str, Any], base_offset: int, file_path: Path
     ) -> List[Register]:
         """
-        Expand a nested register array (new .memmap.yml format).
+        Expand a nested register array (new .mm.yml format).
 
         Example:
             - name: TIMER

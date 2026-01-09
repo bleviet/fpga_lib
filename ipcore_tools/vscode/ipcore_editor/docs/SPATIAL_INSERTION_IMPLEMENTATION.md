@@ -89,14 +89,14 @@ Successfully implemented spatial insertion with automatic repacking for vim-styl
 ### Testing
 
 #### Test File Created
-- `vscode-extension/test_spatial_insertion.memmap.yml`
+- `vscode-extension/test_spatial_insertion.mm.yml`
 - Contains sample memory map with:
   - 1 address block
   - 2 registers
   - 3 bit fields (properly positioned for testing repacking)
 
 #### Manual Testing Instructions
-1. Open `test_spatial_insertion.memmap.yml` in VS Code
+1. Open `test_spatial_insertion.mm.yml` in VS Code
 2. Select a field/block/register in the table
 3. Press `o` to insert after (lower bits/higher addresses)
 4. Press `O` (Shift+o) to insert before (higher bits/lower addresses)
@@ -114,7 +114,7 @@ Successfully implemented spatial insertion with automatic repacking for vim-styl
 2. `vscode-extension/docs/spatial_insertion_plan.md` - Updated plan with user decisions
 
 ### Files Created
-1. `vscode-extension/test_spatial_insertion.memmap.yml` - Test file
+1. `vscode-extension/test_spatial_insertion.mm.yml` - Test file
 
 ### Next Steps (Future Enhancements)
 - Add visual insertion preview in visualizers (highlight insertion point before pressing o/O)

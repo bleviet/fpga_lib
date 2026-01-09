@@ -174,11 +174,11 @@ describe('MyAlgorithm', () => {
   it('should handle normal case', () => {
     expect(myAlgorithm(input)).toEqual(expected);
   });
-  
+
   it('should handle edge case', () => {
     expect(myAlgorithm(edgeInput)).toEqual(edgeExpected);
   });
-  
+
   it('should handle empty input', () => {
     expect(myAlgorithm([])).toEqual([]);
   });
@@ -194,7 +194,7 @@ describe('MyAlgorithm', () => {
 
 Before submitting PR:
 1. Launch Extension Development Host (F5)
-2. Open sample `.memmap.yml` file
+2. Open sample `.mm.yml` file
 3. Test your changes thoroughly
 4. Test edge cases (empty files, large files, invalid data)
 

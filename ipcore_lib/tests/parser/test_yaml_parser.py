@@ -359,7 +359,7 @@ def test_parse_memory_map_with_import(tmp_path):
         - name: "ID"
           size: 32
 """
-    memmap_file = tmp_path / "regs.memmap.yml"
+    memmap_file = tmp_path / "regs.mm.yml"
     memmap_file.write_text(memmap_content)
 
     # Create main IP core file

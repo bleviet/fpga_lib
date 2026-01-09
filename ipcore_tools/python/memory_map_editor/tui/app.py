@@ -1,10 +1,11 @@
 #!/usr/bin/env python
 
-import sys
-import yaml
 import copy
+import sys
 from pathlib import Path
-from typing import Optional, List, Any
+from typing import Any, List, Optional
+
+import yaml
 
 # Add parent directory to path if running directly
 if __name__ == "__main__":
@@ -14,16 +15,17 @@ if __name__ == "__main__":
         sys.path.insert(0, str(package_root))
 
 from textual.app import App, ComposeResult
-from textual.containers import Horizontal, Vertical, VerticalScroll, Grid
-from textual.widgets import Header, Footer, Tree, Label, Input, DataTable, Static, Button, Select
-from textual.screen import ModalScreen
 from textual.binding import Binding
-from textual.widgets.tree import TreeNode
+from textual.containers import Grid, Horizontal, Vertical, VerticalScroll
 from textual.coordinate import Coordinate
 from textual.geometry import Offset
+from textual.screen import ModalScreen
+from textual.widgets import Button, DataTable, Footer, Header, Input, Label, Select, Static, Tree
+from textual.widgets.tree import TreeNode
 
+from ipcore_lib.model import AccessType, AddressBlock, BitField, MemoryMap, Register
 from ipcore_lib.parser.yaml import YamlIpCoreParser
-from ipcore_lib.model import MemoryMap, AddressBlock, Register, AccessType, BitField
+
 
 class EditFieldScreen(ModalScreen):
     """Screen for editing a bit field."""
@@ -84,12 +86,15 @@ class EditFieldScreen(ModalScreen):
             Input(value=str(self.field.bit_width), id="field_width", type="integer"),
             Label("Access:"),
             Select.from_values(
-                [a.value for a in AccessType],
-                value=self.field.access.value,
-                id="field_access"
+                [a.value for a in AccessType], value=self.field.access.value, id="field_access"
             ),
             Label("Reset Value:"),
-            Input(value=f"0x{self.field.reset_value:X}" if self.field.reset_value is not None else "0x0", id="field_reset"),
+            Input(
+                value=(
+                    f"0x{self.field.reset_value:X}" if self.field.reset_value is not None else "0x0"
+                ),
+                id="field_reset",
+            ),
             Label("Description:"),
             Input(value=self.field.description or "", id="field_desc"),
             Button("Cancel", variant="error", id="cancel"),
@@ -139,6 +144,7 @@ class EditFieldScreen(ModalScreen):
             self.dismiss()
         except ValueError as e:
             self.notify(f"Invalid input: {e}", severity="error")
+
 
 class MemoryMapEditorApp(App):
     """A Textual TUI for editing Memory Map YAML files."""
@@ -322,8 +328,10 @@ class MemoryMapEditorApp(App):
         try:
             parser = YamlIpCoreParser()
 
-            # Check if it's a memory map file (.memmap.yml or .mm.yml) or a full IP core file
-            if file_path.suffix == ".yml" and (".memmap" in file_path.name or ".mm." in file_path.name):
+            # Check if it's a memory map file (.mm.yml or .mm.yml) or a full IP core file
+            if file_path.suffix == ".yml" and (
+                ".memmap" in file_path.name or ".mm." in file_path.name
+            ):
                 # Direct memory map file
                 self.memory_maps = parser._load_memory_maps_from_file(file_path)
             else:
@@ -600,7 +608,9 @@ class MemoryMapEditorApp(App):
         def on_save(name, offset, width, access, reset, desc):
             # 1. Validate the field itself
             if offset + width > 32:
-                raise ValueError(f"Field '{name}' extends beyond 32-bit boundary (offset {offset} + width {width} > 32)")
+                raise ValueError(
+                    f"Field '{name}' extends beyond 32-bit boundary (offset {offset} + width {width} > 32)"
+                )
 
             # 2. Check for width change and shift subsequent fields
             delta = width - old_width
@@ -675,12 +685,12 @@ class MemoryMapEditorApp(App):
                 bit_offset=new_offset,
                 bit_width=1,
                 access=AccessType.READ_WRITE,
-                description="New field"
+                description="New field",
             )
 
             # Check if new field fits
             if new_field.bit_offset + new_field.bit_width > 32:
-                 raise ValueError("New field exceeds 32-bit boundary")
+                raise ValueError("New field exceeds 32-bit boundary")
 
             # Check if shifting is possible BEFORE inserting
             # We need to check if fields from insert_idx onwards can be shifted
@@ -700,7 +710,9 @@ class MemoryMapEditorApp(App):
                         max_extent = f.bit_offset + f.bit_width
 
                 if max_extent + new_field.bit_width > 32:
-                     raise ValueError("Inserting field would push existing fields beyond 32-bit boundary")
+                    raise ValueError(
+                        "Inserting field would push existing fields beyond 32-bit boundary"
+                    )
 
             self.current_register.fields.insert(insert_idx, new_field)
 
@@ -784,7 +796,6 @@ class MemoryMapEditorApp(App):
                     self._move_register(1)
                 elif node_type == "block":
                     self._move_block(1)
-
 
     def _move_block(self, delta: int) -> None:
         tree = self.query_one("#outline_tree", Tree)
@@ -923,7 +934,10 @@ class MemoryMapEditorApp(App):
             # block.registers[max_idx] -> should have higher address
 
             # Swap in list
-            block.registers[idx], block.registers[new_idx] = block.registers[new_idx], block.registers[idx]
+            block.registers[idx], block.registers[new_idx] = (
+                block.registers[new_idx],
+                block.registers[idx],
+            )
 
             # Now re-assign offsets based on new list order
             # The one at min(idx, new_idx) gets the smaller offset (new_upper_offset)
@@ -959,7 +973,6 @@ class MemoryMapEditorApp(App):
 
             self.call_after_refresh(restore_cursor)
 
-
     def _move_field(self, delta: int) -> None:
         if not self.current_register:
             return
@@ -976,8 +989,10 @@ class MemoryMapEditorApp(App):
             f2 = self.current_register.fields[new_index]
 
             # Swap in list
-            self.current_register.fields[row_index], self.current_register.fields[new_index] = \
-                self.current_register.fields[new_index], self.current_register.fields[row_index]
+            self.current_register.fields[row_index], self.current_register.fields[new_index] = (
+                self.current_register.fields[new_index],
+                self.current_register.fields[row_index],
+            )
 
             # Identify which is "lower" (earlier in list/offset) and "higher"
             if row_index < new_index:
@@ -1054,13 +1069,13 @@ class MemoryMapEditorApp(App):
                 msb = field.bit_offset + field.bit_width - 1
                 lsb = field.bit_offset
                 bit_range_str = f"[{msb}:{lsb}]"
-            
+
             table.add_row(
                 field.name,
                 bit_range_str,
                 field.access.value,
                 f"0x{field.reset_value or 0:X}",
-                field.description or ""
+                field.description or "",
             )
 
         # Update visualizer
@@ -1078,7 +1093,10 @@ class MemoryMapEditorApp(App):
             for bit_pos in range(field.bit_offset, field.bit_offset + field.bit_width):
                 if bit_pos < 32:
                     # Check if reset value has this bit set
-                    if field.reset_value and (field.reset_value >> (bit_pos - field.bit_offset)) & 1:
+                    if (
+                        field.reset_value
+                        and (field.reset_value >> (bit_pos - field.bit_offset)) & 1
+                    ):
                         bits[31 - bit_pos] = "1"
                         colors[31 - bit_pos] = "green"
                     else:
@@ -1199,11 +1217,11 @@ class MemoryMapEditorApp(App):
             # This is a heuristic. The parser handles both.
             # For now, dumping as list is safer if we have multiple.
             if len(data) == 1 and ".memmap" in self.file_path.name:
-                 # Some formats might prefer the single object if it's a memmap file
-                 # But let's stick to list for consistency with parser return type unless we know better.
-                 pass
+                # Some formats might prefer the single object if it's a memmap file
+                # But let's stick to list for consistency with parser return type unless we know better.
+                pass
 
-            with open(self.file_path, 'w') as f:
+            with open(self.file_path, "w") as f:
                 yaml.dump(data, f, sort_keys=False, indent=2)
 
             self.notify(f"Saved to {self.file_path.name}", severity="information")
@@ -1214,7 +1232,7 @@ class MemoryMapEditorApp(App):
         return {
             "name": mem_map.name,
             "description": mem_map.description,
-            "addressBlocks": [self._serialize_address_block(b) for b in mem_map.address_blocks]
+            "addressBlocks": [self._serialize_address_block(b) for b in mem_map.address_blocks],
         }
 
     def _serialize_address_block(self, block: AddressBlock) -> dict:
@@ -1223,7 +1241,7 @@ class MemoryMapEditorApp(App):
             "offset": block.base_address,
             "usage": block.usage.value,
             "description": block.description,
-            "registers": [self._serialize_register(r) for r in block.registers]
+            "registers": [self._serialize_register(r) for r in block.registers],
         }
         # Filter empty/None
         return {k: v for k, v in data.items() if v is not None and v != ""}
@@ -1254,7 +1272,7 @@ class MemoryMapEditorApp(App):
         data["bits"] = f"[{msb}:{lsb}]"
 
         if field.reset_value is not None:
-             data["reset"] = field.reset_value
+            data["reset"] = field.reset_value
 
         return {k: v for k, v in data.items() if v is not None and v != ""}
 

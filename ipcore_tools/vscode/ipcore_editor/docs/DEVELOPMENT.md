@@ -39,7 +39,7 @@ This runs both TypeScript compiler and Webpack in watch mode.
 
 1. Open VSCode in the `vscode-extension` directory
 2. Press `F5` to launch Extension Development Host
-3. Open a `.memmap.yml` file
+3. Open a `.mm.yml` file
 
 #### 3. Debugging
 
@@ -182,7 +182,7 @@ export function MyComponent({ data, onUpdate }: MyComponentProps) {
 // src/services/MyService.ts
 export class MyService {
   constructor(private readonly dependency: SomeType) {}
-  
+
   public doSomething(): void {
     // Implementation
   }
@@ -195,7 +195,7 @@ export class MyService {
 // src/providers/MemoryMapEditorProvider.ts
 export class MemoryMapEditorProvider {
   private readonly myService: MyService;
-  
+
   constructor(context: vscode.ExtensionContext) {
     this.myService = new MyService(dependency);
   }
@@ -259,11 +259,11 @@ import { useState, useEffect } from 'react';
 
 export function useMyHook(initialValue: string) {
   const [value, setValue] = useState(initialValue);
-  
+
   useEffect(() => {
     // Side effects
   }, [value]);
-  
+
   return { value, setValue };
 }
 ```
@@ -336,7 +336,7 @@ npm run test -- -u
    # Ensure 'publisher' and 'repository' fields are set in package.json
    npx vsce package
    ```
-   
+
    This will generate a `.vsix` file (e.g., `fpga-memory-map-editor-0.0.1.vsix`) in the root directory.
 
 4. **Test .vsix file:**

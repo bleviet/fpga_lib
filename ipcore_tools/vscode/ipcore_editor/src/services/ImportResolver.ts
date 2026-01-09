@@ -2,7 +2,7 @@
  * Import resolver service for IP core YAML files.
  *
  * Resolves external references:
- * - memoryMaps: { import: "file.memmap.yml" }
+ * - memoryMaps: { import: "file.mm.yml" }
  * - fileSets: [{ import: "file.fileset.yml" }]
  * - useBusLibrary: "path/to/bus_definitions.yml"
  */

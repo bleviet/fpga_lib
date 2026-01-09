@@ -11,51 +11,51 @@ graph TB
     subgraph "VSCode Extension Host"
         EXT[extension.ts<br/>Entry Point<br/>38 lines]
         PROVIDER[MemoryMapEditorProvider<br/>Custom Editor Provider<br/>68 lines]
-        
+
         subgraph "Services"
             HTML[HtmlGenerator<br/>Webview HTML Generation]
             DOC[DocumentManager<br/>File Operations]
             MSG[MessageHandler<br/>Message Processing]
             YAML[YamlValidator<br/>YAML Validation]
         end
-        
+
         subgraph "Utilities"
             LOG[Logger<br/>Structured Logging]
             ERR[ErrorHandler<br/>Error Management]
         end
     end
-    
+
     subgraph "Webview (React)"
         APP[index.tsx<br/>Main App<br/>445 lines]
         DETAILS[DetailsPanel.tsx<br/>Property Editor<br/>2,073 lines]
         OUTLINE[Outline.tsx<br/>Tree View<br/>588 lines]
-        
+
         subgraph "Webview Services"
             NORM[DataNormalizer<br/>Data Transformation]
             PATH[YamlPathResolver<br/>Path Operations]
             YAMLSVC[YamlService<br/>YAML Serialization]
         end
-        
+
         subgraph "Custom Hooks"
             MAPSTATE[useMemoryMapState<br/>State Management]
             SELECT[useSelection<br/>Selection State]
             SYNC[useYamlSync<br/>Message Sync]
             TABNAV[useTableNavigation<br/>Keyboard Nav]
         end
-        
+
         subgraph "Algorithms"
             BITREPACK[BitFieldRepacker<br/>5 functions]
             BLOCKREPACK[AddressBlockRepacker<br/>2 functions]
             REGREPACK[RegisterRepacker<br/>2 functions]
         end
-        
+
         subgraph "Visualizers"
             BITVIS[BitFieldVisualizer]
             ADDRVIS[AddressMapVisualizer]
             REGVIS[RegisterMapVisualizer]
         end
     end
-    
+
     EXT --> PROVIDER
     PROVIDER --> HTML
     PROVIDER --> MSG
@@ -63,15 +63,15 @@ graph TB
     PROVIDER --> YAML
     PROVIDER --> LOG
     PROVIDER --> ERR
-    
+
     PROVIDER <-->|postMessage| APP
-    
+
     APP --> MAPSTATE
     APP --> SELECT
     APP --> SYNC
     APP --> DETAILS
     APP --> OUTLINE
-    
+
     DETAILS --> NORM
     DETAILS --> PATH
     DETAILS --> YAMLSVC
@@ -82,7 +82,7 @@ graph TB
     DETAILS --> BITVIS
     DETAILS --> ADDRVIS
     DETAILS --> REGVIS
-    
+
     MAPSTATE --> NORM
     MAPSTATE --> YAMLSVC
     SELECT --> PATH
@@ -101,8 +101,8 @@ sequenceDiagram
     participant DocumentManager
     participant Webview
     participant useMemoryMapState
-    
-    User->>VSCode: Open .memmap.yml file
+
+    User->>VSCode: Open .mm.yml file
     VSCode->>Provider: resolveCustomTextEditor()
     Provider->>DocumentManager: getText(document)
     Provider->>Webview: postMessage({type: 'update', text, fileName})
@@ -123,7 +123,7 @@ sequenceDiagram
     participant useYamlSync
     participant Provider
     participant DocumentManager
-    
+
     User->>DetailsPanel: Edit field value
     DetailsPanel->>YamlPathResolver: setAtPath(data, path, value)
     YamlPathResolver-->>DetailsPanel: Updated data
@@ -143,8 +143,8 @@ sequenceDiagram
     participant Provider
     participant Webview
     participant useMemoryMapState
-    
-    ExternalEdit->>VSCode: Edit .memmap.yml externally
+
+    ExternalEdit->>VSCode: Edit .mm.yml externally
     VSCode->>Provider: onDidChangeTextDocument()
     Provider->>Webview: postMessage({type: 'update', text})
     Webview->>useMemoryMapState: updateFromYaml(text)
@@ -284,13 +284,13 @@ const normalized = DataNormalizer.normalizeMemoryMap(map);
 graph LR
     TS[TypeScript Source] --> TSC[TypeScript Compiler]
     TSC --> OUT[out/ directory]
-    
+
     WEBVIEW[Webview Source] --> WEBPACK[Webpack]
     WEBPACK --> DIST[dist/webview.js]
-    
+
     SCHEMA[YAML Schema] --> CODEGEN[json-schema-to-typescript]
     CODEGEN --> TYPES[Generated Types]
-    
+
     OUT --> VSIX[Extension Package]
     DIST --> VSIX
 ```
@@ -326,9 +326,9 @@ graph LR
 
 Currently using relaxed CSP (includes CDN):
 ```html
-<meta http-equiv="Content-Security-Policy" 
-      content="default-src 'none'; 
-               style-src ${webview.cspSource} 'unsafe-inline' https://cdn.tailwindcss.com; 
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'none';
+               style-src ${webview.cspSource} 'unsafe-inline' https://cdn.tailwindcss.com;
                script-src ${webview.cspSource} 'unsafe-inline';">
 ```
 
