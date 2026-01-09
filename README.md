@@ -81,7 +81,7 @@ uv run pytest ipcore_lib/tests/parser/hdl/test_vhdl_parser.py
 
 ## License
 
-[Specify license information here]
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## Contributing
 
