@@ -1497,13 +1497,47 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(
           return;
         }
 
-        e.preventDefault();
-        e.stopPropagation();
-
         const isVertical =
           normalizedKey === "ArrowUp" || normalizedKey === "ArrowDown";
         const delta =
           normalizedKey === "ArrowUp" || normalizedKey === "ArrowLeft" ? -1 : 1;
+
+        // Alt+Arrow moves registers (with offset recalculation)
+        if (e.altKey && isVertical) {
+          if (selectedRegIndex < 0) {
+            return;
+          }
+          const next = selectedRegIndex + delta;
+          if (next < 0 || next >= registers.length) {
+            return;
+          }
+
+          e.preventDefault();
+          e.stopPropagation();
+
+          // Swap registers in array
+          const newRegs = [...registers];
+          const temp = newRegs[selectedRegIndex];
+          newRegs[selectedRegIndex] = newRegs[next];
+          newRegs[next] = temp;
+
+          // Recalculate offsets (4-byte stride)
+          newRegs.forEach((r, i) => {
+            r.offset = i * 4;
+            r.address_offset = i * 4;
+          });
+
+          onUpdate(["registers"], newRegs);
+          setSelectedRegIndex(next);
+          setHoveredRegIndex(next);
+          setRegActiveCell((prev) => ({ rowIndex: next, key: prev.key }));
+          scrollToCell(next, currentKey);
+          return;
+        }
+
+        // Plain arrows navigate cells.
+        e.preventDefault();
+        e.stopPropagation();
 
         if (isVertical) {
           const nextRow = Math.max(
