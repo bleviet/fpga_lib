@@ -789,10 +789,11 @@ const BitFieldVisualizer: React.FC<BitFieldVisualizerProps> = ({
   };
 
   const renderValueBar = () => (
-    <div className="mt-3 flex items-center justify-start gap-3 p-3 rounded" style={{ background: 'var(--vscode-editor-background)' }}>
-      <div className="text-sm vscode-muted font-mono font-semibold">
-        Value:
-      </div>
+    <div
+      className="mt-3 flex items-center justify-start gap-3 p-3 rounded"
+      style={{ background: "var(--vscode-editor-background)" }}
+    >
+      <div className="text-sm vscode-muted font-mono font-semibold">Value:</div>
       <div className="min-w-[320px] text-base">
         <VSCodeTextField
           className="w-full"
@@ -859,7 +860,7 @@ const BitFieldVisualizer: React.FC<BitFieldVisualizerProps> = ({
       <div className="w-full">
         <div className="relative w-full flex items-start overflow-x-auto pb-2">
           {/* Bit grid background */}
-          <div className="relative flex flex-row items-end gap-0.5 px-2 pt-12 pb-2 min-h-[64px] min-w-max">
+          <div className="relative flex flex-row items-end gap-0.5 pl-4 pr-2 pt-12 pb-2 min-h-[64px] min-w-max">
             {/* Render each segment (field or gap) */}
             {segments.map((segment, segIdx) => {
               const width = segment.end - segment.start + 1;
@@ -1078,7 +1079,9 @@ const BitFieldVisualizer: React.FC<BitFieldVisualizerProps> = ({
                     })}
                   </div>
                   <div
-                    className="absolute -top-10 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded border shadow text-xs whitespace-nowrap pointer-events-none"
+                    className={`absolute -top-10 px-2 py-0.5 rounded border shadow text-xs whitespace-nowrap pointer-events-none ${
+                      segIdx === 0 ? "left-0" : "left-1/2 -translate-x-1/2"
+                    }`}
                     style={{
                       background: "var(--vscode-editorWidget-background)",
                       color: "var(--vscode-foreground)",

@@ -54,11 +54,14 @@ const RegisterMapVisualizer: React.FC<RegisterMapVisualizerProps> = ({
     <div className="w-full">
       <div className="relative w-full flex items-start overflow-x-auto pb-2">
         {/* Register grid background */}
-        <div className="relative flex flex-row items-end gap-0 pt-12 pb-2 min-h-[64px] min-w-max">
-          {visualGroups.map((group) => {
+        <div className="relative flex flex-row items-end gap-0 pl-4 pr-2 pt-12 pb-2 min-h-[64px] min-w-max">
+          {visualGroups.map((group, groupIdx) => {
             const isHovered = hoveredRegIndex === group.idx;
             // Responsive min-width: 80px on tablet/mobile, 120px on desktop
-            const minWidth = typeof window !== 'undefined' && window.innerWidth < 900 ? '80px' : '120px';
+            const minWidth =
+              typeof window !== "undefined" && window.innerWidth < 900
+                ? "80px"
+                : "120px";
             return (
               <div
                 key={group.idx}
@@ -89,7 +92,9 @@ const RegisterMapVisualizer: React.FC<RegisterMapVisualizerProps> = ({
                   </div>
                 </div>
                 <div
-                  className="absolute -top-10 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded border shadow text-xs whitespace-nowrap pointer-events-none"
+                  className={`absolute -top-10 px-2 py-0.5 rounded border shadow text-xs whitespace-nowrap pointer-events-none ${
+                    groupIdx === 0 ? "left-0" : "left-1/2 -translate-x-1/2"
+                  }`}
                   style={{
                     background: "var(--vscode-editorWidget-background)",
                     color: "var(--vscode-foreground)",
