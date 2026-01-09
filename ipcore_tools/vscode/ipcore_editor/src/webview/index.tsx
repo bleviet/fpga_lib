@@ -17,6 +17,9 @@ import './index.css';
  * Main application component
  */
 const App = () => {
+  // Sidebar toggle state for mobile
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
   // State management hooks
   const { memoryMap, rawText, rawTextRef, parseError, fileName, updateFromYaml, updateRawText } =
     useMemoryMapState();
@@ -390,6 +393,14 @@ const App = () => {
         style={{ borderBottom: '1px solid var(--vscode-panel-border)' }}
       >
         <div className="flex items-center gap-4 flex-1 overflow-hidden">
+          {/* Mobile sidebar toggle */}
+          <button
+            className="sidebar-toggle-btn p-2 rounded-md transition-colors vscode-icon-button"
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            title="Toggle sidebar"
+          >
+            <span className="codicon codicon-menu"></span>
+          </button>
           <h1 className="text-lg font-semibold shrink-0">FPGA Memory Map Editor</h1>
           <div className="flex items-center gap-1 text-sm opacity-75 overflow-hidden">
             <span className="codicon codicon-file text-[16px]"></span>
@@ -438,7 +449,14 @@ const App = () => {
         </div>
       </header>
       <main className="flex-1 flex overflow-hidden">
-        <aside className="sidebar flex flex-col shrink-0">
+        {/* Sidebar backdrop for mobile */}
+        {sidebarOpen && (
+          <div
+            className="sidebar-backdrop active"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
+        <aside className={`sidebar flex flex-col shrink-0 ${sidebarOpen ? 'sidebar-open' : ''}`}>
           <Outline
             ref={outlineRef}
             memoryMap={memoryMap}

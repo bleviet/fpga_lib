@@ -1,6 +1,16 @@
 :root {
     --sidebar-width: 300px;
+    --sidebar-width-tablet: 240px;
+    --sidebar-width-mobile: 280px;
     --header-height: 40px;
+    
+    /* Responsive breakpoints */
+    --breakpoint-mobile: 640px;
+    --breakpoint-tablet: 900px;
+    --breakpoint-desktop: 1200px;
+    
+    /* Touch target minimum */
+    --touch-target-min: 44px;
 }
 
 html,
@@ -707,4 +717,314 @@ body {
 
 .bitfield-segment:hover {
     filter: brightness(0.85);
+}
+
+/* ========================================
+   RESPONSIVE UTILITIES
+   ======================================== */
+
+/* Base responsive utilities */
+.responsive-container {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+}
+
+/* Stack on mobile */
+.stack-on-mobile {
+    display: flex;
+    flex-direction: column;
+}
+
+@media (min-width: 641px) {
+    .stack-on-mobile {
+        flex-direction: row;
+    }
+}
+
+/* Visibility utilities */
+.hide-on-mobile {
+    display: none;
+}
+
+@media (min-width: 641px) {
+    .hide-on-mobile {
+        display: block;
+    }
+}
+
+.show-on-mobile-only {
+    display: block;
+}
+
+@media (min-width: 641px) {
+    .show-on-mobile-only {
+        display: none;
+    }
+}
+
+.hide-on-tablet {
+    display: block;
+}
+
+@media (min-width: 641px) and (max-width: 900px) {
+    .hide-on-tablet {
+        display: none;
+    }
+}
+
+/* ========================================
+   RESPONSIVE SIDEBAR
+   ======================================== */
+
+/* Mobile: Overlay sidebar */
+@media (max-width: 640px) {
+    .sidebar {
+        position: fixed;
+        left: -300px;
+        width: var(--sidebar-width-mobile);
+        height: calc(100vh - var(--header-height));
+        top: var(--header-height);
+        z-index: 100;
+        transition: left 0.3s ease-in-out;
+        box-shadow: 2px 0 8px rgba(0, 0, 0, 0.3);
+    }
+
+    .sidebar.sidebar-open {
+        left: 0;
+    }
+
+    .sidebar-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 99;
+        top: var(--header-height);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s ease-in-out;
+    }
+
+    .sidebar-backdrop.active {
+        opacity: 1;
+        pointer-events: all;
+    }
+
+    .sidebar-toggle-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: var(--touch-target-min);
+        height: var(--touch-target-min);
+        min-width: var(--touch-target-min);
+    }
+}
+
+/* Tablet: Narrower sidebar */
+@media (min-width: 641px) and (max-width: 900px) {
+    .sidebar {
+        width: var(--sidebar-width-tablet);
+    }
+
+    .sidebar-toggle-btn {
+        display: none;
+    }
+
+    .sidebar-backdrop {
+        display: none;
+    }
+}
+
+/* Desktop: Full width sidebar */
+@media (min-width: 901px) {
+    .sidebar {
+        width: var(--sidebar-width);
+    }
+
+    .sidebar-toggle-btn {
+        display: none;
+    }
+
+    .sidebar-backdrop {
+        display: none;
+    }
+}
+
+/* ========================================
+   RESPONSIVE HEADER
+   ======================================== */
+
+@media (max-width: 640px) {
+    .app-header,
+    header {
+        flex-wrap: wrap;
+        padding: 0.5rem 0.75rem;
+    }
+
+    .header-left {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .header-title {
+        font-size: 0.875rem;
+    }
+
+    .header-actions {
+        gap: 0.25rem;
+    }
+
+    /* Icon-only buttons on mobile */
+    .toolbar-button span:not(.codicon) {
+        display: none;
+    }
+
+    .toolbar-button {
+        min-width: var(--touch-target-min);
+        min-height: var(--touch-target-min);
+        padding: 0.5rem;
+    }
+}
+
+/* ========================================
+   RESPONSIVE TABLES
+   ======================================== */
+
+/* Hide non-essential columns on tablet */
+@media (min-width: 641px) and (max-width: 900px) {
+    /* In field tables, hide Access column (3rd) */
+    .fields-table th:nth-child(3),
+    .fields-table td:nth-child(3) {
+        display: none;
+    }
+}
+
+/* Mobile: Card view for tables */
+@media (max-width: 640px) {
+    /* Hide table, show card view */
+    .fields-table {
+        display: none;
+    }
+    
+    .fields-table-mobile {
+        display: block;
+    }
+    
+    /* Card styling */
+    .field-card {
+        border: 1px solid var(--vscode-panel-border);
+        border-radius: 4px;
+        padding: 12px;
+        margin-bottom: 8px;
+        background: var(--vscode-editor-background);
+    }
+    
+    .field-card:hover {
+        background: var(--vscode-list-hoverBackground);
+    }
+    
+    .field-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid var(--vscode-panel-border);
+    }
+    
+    .field-card-title {
+        font-weight: 600;
+        font-size: 14px;
+    }
+    
+    .field-card-badge {
+        font-size: 11px;
+        padding: 2px 6px;
+        border-radius: 3px;
+        background: var(--vscode-badge-background);
+        color: var(--vscode-badge-foreground);
+        font-family: var(--vscode-font-family);
+    }
+    
+    .field-card-body {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 4px 12px;
+        font-size: 13px;
+    }
+    
+    .field-card-label {
+        color: var(--vscode-descriptionForeground);
+        font-weight: 600;
+    }
+    
+    .field-card-value {
+        font-family: monospace;
+    }
+    
+    /* Compact form grid: 1 column on mobile */
+    .compact-form-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    /* Make all inputs larger for touch */
+    input,
+    select,
+    textarea,
+    button {
+        min-height: var(--touch-target-min);
+        font-size: 16px; /* Prevents zoom on iOS */
+    }
+    
+    .form-group label {
+        font-size: 14px;
+    }
+}
+
+/* Desktop: Hide card view */
+@media (min-width: 641px) {
+    .fields-table-mobile {
+        display: none;
+    }
+    
+    .fields-table {
+        font-size: 12px;
+    }
+
+    .fields-table th,
+    .fields-table td {
+        padding: 6px 4px;
+    }
+}
+
+/* ========================================
+   RESPONSIVE VISUALIZERS
+   ======================================== */
+
+/* BitFieldVisualizer: Smaller bit cells on mobile/tablet */
+@media (max-width: 900px) {
+    /* Reduce bit cell size from 2.5rem (40px) to 1.5rem (24px) */
+    .bitfield-visualizer .bit-cell {
+        width: 1.5rem !important;
+        height: 1.5rem !important;
+    }
+    
+    /* Adjust field group width calculation */
+    .bitfield-visualizer [style*="calc"] {
+        width: calc(var(--bit-count, 1) * 1.5rem) !important;
+    }
+}
+
+/* AddressMapVisualizer & RegisterMapVisualizer: Already handled inline with minWidth */
+
+/* Responsive tooltips: Smaller font on mobile */
+@media (max-width: 640px) {
+    .visualizer-tooltip {
+        font-size: 0.625rem; /* 10px */
+        padding: 0.25rem 0.5rem;
+    }
+    
+    .visualizer-tooltip .font-bold {
+        font-size: 0.6875rem; /* 11px */
+    }
 }

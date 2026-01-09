@@ -66,17 +66,19 @@ const AddressMapVisualizer: React.FC<AddressMapVisualizerProps> = ({
 
   return (
     <div className="w-full">
-      <div className="relative w-full flex items-start">
+      <div className="relative w-full flex items-start overflow-x-auto pb-2">
         {/* Address grid background */}
-        <div className="absolute inset-0 pointer-events-none fpga-bit-grid-bg bg-[size:32px_48px] rounded-lg" />
-        <div className="relative flex flex-row items-end gap-0 pt-12 pb-2 min-h-[64px] w-full">
+        {/* <div className="absolute inset-0 pointer-events-none fpga-bit-grid-bg bg-[size:32px_48px] rounded-lg" /> */}
+        <div className="relative flex flex-row items-end gap-0 pt-12 pb-2 min-h-[64px] min-w-max">
           {visualGroups.map((group) => {
             const isHovered = hoveredBlockIndex === group.idx;
+            // Responsive min-width: 80px on tablet/mobile, 120px on desktop
+            const minWidth = typeof window !== 'undefined' && window.innerWidth < 900 ? '80px' : '120px';
             return (
               <div
                 key={group.idx}
                 className={`relative flex flex-col items-center justify-end select-none ${isHovered ? "z-10" : ""}`}
-                style={{ width: `${group.widthPercent}%`, minWidth: "120px" }}
+                style={{ width: `${group.widthPercent}%`, minWidth }}
                 onMouseEnter={() => setHoveredBlockIndex(group.idx)}
                 onMouseLeave={() => setHoveredBlockIndex(null)}
               >

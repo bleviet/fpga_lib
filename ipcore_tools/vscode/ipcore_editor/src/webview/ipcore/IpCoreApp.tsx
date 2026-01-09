@@ -26,6 +26,9 @@ const IpCoreApp: React.FC = () => {
   const { selectedSection, navigate } = useNavigation();
   const { sendUpdate } = useIpCoreSync(rawYaml);
 
+  // Sidebar toggle state for mobile
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
   // Panel focus state for Ctrl+H/L navigation
   const [focusedPanel, setFocusedPanel] = useState<FocusedPanel>("left");
   const leftPanelRef = useRef<HTMLDivElement>(null);
@@ -113,6 +116,15 @@ const IpCoreApp: React.FC = () => {
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
+            {/* Mobile sidebar toggle */}
+            <button
+              className="sidebar-toggle-btn p-2 rounded-md transition-colors vscode-icon-button"
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              title="Toggle navigation"
+              type="button"
+            >
+              <span className="codicon codicon-menu"></span>
+            </button>
             <h1 className="text-sm font-semibold">
               {fileName || "IP Core Editor"}
             </h1>
@@ -169,6 +181,13 @@ const IpCoreApp: React.FC = () => {
           </div>
         ) : (
           <>
+            {/* Sidebar backdrop for mobile */}
+            {sidebarOpen && (
+              <div
+                className="sidebar-backdrop active"
+                onClick={() => setSidebarOpen(false)}
+              />
+            )}
             <NavigationSidebar
               selectedSection={selectedSection}
               onNavigate={navigate}
@@ -176,6 +195,7 @@ const IpCoreApp: React.FC = () => {
               isFocused={focusedPanel === "left"}
               onFocus={() => setFocusedPanel("left")}
               panelRef={leftPanelRef}
+              className={sidebarOpen ? 'sidebar-open' : ''}
             />
             <EditorPanel
               selectedSection={selectedSection}

@@ -789,8 +789,8 @@ const BitFieldVisualizer: React.FC<BitFieldVisualizerProps> = ({
   };
 
   const renderValueBar = () => (
-    <div className="mt-3 flex items-start justify-end gap-3">
-      <div className="text-sm vscode-muted font-mono font-semibold mt-[7px]">
+    <div className="mt-3 flex items-center justify-start gap-3 p-3 rounded" style={{ background: 'var(--vscode-editor-background)' }}>
+      <div className="text-sm vscode-muted font-mono font-semibold">
         Value:
       </div>
       <div className="min-w-[320px] text-base">
@@ -826,7 +826,7 @@ const BitFieldVisualizer: React.FC<BitFieldVisualizerProps> = ({
       </div>
       <button
         type="button"
-        className="px-3 py-2 text-sm font-semibold border rounded self-start"
+        className="px-3 py-2 text-sm font-semibold border rounded"
         style={{
           borderColor:
             "var(--vscode-button-border, var(--vscode-panel-border))",
@@ -856,10 +856,10 @@ const BitFieldVisualizer: React.FC<BitFieldVisualizerProps> = ({
         ? ctrlDrag.previewSegments
         : buildProLayoutSegments(fields, registerSize);
     return (
-      <div className="w-full max-w-4xl">
-        <div className="relative w-full flex items-start">
+      <div className="w-full">
+        <div className="relative w-full flex items-start overflow-x-auto pb-2">
           {/* Bit grid background */}
-          <div className="relative flex flex-row items-end gap-0.5 px-2 pt-12 pb-2 min-h-[64px]">
+          <div className="relative flex flex-row items-end gap-0.5 px-2 pt-12 pb-2 min-h-[64px] min-w-max">
             {/* Render each segment (field or gap) */}
             {segments.map((segment, segIdx) => {
               const width = segment.end - segment.start + 1;
@@ -870,7 +870,7 @@ const BitFieldVisualizer: React.FC<BitFieldVisualizerProps> = ({
                   <div
                     key={`gap-${segIdx}`}
                     className="relative flex flex-col items-center justify-end select-none"
-                    style={{ width: `calc(${width} * 2.5rem)` }}
+                    style={{ width: `calc(${width} * 2rem)` }}
                   >
                     <div className="h-20 w-full rounded-t-md overflow-hidden flex">
                       {Array.from({ length: width }).map((_, i) => {
@@ -957,7 +957,7 @@ const BitFieldVisualizer: React.FC<BitFieldVisualizerProps> = ({
                 <div
                   key={group.idx}
                   className={`relative flex flex-col items-center justify-end select-none ${isHovered ? "z-10" : ""}`}
-                  style={{ width: `calc(${width} * 2.5rem)` }}
+                  style={{ width: `calc(${width} * 2rem)` }}
                   onMouseEnter={() => setHoveredFieldIndex(group.idx)}
                   onMouseLeave={() => setHoveredFieldIndex(null)}
                 >

@@ -8,6 +8,7 @@ interface NavigationSidebarProps {
   isFocused?: boolean;
   onFocus?: () => void;
   panelRef?: RefObject<HTMLDivElement>;
+  className?: string;
 }
 
 interface SectionItem {
@@ -97,6 +98,7 @@ export const NavigationSidebar: React.FC<NavigationSidebarProps> = ({
   isFocused = false,
   onFocus,
   panelRef,
+  className = '',
 }) => {
   // Get the current section index
   const getCurrentIndex = useCallback(() => {
@@ -147,7 +149,7 @@ export const NavigationSidebar: React.FC<NavigationSidebarProps> = ({
       ref={panelRef}
       tabIndex={0}
       onClick={onFocus}
-      className="w-64 flex flex-col outline-none"
+      className={`w-64 flex flex-col outline-none sidebar ${className}`}
       style={{
         background: "var(--vscode-sideBar-background)",
         borderRight: "1px solid var(--vscode-panel-border)",

@@ -1843,7 +1843,7 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(
         <div className="flex flex-col w-full h-full min-h-0">
           {/* --- Register Header and BitFieldVisualizer --- */}
           <div className="vscode-surface border-b vscode-border p-8 flex flex-col gap-6 shrink-0 relative overflow-hidden">
-            <div className="absolute inset-0 fpga-grid-bg bg-[size:24px_24px] pointer-events-none"></div>
+            {/* <div className="absolute inset-0 fpga-grid-bg bg-[size:24px_24px] pointer-events-none"></div> */}
             <div className="flex justify-between items-start relative z-10">
               <div>
                 <h2 className="text-2xl font-bold font-mono tracking-tight">
@@ -2686,7 +2686,7 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(
         <div className="flex flex-col w-full h-full min-h-0">
           {/* Address Block Header and Register Visualizer */}
           <div className="vscode-surface border-b vscode-border p-8 flex flex-col gap-6 shrink-0 relative overflow-hidden">
-            <div className="absolute inset-0 fpga-grid-bg bg-[size:24px_24px] pointer-events-none"></div>
+            {/* <div className="absolute inset-0 fpga-grid-bg bg-[size:24px_24px] pointer-events-none"></div> */}
             <div className="flex justify-between items-start relative z-10">
               <div>
                 <h2 className="text-2xl font-bold font-mono tracking-tight">
