@@ -79,7 +79,7 @@ const RegisterMapVisualizer: React.FC<RegisterMapVisualizerProps> = ({
   }, [ctrlDrag, registers, onReorderRegisters]);
 
   const handleCtrlPointerDown = (regIdx: number, e: React.PointerEvent) => {
-    if (!e.ctrlKey) return;
+    if (!e.ctrlKey && !e.metaKey) return;
     if (e.button !== 0) return;
     if (!onReorderRegisters) return;
 

@@ -418,7 +418,7 @@ const BitFieldVisualizer: React.FC<BitFieldVisualizerProps> = ({
    * Handle Ctrl+PointerDown to start reorder mode.
    */
   const handleCtrlPointerDown = (bit: number, e: React.PointerEvent) => {
-    if (!e.ctrlKey) return;
+    if (!e.ctrlKey && !e.metaKey) return;
     if (e.button !== 0) return;
 
     e.preventDefault();
@@ -906,7 +906,7 @@ const BitFieldVisualizer: React.FC<BitFieldVisualizerProps> = ({
                                 handleShiftPointerDown(bit, e);
                                 return;
                               }
-                              if (e.ctrlKey) {
+                              if (e.ctrlKey || e.metaKey) {
                                 handleCtrlPointerDown(bit, e);
                                 return;
                               }
@@ -1019,7 +1019,7 @@ const BitFieldVisualizer: React.FC<BitFieldVisualizerProps> = ({
                               return;
                             }
                             // Ctrl-drag for reorder
-                            if (e.ctrlKey) {
+                            if (e.ctrlKey || e.metaKey) {
                               handleCtrlPointerDown(bit, e);
                               return;
                             }
