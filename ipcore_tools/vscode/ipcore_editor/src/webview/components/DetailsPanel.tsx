@@ -1667,10 +1667,15 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(
             selectedSize = ((selected as any).count || 1) * ((selected as any).stride || 4);
           }
 
+          // New array size (2 registers * 4 bytes stride = 8 bytes)
+          const newArraySize = 8;
+
           // Determine offset based on insert direction
+          // After: place after selected item (selected.offset + selected.size)
+          // Before: take selected item's offset, push selected and subsequent forward
           const baseOffset = isInsertArrayAfter
             ? selectedOffset + selectedSize
-            : Math.max(0, selectedOffset - 8); // Default array is 2*4=8 bytes
+            : selectedOffset;
 
           // Create new register array with default nested register
           const newArray = {
@@ -1711,10 +1716,15 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(
             ];
             newIdx = selIdx + 1;
           } else {
+            // Insert before: push selected and subsequent items forward
             newRegs = [
               ...registers.slice(0, selIdx),
               newArray,
-              ...registers.slice(selIdx),
+              ...registers.slice(selIdx).map((r: any) => ({
+                ...r,
+                offset: (r.offset ?? r.address_offset ?? 0) + newArraySize,
+                address_offset: (r.address_offset ?? r.offset ?? 0) + newArraySize,
+              })),
             ];
             newIdx = selIdx;
           }
