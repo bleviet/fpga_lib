@@ -121,7 +121,62 @@ const REG_COLUMN_ORDER: RegEditKey[] = [
 ];
 
 const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(
-  ({ selectedType, selectedObject, selectionMeta, onUpdate, onNavigateToRegister, onNavigateToBlock }, ref) => {
+  (props, ref) => {
+    const {
+      selectedType: rawSelectedType,
+      selectedObject: rawSelectedObject,
+      selectionMeta: rawSelectionMeta, // eslint-disable-line @typescript-eslint/no-unused-vars
+      onUpdate: rawOnUpdate,
+      onNavigateToRegister,
+      onNavigateToBlock,
+    } = props;
+
+    // Derived State for Array Elements (e.g. TIMER[0])
+    // If selecting a specific element of an array, we want to show it as a Register (if single) or Block (if multiple).
+    let selectedType = rawSelectedType;
+    let selectedObject = rawSelectedObject;
+    let selectionMeta = rawSelectionMeta;
+    let onUpdate = rawOnUpdate;
+
+    if (rawSelectedType === "array" && (rawSelectedObject as any)?.__element_index !== undefined) {
+      const arr = rawSelectedObject as any;
+      const registers = arr.registers || [];
+
+      if (registers.length === 1) {
+        // Single Register: Masquerade as a single Register View
+        selectedType = "register";
+        selectedObject = registers[0]; // The template register
+        
+        // Adjust absolute address base to the element's base address
+        if (arr.__element_base !== undefined) {
+            selectionMeta = {
+                ...(rawSelectionMeta || {}),
+                absoluteAddress: arr.__element_base
+            };
+        }
+
+        // Redirect updates: The view will update 'name', 'description' of selectedObject.
+        // We need to map this to ['registers', 0, 'property'] on the Array object.
+        onUpdate = (path: any[], value: any) => {
+          rawOnUpdate(["registers", 0, ...path], value);
+        };
+      } else {
+        // Multiple Registers: Masquerade as a Block View
+        selectedType = "block";
+        selectedObject = arr; // Default to array
+        
+        if (arr.__element_base !== undefined) {
+             // Inject base_address for correct visualizer/header display
+             selectedObject = { ...arr, base_address: arr.__element_base };
+             selectionMeta = {
+                ...(rawSelectionMeta || {}),
+                absoluteAddress: arr.__element_base
+            };
+        }
+        
+        // Updates to ['registers', idx, prop] work natively on the Array object
+      }
+    }
     const [offsetText, setOffsetText] = useState<string>("");
     const [selectedFieldIndex, setSelectedFieldIndex] = useState<number>(-1);
     const [hoveredFieldIndex, setHoveredFieldIndex] = useState<number | null>(
