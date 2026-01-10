@@ -190,65 +190,55 @@ This ensures intuitive drag behavior: dragging from bit 31 toward 16 on field [3
 
 ---
 
-# Ctrl-Drag Bit Field Interaction: Reordering Implementation
+# Ctrl-Drag Bit Field Interaction: Translation Implementation
 
-The "Ctrl-Drag" feature allows users to reorder fields and split gaps by treating the register as a list of movable segments.
+The "Ctrl-Drag" feature allows users to move fields by dragging them to a new position. The field translates by the cursor delta while preserving its width.
 
-## 1. The Reorder Model
+## 1. The Translation Model
 
-Unlike Shift-Drag which modifies ranges in place, Ctrl-Drag treats the register as a collection of "Blocks" (Fields) and "Spacers" (Gaps).
+Unlike the previous "reorder" model which repacked segments, Ctrl-Drag now uses simple **delta-based translation**.
 
 ### Key Concepts
-*   **Gap Mutability**: Gaps are "first-class citizens" in the layout list but are *mutable*. They can be split, shrunk, or merged to accommodate field movements.
-*   **Conservation of Width**: Moving a field preserves its bit-width. The field is essentially "lifted" from the layout and "dropped" into a new location, pushing other elements aside (or splitting them).
-*   **Implicit Repacking**: The final bit positions of ALL fields are recalculated from LSB (0) upwards based on the new order of segments.
+*   **Delta Translation**: Field moves by `delta = currentBit - startBit`.
+*   **Width Preservation**: The field's bit-width is preserved during movement.
+*   **Collision Detection**: Movement is blocked if it would overlap another field.
+*   **Boundary Clamping**: Field is kept within register bounds.
 
 ---
 
-## 2. Reorder Algorithm (`handleCtrlPointerMove`)
+## 2. Translation Algorithm (`handleCtrlPointerMove`)
 
-The core logic executes on every pointer move event to generate a live preview.
+### State Tracking
 
-### Step 1: Segmentation & Cleaning
-1.  **Generate Segments**: Call `buildProLayoutSegments` to get the current state `[S_n, ..., S_0]` (MSB to LSB).
-2.  **Extract Dragged Field**: Identify the field being dragged (`F_drag`).
-3.  **Remove & Merge**: Remove `F_drag` from the list. 
-    *   *Implicit Gap Creation*: Removing `F_drag` leaves a logical "hole".
-    *   *Simplification*: The algorithm works on a "Clean List" of remaining segments. Since we repack from LSB=0 later, any "hole" left by the dragged field naturally closes up if we don't insert a spacer.
-    *   *Wait*: Actually, the algorithm *keeps* the remaining segments in their relative order but repacks them tightly to create a coordinate space for the cursor.
+```typescript
+interface CtrlDragState {
+  active: boolean;
+  draggedFieldIndex: number | null;
+  startBit: number;           // Where the user started dragging
+  originalRange: { lo, hi };  // Original field range
+  previewSegments: ProSegment[] | null;
+}
+```
 
-### Step 2: Hitting the Target
-1.  **Coordinate Space**: The "Clean List" is conceptually repacked from 0. This defines a mapping from `0..31` to `Segment Index`.
-2.  **Cursor Mapping**: The user's cursor bit `B` is mapped against this packed namespace.
-    *   `Target Segment T` is found such that `T.start <= B <= T.end`.
+### Algorithm Steps
 
-### Step 3: Insertion & Splitting
-Once the Target `T` is identified, we insert `F_drag` relative to it.
+1. **Calculate Delta**: `delta = currentBit - startBit`
+2. **Compute New Range**:
+   ```typescript
+   newLo = originalRange.lo + delta;
+   newHi = originalRange.hi + delta;
+   ```
+3. **Clamp to Bounds**: Ensure `newLo >= 0` and `newHi < registerSize`
+4. **Collision Check**: For each other field, reject if ranges overlap:
+   ```typescript
+   if (newLo <= otherRange.hi && newHi >= otherRange.lo) return; // Collision
+   ```
+5. **Generate Preview**: Build preview segments with the translated field.
 
-#### Case A: Target is a Field
-*   **Split Logic**: We cannot split a field. We insert *Before* or *After*.
-*   **Decision**: Check if cursor `B` is in the upper half or lower half of `T`.
-    *   Upper Half: Insert `F_drag` on the MSB side of `T`.
-    *   Lower Half: Insert `F_drag` on the LSB side of `T`.
+### Visual Feedback: Grab Cursor
 
-#### Case B: Target is a Gap
-*   **Split Logic**: A Gap can be split into `[Gap_Top] [F_drag] [Gap_Bot]`.
-*   **Calculation**:
-    *   `Offset = B - T.start` (Local offset in gap).
-    *   `Gap_Bot` width = `Offset`.
-    *   `Gap_Top` width = `T.width - Offset`.
-    *   If `Offset == 0`, `Gap_Bot` is empty (dropped).
-    *   If `Offset == T.width`, `Gap_Top` is empty (dropped).
-
-### Step 4: Final Repacking
-1.  Construct the new list: `[...Segments_Above, (Gap_Top), F_drag, (Gap_Bot), ...Segments_Below]`.
-2.  **Repack Loop**: Iterate from LSB (end of reverse list).
-    *   `Current_Bit = 0`.
-    *   For each segment:
-        *   `Seg.start = Current_Bit`.
-        *   `Seg.end = Current_Bit + Seg.width - 1`.
-        *   `Current_Bit += Seg.width`.
-3.  **Result**: A list of `previewSegments` with fully resolved bit ranges.
+- **Ctrl held**: `cursor: grab` (open hand)
+- **Ctrl+Drag active**: `cursor: grabbing` (closed hand)
 
 ---
 
