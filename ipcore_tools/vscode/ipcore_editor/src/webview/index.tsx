@@ -456,7 +456,7 @@ const App = () => {
             onClick={() => setSidebarOpen(false)}
           />
         )}
-        <aside className={`sidebar flex flex-col shrink-0 ${sidebarOpen ? 'sidebar-open' : ''}`}>
+        <aside className={`sidebar flex flex-col shrink-0 overflow-y-auto ${sidebarOpen ? 'sidebar-open' : ''}`}>
           <Outline
             ref={outlineRef}
             memoryMap={memoryMap}
@@ -465,19 +465,21 @@ const App = () => {
           />
         </aside>
         {activeTab === 'yaml' ? (
-          <section className="flex-1 vscode-surface overflow-auto">
+          <section className="flex-1 vscode-surface overflow-auto min-w-0">
             <div className="p-6">
               <pre className="font-mono text-sm">{rawText}</pre>
             </div>
           </section>
         ) : (
-          <DetailsPanel
-            ref={detailsRef}
-            selectedType={selectedType}
-            selectedObject={selectedObject}
-            selectionMeta={selectionMeta}
-            onUpdate={handleUpdate}
-          />
+          <section className="flex-1 overflow-hidden min-w-0">
+            <DetailsPanel
+              ref={detailsRef}
+              selectedType={selectedType}
+              selectedObject={selectedObject}
+              selectionMeta={selectionMeta}
+              onUpdate={handleUpdate}
+            />
+          </section>
         )}
       </main>
     </>

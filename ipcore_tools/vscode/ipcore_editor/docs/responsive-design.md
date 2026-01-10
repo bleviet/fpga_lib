@@ -58,13 +58,31 @@ const [sidebarOpen, setSidebarOpen] = useState(false);
   />
 )}
 
-// Sidebar with dynamic class
-<aside className={`sidebar ${sidebarOpen ? 'sidebar-open' : ''}`}>
+// Sidebar with dynamic class and flex properties
+<aside className={`sidebar flex flex-col shrink-0 overflow-y-auto ${sidebarOpen ? 'sidebar-open' : ''}`}>
 ```
+
+**Key Layout Properties:**
+
+The sidebar uses a combination of Tailwind and custom CSS to maintain visibility:
+
+- `shrink-0` - Prevents the sidebar from shrinking when content grows
+- `overflow-y-auto` - Enables vertical scrolling within the sidebar
+- `flex-shrink: 0` - CSS property ensuring fixed width
+- Fixed width via CSS variables
 
 **CSS Behavior:**
 
 ```css
+/* Base sidebar - fixed width, no shrinking */
+.sidebar {
+    width: var(--sidebar-width);
+    flex-shrink: 0;
+    border-right: 1px solid var(--vscode-panel-border);
+    overflow-y: auto;
+    background-color: var(--vscode-sideBar-background);
+}
+
 /* Mobile: Overlay sidebar */
 @media (max-width: 640px) {
   .sidebar {
@@ -106,6 +124,33 @@ const [sidebarOpen, setSidebarOpen] = useState(false);
   }
 }
 ```
+
+**Main Content Area:**
+
+The content area (DetailsPanel/EditorPanel) must use proper flex constraints to prevent pushing the sidebar:
+
+```tsx
+// Memory Map Editor
+{activeTab === 'yaml' ? (
+  <section className="flex-1 vscode-surface overflow-auto min-w-0">
+    <div className="p-6">
+      <pre className="font-mono text-sm">{rawText}</pre>
+    </div>
+  </section>
+) : (
+  <section className="flex-1 overflow-hidden min-w-0">
+    <DetailsPanel ... />
+  </section>
+)}
+
+// IP Core Editor
+<EditorPanel className="flex-1 overflow-y-auto min-w-0" ... />
+```
+
+**Critical Properties:**
+- `flex-1` - Takes remaining space
+- `min-w-0` - Prevents flex items from expanding beyond container
+- `overflow-hidden` or `overflow-auto` - Constrains content within bounds
 
 ### 2. Responsive Visualizers
 
@@ -312,6 +357,45 @@ The extension doesn't implement lazy loading currently, but future optimizations
 5. **Desktop Toggle**: Optional sidebar collapse on desktop
 
 ## Troubleshooting
+
+### Outline/Sidebar Getting Pushed Off Screen
+
+**Problem**: When adding many registers to an address block table, the outline (sidebar) gets pushed out of view and becomes invisible.
+
+**Root Cause**: Without proper flex constraints, the content area can expand beyond its container, pushing the fixed-width sidebar off screen. This occurs when:
+1. The sidebar lacks `flex-shrink: 0` property
+2. The main content area doesn't have `min-w-0` constraint
+3. Tables or content grow horizontally without overflow handling
+
+**Solution**: Ensure proper flex layout constraints are applied:
+
+```tsx
+// Sidebar must have shrink-0 and overflow-y-auto
+<aside className="sidebar flex flex-col shrink-0 overflow-y-auto">
+  <Outline ... />
+</aside>
+
+// Content area must have flex-1, min-w-0, and overflow handling
+<section className="flex-1 overflow-hidden min-w-0">
+  <DetailsPanel ... />
+</section>
+```
+
+```css
+/* Sidebar CSS must include flex-shrink: 0 */
+.sidebar {
+    width: var(--sidebar-width);
+    flex-shrink: 0;  /* Critical - prevents shrinking */
+    overflow-y: auto;
+    /* ... */
+}
+```
+
+**Key Points:**
+- `flex-shrink: 0` (or `shrink-0` class) prevents the sidebar from losing its width
+- `min-w-0` on content prevents flex items from expanding past bounds
+- `overflow-y-auto` on sidebar enables scrolling when content is tall
+- `overflow-hidden` on content wrapper constrains growing content
 
 ### Visualizer Cropping
 

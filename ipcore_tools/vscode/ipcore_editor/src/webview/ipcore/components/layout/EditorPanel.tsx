@@ -110,7 +110,7 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
       ref={panelRef}
       tabIndex={-1}
       onClick={onFocus}
-      className="flex-1 overflow-y-auto outline-none"
+      className="flex-1 overflow-y-auto min-w-0 outline-none"
       style={{
         outline: isFocused ? '1px solid var(--vscode-focusBorder)' : 'none',
         outlineOffset: '-1px',

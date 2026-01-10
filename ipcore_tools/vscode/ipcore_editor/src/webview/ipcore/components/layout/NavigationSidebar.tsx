@@ -149,7 +149,7 @@ export const NavigationSidebar: React.FC<NavigationSidebarProps> = ({
       ref={panelRef}
       tabIndex={0}
       onClick={onFocus}
-      className={`w-64 flex flex-col outline-none sidebar ${className}`}
+      className={`w-64 flex flex-col shrink-0 overflow-y-auto outline-none sidebar ${className}`}
       style={{
         background: "var(--vscode-sideBar-background)",
         borderRight: "1px solid var(--vscode-panel-border)",
