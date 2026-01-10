@@ -137,6 +137,59 @@ This implementation ensures that "shrinking" a field is strictly equivalent to "
 
 ---
 
+## 6. Visual Resize Handles
+
+When the user holds the **Shift** key while hovering over a field, arrow indicators appear on resizable edges.
+
+### Edge Detection (`getResizableEdges`)
+
+For each field, we compute resize capabilities per edge:
+
+```typescript
+function getResizableEdges(fieldStart, fieldEnd, bitOwners, registerSize) {
+  const msbBit = Math.max(fieldStart, fieldEnd);
+  const lsbBit = Math.min(fieldStart, fieldEnd);
+  const fieldWidth = msbBit - lsbBit + 1;
+
+  const canShrink = fieldWidth > 1;
+  const hasGapLeft = lsbBit > 0 && bitOwners[lsbBit - 1] === null;
+  const hasGapRight = msbBit < registerSize - 1 && bitOwners[msbBit + 1] === null;
+
+  return {
+    left: { canShrink, canExpand: hasGapLeft },
+    right: { canShrink, canExpand: hasGapRight },
+  };
+}
+```
+
+### Visual-to-Logical Mapping
+
+Due to MSB-first rendering (higher bits on the left):
+- **Visual left** = MSB edge (`edges.right`)
+- **Visual right** = LSB edge (`edges.left`)
+
+### Arrow Types
+
+| Condition | Arrow | Meaning |
+|-----------|-------|---------|
+| `canShrink && canExpand` | ↔ (bidirectional) | Can shrink inward OR expand into gap |
+| `canExpand` only | ← or → (outward) | Single-bit field, can only expand |
+| `canShrink` only | → or ← (inward) | Multi-bit field at register boundary, can only shrink |
+
+### Anchor Determination
+
+When the user clicks to start a resize, the **opposite edge** becomes the anchor (fixed point):
+
+```typescript
+const fieldMid = (fieldRange.lo + fieldRange.hi) / 2;
+const grabbingMsbEdge = bit >= fieldMid;
+const anchorBit = grabbingMsbEdge ? fieldRange.lo : fieldRange.hi;
+```
+
+This ensures intuitive drag behavior: dragging from bit 31 toward 16 on field [31:1] yields [16:1], not [31:16].
+
+---
+
 # Ctrl-Drag Bit Field Interaction: Reordering Implementation
 
 The "Ctrl-Drag" feature allows users to reorder fields and split gaps by treating the register as a list of movable segments.

@@ -186,6 +186,54 @@ function buildProLayoutSegments(
   return segments;
 }
 
+/**
+ * Build an array mapping each bit index to its owning field index, or null if gap.
+ */
+function buildBitOwnerArray(
+  fields: any[],
+  registerSize: number,
+): (number | null)[] {
+  const owners: (number | null)[] = new Array(registerSize).fill(null);
+  fields.forEach((field, idx) => {
+    const range = getFieldRange(field);
+    if (range) {
+      for (let bit = range.lo; bit <= range.hi; bit++) {
+        if (bit >= 0 && bit < registerSize) {
+          owners[bit] = idx;
+        }
+      }
+    }
+  });
+  return owners;
+}
+
+/**
+ * Determine resize capabilities for each edge of a field.
+ * Returns whether each edge can shrink (field width > 1) and/or expand (gap adjacent).
+ */
+function getResizableEdges(
+  fieldStart: number,
+  fieldEnd: number,
+  bitOwners: (number | null)[],
+  registerSize: number,
+): {
+  left: { canShrink: boolean; canExpand: boolean };
+  right: { canShrink: boolean; canExpand: boolean };
+} {
+  const msbBit = Math.max(fieldStart, fieldEnd);
+  const lsbBit = Math.min(fieldStart, fieldEnd);
+  const fieldWidth = msbBit - lsbBit + 1;
+
+  const canShrink = fieldWidth > 1;
+  const hasGapLeft = lsbBit > 0 && bitOwners[lsbBit - 1] === null;
+  const hasGapRight = msbBit < registerSize - 1 && bitOwners[msbBit + 1] === null;
+
+  return {
+    left: { canShrink, canExpand: hasGapLeft },
+    right: { canShrink, canExpand: hasGapRight },
+  };
+}
+
 // ============================================================================
 // Shift-Drag Types and Helpers
 // ============================================================================
@@ -314,6 +362,31 @@ const BitFieldVisualizer: React.FC<BitFieldVisualizerProps> = ({
 
   // Ctrl-drag state for reordering fields
   const [ctrlDrag, setCtrlDrag] = useState<CtrlDragState>(CTRL_DRAG_INITIAL);
+
+  // Track Shift key held (for showing resize handles)
+  const [shiftHeld, setShiftHeld] = useState(false);
+
+  // Listen for Shift key press/release globally
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Shift" && !shiftDrag.active) {
+        setShiftHeld(true);
+      }
+    };
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.key === "Shift") {
+        setShiftHeld(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+    window.addEventListener("blur", () => setShiftHeld(false));
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+      window.removeEventListener("blur", () => setShiftHeld(false));
+    };
+  }, [shiftDrag.active]);
 
   useEffect(() => {
     if (!dragActive) {
@@ -466,13 +539,21 @@ const BitFieldVisualizer: React.FC<BitFieldVisualizerProps> = ({
         registerSize,
       );
 
+      // Determine which edge the user is grabbing (closer to MSB or LSB)
+      const fieldMid = (fieldRange.lo + fieldRange.hi) / 2;
+      const grabbingMsbEdge = bit >= fieldMid;
+
+      // Anchor is the OPPOSITE edge (the one that stays fixed)
+      // If grabbing MSB edge, anchor is LSB; if grabbing LSB edge, anchor is MSB
+      const anchorBit = grabbingMsbEdge ? fieldRange.lo : fieldRange.hi;
+
       setShiftDrag({
         active: true,
         mode: "resize",
         targetFieldIndex: fieldAtBit,
         resizeEdge: null, // Not used in new model
         originalRange: fieldRange,
-        anchorBit: bit,
+        anchorBit,
         currentBit: bit,
         minBit,
         maxBit,
@@ -721,6 +802,12 @@ const BitFieldVisualizer: React.FC<BitFieldVisualizerProps> = ({
     return values;
   }, [fields, registerSize]);
 
+  // Memoize bit-to-field owner mapping for resize handle edge detection
+  const bitOwners = useMemo(
+    () => buildBitOwnerArray(fields, registerSize),
+    [fields, registerSize],
+  );
+
   const registerValue = useMemo(() => {
     let v = 0;
     for (let bit = 0; bit < registerSize; bit++) {
@@ -963,7 +1050,7 @@ const BitFieldVisualizer: React.FC<BitFieldVisualizerProps> = ({
                   onMouseLeave={() => setHoveredFieldIndex(null)}
                 >
                   <div
-                    className="h-20 w-full rounded-t-md overflow-hidden flex"
+                    className="h-20 w-full rounded-t-md overflow-hidden flex relative"
                     style={{
                       opacity: 1,
                       transform: isHovered ? "translateY(-2px)" : undefined,
@@ -975,6 +1062,89 @@ const BitFieldVisualizer: React.FC<BitFieldVisualizerProps> = ({
                         : undefined,
                     }}
                   >
+                    {/* Resize handles - show when Shift is held and hovering this field */}
+                    {shiftHeld && isHovered && !shiftDrag.active && (() => {
+                      const edges = getResizableEdges(
+                        group.start,
+                        group.end,
+                        bitOwners,
+                        registerSize,
+                      );
+                      // Visual left = MSB edge (edges.right), Visual right = LSB edge (edges.left)
+                      const showVisualLeft = edges.right.canShrink || edges.right.canExpand;
+                      const showVisualRight = edges.left.canShrink || edges.left.canExpand;
+                      const visualLeftBidirectional = edges.right.canShrink && edges.right.canExpand;
+                      const visualRightBidirectional = edges.left.canShrink && edges.left.canExpand;
+
+                      return (
+                        <>
+                          {/* Left handle (MSB side - visual left) */}
+                          {showVisualLeft && (
+                            <div
+                              className="absolute left-0 top-0 bottom-0 w-6 flex items-center justify-center z-20 pointer-events-none"
+                              style={{
+                                background: 'linear-gradient(90deg, rgba(0,0,0,0.5) 0%, transparent 100%)',
+                              }}
+                            >
+                              <svg
+                                width="16"
+                                height="16"
+                                viewBox="0 0 16 16"
+                                fill="none"
+                                className="drop-shadow-lg"
+                              >
+                                {visualLeftBidirectional ? (
+                                  /* Bidirectional arrow ↔ - cleaner, wider design */
+                                  <>
+                                    <path d="M2 8H14" stroke="white" strokeWidth="2" strokeLinecap="round" />
+                                    <path d="M5 5L2 8L5 11" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                    <path d="M11 5L14 8L11 11" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                  </>
+                                ) : edges.right.canExpand ? (
+                                  /* Outward arrow ← (expand) */
+                                  <path d="M10 4L6 8L10 12" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                                ) : (
+                                  /* Inward arrow → (shrink) */
+                                  <path d="M6 4L10 8L6 12" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                                )}
+                              </svg>
+                            </div>
+                          )}
+                          {/* Right handle (LSB side - visual right) */}
+                          {showVisualRight && (
+                            <div
+                              className="absolute right-0 top-0 bottom-0 w-6 flex items-center justify-center z-20 pointer-events-none"
+                              style={{
+                                background: 'linear-gradient(270deg, rgba(0,0,0,0.5) 0%, transparent 100%)',
+                              }}
+                            >
+                              <svg
+                                width="16"
+                                height="16"
+                                viewBox="0 0 16 16"
+                                fill="none"
+                                className="drop-shadow-lg"
+                              >
+                                {visualRightBidirectional ? (
+                                  /* Bidirectional arrow ↔ - cleaner, wider design */
+                                  <>
+                                    <path d="M2 8H14" stroke="white" strokeWidth="2" strokeLinecap="round" />
+                                    <path d="M5 5L2 8L5 11" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                    <path d="M11 5L14 8L11 11" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                  </>
+                                ) : edges.left.canExpand ? (
+                                  /* Outward arrow → (expand) */
+                                  <path d="M6 4L10 8L6 12" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                                ) : (
+                                  /* Inward arrow ← (shrink) */
+                                  <path d="M10 4L6 8L10 12" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                                )}
+                              </svg>
+                            </div>
+                          )}
+                        </>
+                      );
+                    })()}
                     {Array.from({ length: width }).map((_, i) => {
                       const bit = group.end - i;
                       const localBit = bit - group.start;
