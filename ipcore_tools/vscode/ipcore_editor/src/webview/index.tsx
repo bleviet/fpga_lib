@@ -507,9 +507,12 @@ const App = () => {
                 // Determine if it's an array or register
                 const isArray = reg.__kind === 'array';
                 const newPath = [...currentPath, 'registers', regIndex];
+                
+                // Outline uses different ID schemes for arrays vs registers
+                const idSuffix = isArray ? `-arrreg-${regIndex}` : `-reg-${regIndex}`;
 
                 handleSelect({
-                  id: `${selectionRef.current.id}-reg-${regIndex}`,
+                  id: `${selectionRef.current.id}${idSuffix}`,
                   type: isArray ? 'array' : 'register',
                   object: reg,
                   breadcrumbs: [...(selectionRef.current.breadcrumbs || []), reg.name || `Register ${regIndex}`],
@@ -523,7 +526,7 @@ const App = () => {
                 if (!block) return;
 
                 handleSelect({
-                  id: `valid-block-${blockIndex}`,
+                  id: `block-${blockIndex}`,
                   type: 'block',
                   object: block,
                   breadcrumbs: [memoryMap.name || 'Memory Map', block.name || `Block ${blockIndex}`],
