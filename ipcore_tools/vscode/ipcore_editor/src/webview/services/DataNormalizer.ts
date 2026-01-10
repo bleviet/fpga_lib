@@ -191,7 +191,7 @@ export class DataNormalizer {
         return {
           name: block.name,
           base_address: baseAddress,
-          range: block.range || '4K',
+          range: block.range || 4096,
           usage: block.usage || 'register',
           access: block.access,
           description: block.description,

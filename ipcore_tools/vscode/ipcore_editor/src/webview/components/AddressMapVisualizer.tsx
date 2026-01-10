@@ -16,6 +16,33 @@ function toHex(n: number): string {
   return `0x${Math.max(0, n).toString(16).toUpperCase()}`;
 }
 
+/**
+ * Calculate block size based on registers and register arrays
+ * For regular registers: 4 bytes per register
+ * For register arrays: count * stride bytes
+ * Falls back to explicit size if no registers
+ */
+function calculateBlockSize(block: any): number {
+  const registers = block?.registers || [];
+  if (registers.length === 0) {
+    return block?.size ?? block?.range ?? 4;
+  }
+
+  let totalSize = 0;
+  for (const reg of registers) {
+    if (reg.__kind === 'array') {
+      // Register array: size = count * stride
+      const count = reg.count || 1;
+      const stride = reg.stride || 4;
+      totalSize += count * stride;
+    } else {
+      // Regular register: 4 bytes
+      totalSize += 4;
+    }
+  }
+  return totalSize;
+}
+
 const AddressMapVisualizer: React.FC<AddressMapVisualizerProps> = ({
   blocks,
   hoveredBlockIndex = null,
@@ -29,7 +56,7 @@ const AddressMapVisualizer: React.FC<AddressMapVisualizerProps> = ({
     }
     const max = blocks.reduce((acc, block) => {
       const base = block.base_address ?? block.offset ?? 0;
-      const size = block.size ?? block.range ?? 4096; // Default 4KB
+      const size = calculateBlockSize(block);
       return Math.max(acc, base + size);
     }, 0);
     return Math.max(max, totalAddressSpace);
@@ -39,7 +66,7 @@ const AddressMapVisualizer: React.FC<AddressMapVisualizerProps> = ({
   const groups = useMemo(() => {
     return blocks.map((block, idx) => {
       const base = block.base_address ?? block.offset ?? 0;
-      const size = block.size ?? block.range ?? 4096;
+      const size = calculateBlockSize(block);
       return {
         idx,
         name: block.name || `Block ${idx}`,

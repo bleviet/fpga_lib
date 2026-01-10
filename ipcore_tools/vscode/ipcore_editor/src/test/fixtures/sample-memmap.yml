@@ -3,7 +3,7 @@ description: Sample memory map for testing
 address_blocks:
 - name: Control Block
   offset: 0
-  range: 4K
+  range: 4096
   usage: register
   description: Main control registers
   registers:

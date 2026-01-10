@@ -37,6 +37,33 @@ import {
   repackRegistersBackward,
 } from "../algorithms/RegisterRepacker";
 
+/**
+ * Calculate block size based on registers and register arrays
+ * For regular registers: 4 bytes per register
+ * For register arrays: count * stride bytes
+ * Falls back to explicit size if no registers
+ */
+function calculateBlockSize(block: any): number {
+  const registers = block?.registers || [];
+  if (registers.length === 0) {
+    return block?.size ?? block?.range ?? 4;
+  }
+
+  let totalSize = 0;
+  for (const reg of registers) {
+    if (reg.__kind === 'array') {
+      // Register array: size = count * stride
+      const count = reg.count || 1;
+      const stride = reg.stride || 4;
+      totalSize += count * stride;
+    } else {
+      // Regular register: 4 bytes
+      totalSize += 4;
+    }
+  }
+  return totalSize;
+}
+
 interface DetailsPanelProps {
   selectedType: "memoryMap" | "block" | "register" | "array" | null;
   selectedObject: any;
@@ -2675,7 +2702,7 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(
                     {blocks.map((block: any, idx: number) => {
                       const color = getBlockColor(idx);
                       const base = block.base_address ?? block.offset ?? 0;
-                      const size = block.size ?? block.range ?? 4096;
+                      const size = calculateBlockSize(block);
 
                       return (
                         <tr

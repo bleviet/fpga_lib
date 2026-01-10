@@ -3,9 +3,35 @@
  */
 
 /**
+ * Calculate block size based on registers and register arrays
+ * For regular registers: 4 bytes per register
+ * For register arrays: count * stride bytes
+ */
+function calculateBlockSize(block: any): number {
+  const registers = block?.registers || [];
+  if (registers.length === 0) {
+    return typeof block?.size === 'number' ? block.size : 4;
+  }
+
+  let totalSize = 0;
+  for (const reg of registers) {
+    if (reg.__kind === 'array') {
+      // Register array: size = count * stride
+      const count = reg.count || 1;
+      const stride = reg.stride || 4;
+      totalSize += count * stride;
+    } else {
+      // Regular register: 4 bytes
+      totalSize += 4;
+    }
+  }
+  return totalSize;
+}
+
+/**
  * Repack address blocks forward (toward higher addresses) starting from the given index.
  * Maintains block sizes but shifts them to higher addresses.
- * Calculates block size based on number of registers (4 bytes per register).
+ * Calculates block size based on registers and register arrays.
  * @param blocks Array of address blocks
  * @param fromIndex Starting index for repacking (inclusive)
  * @returns New array with repacked blocks
@@ -18,24 +44,13 @@ export function repackBlocksForward(blocks: any[], fromIndex: number): any[] {
   if (fromIndex > 0) {
     const prevBlock = newBlocks[fromIndex - 1];
     const prevBase = typeof prevBlock.base_address === 'number' ? prevBlock.base_address : 0;
-
-    // Calculate size based on registers (4 bytes per register)
-    const prevRegisters = prevBlock.registers || [];
-    const prevSize = prevRegisters.length > 0
-      ? prevRegisters.length * 4
-      : (typeof prevBlock.size === 'number' ? prevBlock.size : 4);
-
+    const prevSize = calculateBlockSize(prevBlock);
     nextBase = prevBase + prevSize;
   }
 
   for (let i = fromIndex; i < newBlocks.length; i++) {
     const block = newBlocks[i];
-
-    // Calculate size based on registers (4 bytes per register)
-    const registers = block.registers || [];
-    const blockSize = registers.length > 0
-      ? registers.length * 4
-      : (typeof block.size === 'number' ? block.size : 4);
+    const blockSize = calculateBlockSize(block);
 
     newBlocks[i] = {
       ...block,
@@ -51,7 +66,7 @@ export function repackBlocksForward(blocks: any[], fromIndex: number): any[] {
 /**
  * Repack address blocks backward (toward lower addresses) starting from the given index going backwards.
  * Maintains block sizes but shifts them to lower addresses.
- * Calculates block size based on number of registers (4 bytes per register).
+ * Calculates block size based on registers and register arrays.
  * @param blocks Array of address blocks
  * @param fromIndex Starting index for repacking (inclusive), goes backward to index 0
  * @returns New array with repacked blocks
@@ -65,12 +80,7 @@ export function repackBlocksBackward(blocks: any[], fromIndex: number): any[] {
 
   for (let i = fromIndex; i >= 0; i--) {
     const block = newBlocks[i];
-
-    // Calculate size based on registers (4 bytes per register)
-    const registers = block.registers || [];
-    const size = registers.length > 0
-      ? registers.length * 4
-      : (block.size || 4);
+    const size = calculateBlockSize(block);
 
     const base = nextEnd === Infinity ? block.base_address : nextEnd - size + 1;
     newBlocks[i] = {

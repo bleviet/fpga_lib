@@ -253,7 +253,7 @@ memoryMaps:
       addressBlocks:
         - name: "REGS"
           baseAddress: 0x0
-          range: "4K"
+          range: 4096
           defaultRegWidth: 32
           registers:
             - name: "CTRL"
@@ -354,7 +354,7 @@ def test_parse_memory_map_with_import(tmp_path):
   addressBlocks:
     - name: "REGS"
       baseAddress: 0x0
-      range: "1K"
+      range: 1024
       registers:
         - name: "ID"
           size: 32
@@ -487,7 +487,7 @@ memoryMaps:
       addressBlocks:
         - name: "BLOCK"
           baseAddress: 0x0
-          range: "1K"
+          range: 1024
           registers:
             - name: "REG0"
               size: 32
@@ -524,7 +524,7 @@ memoryMaps:
       addressBlocks:
         - name: "BLOCK"
           baseAddress: 0x0
-          range: "1K"
+          range: 1024
           registers:
             - name: "REG"
               size: 32

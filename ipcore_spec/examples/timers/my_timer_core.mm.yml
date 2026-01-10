@@ -129,5 +129,7 @@
   - name: LOCAL_RAM
     offset: 4096
     usage: memory
+    range: 4096
+    defaultRegWidth: 32
     access: read-write
     description: 4K local scratchpad RAM

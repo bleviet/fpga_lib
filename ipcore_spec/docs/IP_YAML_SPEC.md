@@ -187,7 +187,7 @@ memoryMaps:
     addressBlocks:
       - name: REGS
         offset: 0
-        range: 4K
+        range: 4096
         usage: register
         registers: [...]
 ```
@@ -202,7 +202,7 @@ memoryMaps:
   addressBlocks:
     - name: REGS
       offset: 0
-      range: 4K
+      range: 4096
       usage: register           # register | memory | reserved
       defaultRegWidth: 32
       registers:

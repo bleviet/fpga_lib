@@ -188,7 +188,7 @@ def test_memory_map():
     block = AddressBlock(
         name="CONTROL_REGS",
         base_address=0x0000,
-        range="4K",
+        range=4096,
         description="Control and status registers",
         registers=[ctrl_reg, status_reg],
     )

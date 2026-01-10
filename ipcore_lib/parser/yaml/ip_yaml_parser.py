@@ -475,6 +475,7 @@ class YamlIpCoreParser:
                                 "range": range_value,
                                 "description": block_data.get("description"),
                                 "usage": block_data.get("usage", "register"),
+                                "default_reg_width": block_data.get("defaultRegWidth"),
                                 "registers": registers if registers else None,
                             }
                         )
