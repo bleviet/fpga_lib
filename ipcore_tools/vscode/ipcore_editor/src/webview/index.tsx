@@ -516,6 +516,20 @@ const App = () => {
                   path: newPath,
                 });
               }}
+              onNavigateToBlock={(blockIndex) => {
+                // Navigate to address block in Outline
+                if (!memoryMap || !memoryMap.address_blocks) return;
+                const block = memoryMap.address_blocks[blockIndex];
+                if (!block) return;
+
+                handleSelect({
+                  id: `valid-block-${blockIndex}`,
+                  type: 'block',
+                  object: block,
+                  breadcrumbs: [memoryMap.name || 'Memory Map', block.name || `Block ${blockIndex}`],
+                  path: ['addressBlocks', blockIndex],
+                });
+              }}
             />
           </section>
         )}

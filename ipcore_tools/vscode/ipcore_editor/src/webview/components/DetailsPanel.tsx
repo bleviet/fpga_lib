@@ -74,6 +74,7 @@ interface DetailsPanelProps {
   };
   onUpdate: (path: Array<string | number>, value: any) => void;
   onNavigateToRegister?: (regIndex: number) => void;
+  onNavigateToBlock?: (blockIndex: number) => void;
 }
 
 export type DetailsPanelHandle = {
@@ -120,7 +121,7 @@ const REG_COLUMN_ORDER: RegEditKey[] = [
 ];
 
 const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(
-  ({ selectedType, selectedObject, selectionMeta, onUpdate, onNavigateToRegister }, ref) => {
+  ({ selectedType, selectedObject, selectionMeta, onUpdate, onNavigateToRegister, onNavigateToBlock }, ref) => {
     const [offsetText, setOffsetText] = useState<string>("");
     const [selectedFieldIndex, setSelectedFieldIndex] = useState<number>(-1);
     const [hoveredFieldIndex, setHoveredFieldIndex] = useState<number | null>(
@@ -2762,6 +2763,7 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(
                 blocks={blocks}
                 hoveredBlockIndex={hoveredBlockIndex}
                 setHoveredBlockIndex={setHoveredBlockIndex}
+                onBlockClick={onNavigateToBlock}
               />
             </div>
           </div>

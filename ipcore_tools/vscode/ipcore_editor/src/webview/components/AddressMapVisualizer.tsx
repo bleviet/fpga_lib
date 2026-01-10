@@ -6,6 +6,7 @@ interface AddressMapVisualizerProps {
   hoveredBlockIndex?: number | null;
   setHoveredBlockIndex?: (idx: number | null) => void;
   totalAddressSpace?: number;
+  onBlockClick?: (blockIndex: number) => void;
 }
 
 function getBlockColor(idx: number) {
@@ -48,6 +49,7 @@ const AddressMapVisualizer: React.FC<AddressMapVisualizerProps> = ({
   hoveredBlockIndex = null,
   setHoveredBlockIndex = () => {},
   totalAddressSpace = 65536, // Default 64KB
+  onBlockClick,
 }) => {
   // Calculate max address to determine total range
   const maxAddress = useMemo(() => {
@@ -91,8 +93,10 @@ const AddressMapVisualizer: React.FC<AddressMapVisualizerProps> = ({
               <div
                 key={group.idx}
                 className={`relative flex-1 flex flex-col items-center justify-end select-none min-w-[120px] ${isHovered ? "z-10" : ""}`}
+                style={{ cursor: onBlockClick ? 'pointer' : 'default' }}
                 onMouseEnter={() => setHoveredBlockIndex(group.idx)}
                 onMouseLeave={() => setHoveredBlockIndex(null)}
+                onClick={() => onBlockClick?.(group.idx)}
               >
                 <div
                   className="h-20 w-full rounded-t-md overflow-hidden flex items-center justify-center px-2"
