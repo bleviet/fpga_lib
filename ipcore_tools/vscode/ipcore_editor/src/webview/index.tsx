@@ -495,29 +495,69 @@ const App = () => {
               onUpdate={handleUpdate}
               onNavigateToRegister={(regIndex) => {
                 // Navigate to register in Outline when clicking on visualizer
-                if (!memoryMap || !selectionRef.current || selectionRef.current.type !== 'block') {
+                if (!memoryMap || !selectionRef.current) {
                   return;
                 }
-                const currentPath = selectionRef.current.path || [];
-                const block = selectedObject;
-                const registers = block?.registers || [];
-                const reg = registers[regIndex];
-                if (!reg) return;
 
-                // Determine if it's an array or register
-                const isArray = reg.__kind === 'array';
-                const newPath = [...currentPath, 'registers', regIndex];
-                
-                // Outline uses different ID schemes for arrays vs registers
-                const idSuffix = isArray ? `-arrreg-${regIndex}` : `-reg-${regIndex}`;
+                // CASE 1: Block View (Direct registers/arrays)
+                if (selectionRef.current.type === 'block') {
+                  const currentPath = selectionRef.current.path || [];
+                  const block = selectedObject;
+                  const registers = block?.registers || [];
+                  const reg = registers[regIndex];
+                  if (!reg) return;
+  
+                  // Determine if it's an array or register
+                  const isArray = reg.__kind === 'array';
+                  const newPath = [...currentPath, 'registers', regIndex];
+                  
+                  // Outline uses different ID schemes for arrays vs registers
+                  const idSuffix = isArray ? `-arrreg-${regIndex}` : `-reg-${regIndex}`;
+  
+                  handleSelect({
+                    id: `${selectionRef.current.id}${idSuffix}`,
+                    type: isArray ? 'array' : 'register',
+                    object: reg,
+                    breadcrumbs: [...(selectionRef.current.breadcrumbs || []), reg.name || `Register ${regIndex}`],
+                    path: newPath,
+                    // Block children (top-level) absolute address is calculated in Outline, but we can approximate or omit if Outline recalculates?
+                    // Usually safe to omit if DetailsPanel Recalcs or if Outline pass provides it.
+                    // For consistency, let's leave meta undefined (or copy from existing logic which didn't set it? Existing logic DID NOT set meta).
+                  });
+                  return;
+                }
 
-                handleSelect({
-                  id: `${selectionRef.current.id}${idSuffix}`,
-                  type: isArray ? 'array' : 'register',
-                  object: reg,
-                  breadcrumbs: [...(selectionRef.current.breadcrumbs || []), reg.name || `Register ${regIndex}`],
-                  path: newPath,
-                });
+                // CASE 2: Array Element View (Nested registers)
+                // When masquerading as a Block for an Array Element, clicking a register should select the template register in the Outline under that element.
+                if (selectionRef.current.type === 'array') {          
+                  const arr = selectedObject as any; // NormalizedRegisterArray with meta
+                  const registers = arr.registers || [];
+                  const reg = registers[regIndex];
+                  if (!reg) return;
+
+                  // Path logic verified from Outline.tsx: [...arrayPath, 'registers', childIndex]
+                  const newPath = [...(selectionRef.current.path || []), 'registers', regIndex];
+                  
+                  // ID suffix logic verified from Outline.tsx: `${elementId}-reg-${childIndex}`
+                  const id = `${selectionRef.current.id}-reg-${regIndex}`;
+                  
+                  // Calculate absolute address for the specific child
+                  const elementBase = arr.__element_base ?? 0;
+                  const absoluteAddr = elementBase + (reg.address_offset ?? 0);
+
+                  handleSelect({
+                    id,
+                    type: 'register',
+                    object: reg,
+                    breadcrumbs: [...(selectionRef.current.breadcrumbs || []), reg.name || `Register ${regIndex}`],
+                    path: newPath,
+                    meta: {
+                        absoluteAddress: absoluteAddr,
+                        relativeOffset: reg.address_offset ?? 0
+                    }
+                  });
+                  return;
+                }
               }}
               onNavigateToBlock={(blockIndex) => {
                 // Navigate to address block in Outline
