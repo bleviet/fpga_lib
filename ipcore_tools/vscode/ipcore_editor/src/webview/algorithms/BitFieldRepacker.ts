@@ -90,25 +90,64 @@ export function repackFieldsFrom(fields: any[], regWidth: number, startIdx: numb
 }
 
 /**
- * Repack bit fields downward (toward LSB/bit 0) starting from the given index.
- * Maintains field widths but shifts them to lower bit positions.
- * Used for spatial insertion when inserting a field after another.
+ * Repack bit fields forward (toward MSB/Higher Bits) starting from the given index.
+ * Used for LSB-ascending sorted arrays.
+ * Ensures fields[i] is placed immediately after fields[i-1].
  */
-export function repackFieldsDownward(fields: any[], fromIndex: number, regWidth: number): any[] {
+export function repackFieldsForward(fields: any[], fromIndex: number, regWidth: number): any[] {
   const newFields = [...fields];
 
-  // Start from the field just before fromIndex to determine the starting position
-  let nextMsb =
+  let nextLsb =
     fromIndex > 0
       ? (() => {
           const prev = newFields[fromIndex - 1];
           const prevBits = prev.bits || toBitsString(prev);
           const prevRange = parseBitsRange(prevBits);
-          return prevRange ? prevRange[1] - 1 : regWidth - 1; // LSB - 1
+          return prevRange ? prevRange[0] + 1 : 0; // Previous MSB + 1
+        })()
+      : 0;
+
+  for (let i = fromIndex; i < newFields.length; i++) {
+    const field = newFields[i];
+    const bitsStr = field.bits || toBitsString(field);
+    const parsed = parseBitsRange(bitsStr);
+    const width = parsed ? Math.abs(parsed[0] - parsed[1]) + 1 : 1;
+
+    const lsb = nextLsb;
+    const msb = Math.min(regWidth - 1, lsb + width - 1);
+    nextLsb = msb + 1;
+
+    newFields[i] = {
+      ...field,
+      bits: formatBits(msb, lsb),
+      bit_offset: lsb,
+      bit_width: width,
+      bit_range: [msb, lsb],
+    };
+  }
+
+  return newFields;
+}
+
+/**
+ * Repack bit fields backward (toward LSB/Lower Bits) starting from the given index going backwards.
+ * Used for LSB-ascending sorted arrays.
+ * Ensures fields[i] is placed immediately before fields[i+1].
+ */
+export function repackFieldsBackward(fields: any[], fromIndex: number, regWidth: number): any[] {
+  const newFields = [...fields];
+
+  let nextMsb =
+    fromIndex < newFields.length - 1
+      ? (() => {
+          const next = newFields[fromIndex + 1];
+          const nextBits = next.bits || toBitsString(next);
+          const nextRange = parseBitsRange(nextBits);
+          return nextRange ? nextRange[1] - 1 : regWidth - 1; // Next LSB - 1
         })()
       : regWidth - 1;
 
-  for (let i = fromIndex; i < newFields.length; i++) {
+  for (let i = fromIndex; i >= 0; i--) {
     const field = newFields[i];
     const bitsStr = field.bits || toBitsString(field);
     const parsed = parseBitsRange(bitsStr);
@@ -130,43 +169,6 @@ export function repackFieldsDownward(fields: any[], fromIndex: number, regWidth:
   return newFields;
 }
 
-/**
- * Repack bit fields upward (toward MSB) starting from the given index going backwards.
- * Maintains field widths but shifts them to higher bit positions.
- * Used for spatial insertion when inserting a field before another.
- */
-export function repackFieldsUpward(fields: any[], fromIndex: number, regWidth: number): any[] {
-  const newFields = [...fields];
-
-  // Start from the field just after fromIndex to determine the starting position
-  let nextLsb =
-    fromIndex < newFields.length - 1
-      ? (() => {
-          const next = newFields[fromIndex + 1];
-          const nextBits = next.bits || toBitsString(next);
-          const nextRange = parseBitsRange(nextBits);
-          return nextRange ? nextRange[0] + 1 : 0; // MSB + 1
-        })()
-      : 0;
-
-  for (let i = fromIndex; i >= 0; i--) {
-    const field = newFields[i];
-    const bitsStr = field.bits || toBitsString(field);
-    const parsed = parseBitsRange(bitsStr);
-    const width = parsed ? Math.abs(parsed[0] - parsed[1]) + 1 : 1;
-
-    const lsb = nextLsb;
-    const msb = Math.min(regWidth - 1, lsb + width - 1);
-    nextLsb = msb + 1;
-
-    newFields[i] = {
-      ...field,
-      bits: formatBits(msb, lsb),
-      bit_offset: lsb,
-      bit_width: width,
-      bit_range: [msb, lsb],
-    };
-  }
-
-  return newFields;
-}
+// Deprecated aliases kept for compatibility if needed, but should be replaced
+export const repackFieldsDownward = repackFieldsBackward; // Wait, old Downward was toward LSB? No, old Downward was weird.
+// Let's NOT export aliases to force update in DetailsPanel

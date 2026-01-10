@@ -25,8 +25,8 @@ import {
   parseBitsRange,
   formatBits,
   repackFieldsFrom,
-  repackFieldsDownward,
-  repackFieldsUpward,
+  repackFieldsForward,
+  repackFieldsBackward,
 } from "../algorithms/BitFieldRepacker";
 import {
   repackBlocksForward,
@@ -383,10 +383,14 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(
           setSelectedFieldIndex(0);
           setHoveredFieldIndex(0);
           setActiveCell({ rowIndex: 0, key: "name" });
+          setBitsDrafts({});
+          setBitsErrors({});
+          setNameDrafts({});
+          setNameErrors({});
           window.setTimeout(() => {
             const row = document.querySelector(`tr[data-field-idx="0"]`);
-            row?.scrollIntoView({ block: "nearest" });
-          }, 0);
+            row?.scrollIntoView({ block: "center" });
+          }, 100);
           return;
         }
 
@@ -471,8 +475,8 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(
             ...fields.slice(selIdx + 1),
           ];
 
-          // Repack subsequent fields downward (toward LSB)
-          newFields = repackFieldsDownward(newFields, selIdx + 2, regSize);
+          // Repack subsequent fields forward (toward MSB)
+          newFields = repackFieldsForward(newFields, selIdx + 2, regSize);
 
           // Sort by LSB ascending to maintain array order (bit 0 first)
           newFields.sort((a, b) => {
@@ -514,12 +518,16 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(
           setSelectedFieldIndex(newIdx);
           setHoveredFieldIndex(newIdx);
           setActiveCell({ rowIndex: newIdx, key: "name" });
+          setBitsDrafts({});
+          setBitsErrors({});
+          setNameDrafts({});
+          setNameErrors({});
           window.setTimeout(() => {
             const row = document.querySelector(
               `tr[data-field-idx="${newIdx}"]`,
             );
-            row?.scrollIntoView({ block: "nearest" });
-          }, 0);
+            row?.scrollIntoView({ block: "center" });
+          }, 100);
         } else {
           // INSERT BEFORE: new field goes to higher bits (LSB = selectedLsb - 1)
           const newLsb = selectedLsb - 1;
@@ -589,8 +597,8 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(
             ...fields.slice(selIdx),
           ];
 
-          // Repack previous fields upward (toward MSB)
-          newFields = repackFieldsUpward(
+          // Repack previous fields backward (toward LSB)
+          newFields = repackFieldsBackward(
             newFields,
             selIdx - 1 >= 0 ? selIdx - 1 : 0,
             regSize,
@@ -636,12 +644,16 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(
           setSelectedFieldIndex(newIdx);
           setHoveredFieldIndex(newIdx);
           setActiveCell({ rowIndex: newIdx, key: "name" });
+          setBitsDrafts({});
+          setBitsErrors({});
+          setNameDrafts({});
+          setNameErrors({});
           window.setTimeout(() => {
             const row = document.querySelector(
               `tr[data-field-idx="${newIdx}"]`,
             );
-            row?.scrollIntoView({ block: "nearest" });
-          }, 0);
+            row?.scrollIntoView({ block: "center" });
+          }, 100);
         }
       };
 
@@ -784,6 +796,10 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(
           setSelectedFieldIndex(nextRow);
           setHoveredFieldIndex(nextRow);
           setActiveCell({ rowIndex: nextRow, key: currentKey });
+          setBitsDrafts({});
+          setBitsErrors({});
+          setNameDrafts({});
+          setNameErrors({});
           return;
         }
 
@@ -910,8 +926,8 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(
           setBlockActiveCell({ rowIndex: 0, key: "name" });
           window.setTimeout(() => {
             const row = document.querySelector(`tr[data-block-idx="0"]`);
-            row?.scrollIntoView({ block: "nearest" });
-          }, 0);
+            row?.scrollIntoView({ block: "center" });
+          }, 100);
           return;
         }
 
@@ -963,8 +979,8 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(
             const row = document.querySelector(
               `tr[data-block-idx="${newIdx}"]`,
             );
-            row?.scrollIntoView({ block: "nearest" });
-          }, 0);
+            row?.scrollIntoView({ block: "center" });
+          }, 100);
         } else {
           // INSERT BEFORE: new block goes to lower address (end = selected.base - 1)
           const newEnd = selectedBase - 1;
@@ -1044,8 +1060,8 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(
             const row = document.querySelector(
               `tr[data-block-idx="${newIdx}"]`,
             );
-            row?.scrollIntoView({ block: "nearest" });
-          }, 0);
+            row?.scrollIntoView({ block: "center" });
+          }, 100);
         }
       };
 
@@ -1280,8 +1296,8 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(
           setRegActiveCell({ rowIndex: 0, key: "name" });
           window.setTimeout(() => {
             const row = document.querySelector(`tr[data-reg-idx="0"]`);
-            row?.scrollIntoView({ block: "nearest" });
-          }, 0);
+            row?.scrollIntoView({ block: "center" });
+          }, 100);
           return;
         }
 
@@ -1330,8 +1346,8 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(
           setRegActiveCell({ rowIndex: newIdx, key: "name" });
           window.setTimeout(() => {
             const row = document.querySelector(`tr[data-reg-idx="${newIdx}"]`);
-            row?.scrollIntoView({ block: "nearest" });
-          }, 0);
+            row?.scrollIntoView({ block: "center" });
+          }, 100);
         } else {
           // INSERT BEFORE: new register goes to lower offset (offset = selected.offset - 4)
           const newOffset = selectedOffset - 4;
@@ -1393,8 +1409,8 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(
           setRegActiveCell({ rowIndex: newIdx, key: "name" });
           window.setTimeout(() => {
             const row = document.querySelector(`tr[data-reg-idx="${newIdx}"]`);
-            row?.scrollIntoView({ block: "nearest" });
-          }, 0);
+            row?.scrollIntoView({ block: "center" });
+          }, 100);
         }
       };
 
