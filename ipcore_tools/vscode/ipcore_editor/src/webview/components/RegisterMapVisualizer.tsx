@@ -56,10 +56,17 @@ const RegisterMapVisualizer: React.FC<RegisterMapVisualizerProps> = ({
         const [removed] = newRegs.splice(ctrlDrag.draggedRegIndex, 1);
         newRegs.splice(ctrlDrag.targetIndex, 0, removed);
 
-        // Recalculate offsets (4-byte stride)
-        newRegs.forEach((r, i) => {
-          r.offset = i * 4;
-          r.address_offset = i * 4;
+        // Recalculate offsets - account for arrays (count * stride)
+        let runningOffset = 0;
+        newRegs.forEach((r) => {
+          r.offset = runningOffset;
+          r.address_offset = runningOffset;
+          // Calculate size for this item
+          if (r.__kind === 'array') {
+            runningOffset += (r.count || 1) * (r.stride || 4);
+          } else {
+            runningOffset += 4; // Regular register = 4 bytes
+          }
         });
 
         onReorderRegisters(newRegs);
@@ -100,17 +107,28 @@ const RegisterMapVisualizer: React.FC<RegisterMapVisualizerProps> = ({
     }
   };
 
-  // Group registers
   const groups = useMemo(() => {
     return registers.map((reg, idx) => {
       const offset = reg.address_offset ?? reg.offset ?? idx * 4;
-      const size = reg.size ?? 4; // Default 4 bytes (32-bit)
+      // Calculate size - arrays use count * stride, registers use 4 bytes (32-bit default)
+      let size = 4; // Default: 4 bytes (32-bit register)
+      let isArray = false;
+      if (reg.__kind === 'array') {
+        size = (reg.count || 1) * (reg.stride || 4);
+        isArray = true;
+      } else if (reg.size) {
+        // reg.size is in BITS (e.g., 32 = 32-bit), convert to bytes
+        size = Math.max(1, Math.floor(reg.size / 8));
+      }
       return {
         idx,
         name: reg.name || `Reg ${idx}`,
         offset,
         absoluteAddress: baseAddress + offset,
         size,
+        isArray,
+        count: reg.count,
+        stride: reg.stride,
         color: getRegColor(idx),
       };
     });
@@ -168,7 +186,7 @@ const RegisterMapVisualizer: React.FC<RegisterMapVisualizerProps> = ({
                 }}
               >
                 <div
-                  className="h-20 w-full rounded-t-md overflow-hidden flex items-center justify-center px-2"
+                  className={`h-20 w-full rounded-t-md overflow-hidden flex items-center justify-center px-2 ${group.isArray ? 'border-2 border-dashed border-white/30' : ''}`}
                   style={{
                     background: FIELD_COLORS[group.color],
                     opacity: 1,
@@ -184,9 +202,9 @@ const RegisterMapVisualizer: React.FC<RegisterMapVisualizerProps> = ({
                   }}
                 >
                   <div className="flex flex-col items-center gap-0.5">
-                    <span className="text-lg select-none">📋</span>
+                    <span className="text-lg select-none">{group.isArray ? '📦' : '📋'}</span>
                     <span className="text-[10px] font-mono text-white/80 font-semibold select-none text-center leading-tight">
-                      REG
+                      {group.isArray ? `[${group.count}]` : 'REG'}
                     </span>
                   </div>
                 </div>
@@ -203,11 +221,11 @@ const RegisterMapVisualizer: React.FC<RegisterMapVisualizerProps> = ({
                   <div className="font-bold">
                     {group.name}
                     <span className="ml-2 vscode-muted font-mono text-[11px]">
-                      [+{toHex(group.offset)}]
+                      [{group.size}B]
                     </span>
                   </div>
                   <div className="text-[11px] vscode-muted font-mono">
-                    {toHex(group.absoluteAddress)}
+                    {toHex(group.absoluteAddress)} → {toHex(group.absoluteAddress + group.size - 1)}
                   </div>
                 </div>
                 <div className="flex w-full justify-center">

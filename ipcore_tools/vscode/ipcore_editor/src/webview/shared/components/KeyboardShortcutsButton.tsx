@@ -68,8 +68,26 @@ const BLOCK_VIEW_SHORTCUTS: ShortcutGroup[] = [
       { keys: "← / → (or h / l)", description: "Navigate columns" },
       { keys: "Enter / e", description: "Edit cell" },
       { keys: "o / O", description: "Insert register below/above" },
+      { keys: "Shift + A", description: "Insert register array" },
       { keys: "d / Del", description: "Delete register" },
       { keys: "Alt + ↑/↓ (or j/k)", description: "Move register up/down" },
+    ],
+  },
+];
+
+const ARRAY_VIEW_SHORTCUTS: ShortcutGroup[] = [
+  {
+    title: "Array Properties",
+    shortcuts: [
+      { keys: "Tab", description: "Navigate between name/count/stride fields" },
+    ],
+  },
+  {
+    title: "Nested Registers Table",
+    shortcuts: [
+      { keys: "↑ / ↓ (or j / k)", description: "Navigate rows" },
+      { keys: "o / O", description: "Insert register below/above" },
+      { keys: "d / Del", description: "Delete register" },
     ],
   },
 ];
@@ -86,7 +104,7 @@ const OUTLINE_SHORTCUTS: ShortcutGroup[] = [
 ];
 
 interface KeyboardShortcutsButtonProps {
-  context: "register" | "block" | "memoryMap" | "outline";
+  context: "register" | "block" | "memoryMap" | "outline" | "array";
 }
 
 export const KeyboardShortcutsButton: React.FC<KeyboardShortcutsButtonProps> = ({
@@ -103,6 +121,8 @@ export const KeyboardShortcutsButton: React.FC<KeyboardShortcutsButtonProps> = (
         return MEMORY_MAP_SHORTCUTS;
       case "block":
         return BLOCK_VIEW_SHORTCUTS;
+      case "array":
+        return ARRAY_VIEW_SHORTCUTS;
       case "outline":
         return OUTLINE_SHORTCUTS;
       default:

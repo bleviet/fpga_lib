@@ -1395,8 +1395,16 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(
         const selectedOffset = selected.address_offset ?? selected.offset ?? 0;
 
         if (after) {
-          // INSERT AFTER: new register goes to higher offset (offset = selected.offset + 4)
-          const newOffset = selectedOffset + 4;
+          // INSERT AFTER: new register goes after selected item
+          // If selected is an array, offset = array.offset + (count * stride)
+          // If selected is a register, offset = reg.offset + 4
+          let selectedSize = 4; // Default register size
+          if ((selected as any).__kind === 'array') {
+            const arrCount = (selected as any).count || 1;
+            const arrStride = (selected as any).stride || 4;
+            selectedSize = arrCount * arrStride;
+          }
+          const newOffset = selectedOffset + selectedSize;
 
           const name = getNextRegName();
           const newReg = {
@@ -1540,12 +1548,14 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(
         const isDelete = keyLower === "d" || e.key === "Delete";
         const isInsertAfter = keyLower === "o" && !e.shiftKey;
         const isInsertBefore = keyLower === "o" && e.shiftKey;
+        const isInsertArray = keyLower === "a" && e.shiftKey; // Shift+A to insert array
         if (
           !isArrow &&
           !isEdit &&
           !isDelete &&
           !isInsertAfter &&
-          !isInsertBefore
+          !isInsertBefore &&
+          !isInsertArray
         ) {
           return;
         }
@@ -1626,6 +1636,68 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(
           e.preventDefault();
           e.stopPropagation();
           tryInsertReg(isInsertAfter);
+          return;
+        }
+
+        // Insert Register Array (Shift+A)
+        if (isInsertArray) {
+          e.preventDefault();
+          e.stopPropagation();
+
+          // Generate unique array name
+          let maxN = 0;
+          for (const r of registers) {
+            const match = r.name?.match(/^ARRAY_(\d+)$/i);
+            if (match) {
+              maxN = Math.max(maxN, parseInt(match[1], 10));
+            }
+          }
+          const arrayName = `ARRAY_${maxN + 1}`;
+
+          // Get offset for new array (after currently selected register)
+          const selIdx = selectedRegIndex >= 0 ? selectedRegIndex : registers.length - 1;
+          const selected = registers[selIdx];
+          const baseOffset = (selected?.address_offset ?? selected?.offset ?? 0) + 4;
+
+          // Create new register array with default nested register
+          const newArray = {
+            __kind: 'array',
+            name: arrayName,
+            address_offset: baseOffset,
+            offset: baseOffset,
+            count: 2,
+            stride: 4,
+            description: '',
+            registers: [
+              {
+                name: 'reg0',
+                offset: 0,
+                address_offset: 0,
+                access: 'read-write',
+                description: '',
+                fields: [
+                  {
+                    name: 'data',
+                    bits: '[31:0]',
+                    access: 'read-write',
+                    description: '',
+                  },
+                ],
+              },
+            ],
+          };
+
+          // Insert after selected
+          const newRegs = [
+            ...registers.slice(0, selIdx + 1),
+            newArray,
+            ...registers.slice(selIdx + 1),
+          ];
+
+          onUpdate(["registers"], newRegs);
+          setSelectedRegIndex(selIdx + 1);
+          setHoveredRegIndex(selIdx + 1);
+          setRegActiveCell({ rowIndex: selIdx + 1, key: "name" });
           return;
         }
         if (isDelete) {
@@ -3086,6 +3158,320 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(
             </div>
           </div>
           <KeyboardShortcutsButton context="block" />
+        </div>
+      );
+    }
+
+    // =====================================================
+    // REGISTER ARRAY VIEW
+    // =====================================================
+    if (selectedType === "array") {
+      const arr = selectedObject;
+      const nestedRegisters = arr.registers || [];
+      const baseOffset = arr.address_offset ?? 0;
+
+      const toHex = (n: number) =>
+        `0x${Math.max(0, n).toString(16).toUpperCase()}`;
+
+      return (
+        <div className="flex flex-col w-full h-full min-h-0">
+          {/* Array Header */}
+          <div className="vscode-surface border-b vscode-border p-8 flex flex-col gap-6 shrink-0">
+            <div className="flex justify-between items-start">
+              <div>
+                <h2 className="text-2xl font-bold font-mono tracking-tight">
+                  {arr.name || "Register Array"}
+                </h2>
+                <p className="vscode-muted text-sm mt-1 max-w-2xl">
+                  {arr.description || "Register array"} • {arr.count || 1} instances × {arr.stride || 4} bytes
+                </p>
+              </div>
+            </div>
+
+            {/* Array Properties */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 vscode-surface-alt p-4 rounded-lg">
+              <div>
+                <label className="text-xs vscode-muted block mb-1">Name</label>
+                <VSCodeTextField
+                  value={arr.name || ""}
+                  onInput={(e: any) => onUpdate(["name"], e.target.value)}
+                  className="w-full"
+                />
+              </div>
+              <div>
+                <label className="text-xs vscode-muted block mb-1">Base Offset</label>
+                <span className="font-mono text-sm">{toHex(baseOffset)}</span>
+              </div>
+              <div>
+                <label className="text-xs vscode-muted block mb-1">Count</label>
+                <VSCodeTextField
+                  value={String(arr.count || 1)}
+                  onInput={(e: any) => {
+                    const val = parseInt(e.target.value, 10);
+                    if (!isNaN(val) && val > 0) {
+                      onUpdate(["count"], val);
+                    }
+                  }}
+                  className="w-24"
+                />
+              </div>
+              <div>
+                <label className="text-xs vscode-muted block mb-1">Stride (bytes)</label>
+                <VSCodeTextField
+                  value={String(arr.stride || 4)}
+                  onInput={(e: any) => {
+                    const val = parseInt(e.target.value, 10);
+                    if (!isNaN(val) && val > 0) {
+                      onUpdate(["stride"], val);
+                    }
+                  }}
+                  className="w-24"
+                />
+              </div>
+            </div>
+
+            {/* Array Address Summary */}
+            <div className="text-sm vscode-muted">
+              <span className="font-mono">
+                {toHex(baseOffset)} → {toHex(baseOffset + (arr.count || 1) * (arr.stride || 4) - 1)}
+              </span>
+              <span className="ml-2">
+                ({(arr.count || 1) * (arr.stride || 4)} bytes total)
+              </span>
+            </div>
+
+            {/* Register Map Visualizer for nested registers */}
+            <div className="w-full relative z-10 mt-4 select-none">
+              <RegisterMapVisualizer
+                registers={nestedRegisters}
+                hoveredRegIndex={hoveredRegIndex}
+                setHoveredRegIndex={setHoveredRegIndex}
+                baseAddress={0}
+                onReorderRegisters={(newRegs) =>
+                  onUpdate(["registers"], newRegs)
+                }
+              />
+            </div>
+          </div>
+
+          {/* Nested Registers Table - Interactive */}
+          <div
+            className="flex-1 overflow-auto p-6"
+            tabIndex={0}
+            ref={regsFocusRef}
+            onKeyDown={(e) => {
+              // Keyboard handler for array nested registers
+              const keyLower = e.key.toLowerCase();
+
+              // Normalize Vim keys for macOS
+              if (e.altKey) {
+                const codeToKey: Record<string, string> = {
+                  KeyH: 'h', KeyJ: 'j', KeyK: 'k', KeyL: 'l',
+                };
+                if (codeToKey[e.code]) {
+                  // Use normalized key
+                }
+              }
+
+              const vimToArrow: Record<string, string> = {
+                h: 'ArrowLeft', j: 'ArrowDown', k: 'ArrowUp', l: 'ArrowRight',
+              };
+              const mappedArrow = vimToArrow[keyLower];
+              const normalizedKey = mappedArrow ?? e.key;
+
+              const isArrow = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(normalizedKey);
+              const isEdit = normalizedKey === 'F2' || keyLower === 'e';
+              const isDelete = keyLower === 'd' || e.key === 'Delete';
+              const isInsertAfter = keyLower === 'o' && !e.shiftKey;
+              const isInsertBefore = keyLower === 'o' && e.shiftKey;
+
+              if (!isArrow && !isEdit && !isDelete && !isInsertAfter && !isInsertBefore) {
+                return;
+              }
+
+              if (e.ctrlKey || e.metaKey) return;
+
+              const target = e.target as HTMLElement | null;
+              const isTypingTarget = !!target?.closest(
+                'input, textarea, select, [contenteditable="true"], vscode-text-field, vscode-text-area, vscode-dropdown'
+              );
+              if (isTypingTarget) return;
+
+              const currentRow = selectedRegIndex >= 0 ? selectedRegIndex : 0;
+
+              // Insert register in array
+              if (isInsertAfter || isInsertBefore) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                // Generate unique name
+                let maxN = 0;
+                for (const r of nestedRegisters) {
+                  const match = r.name?.match(/^reg(\d+)$/i);
+                  if (match) maxN = Math.max(maxN, parseInt(match[1], 10));
+                }
+                const newName = `reg${maxN + 1}`;
+
+                // Calculate offset
+                const selIdx = selectedRegIndex >= 0 ? selectedRegIndex : nestedRegisters.length - 1;
+                const selected = nestedRegisters[selIdx];
+                const selectedOffset = selected?.address_offset ?? selected?.offset ?? 0;
+                const newOffset = isInsertAfter ? selectedOffset + 4 : Math.max(0, selectedOffset - 4);
+
+                const newReg = {
+                  name: newName,
+                  offset: newOffset,
+                  address_offset: newOffset,
+                  access: 'read-write',
+                  description: '',
+                  fields: [
+                    { name: 'data', bits: '[31:0]', access: 'read-write', description: '' },
+                  ],
+                };
+
+                let newRegs;
+                let newIdx;
+                if (isInsertAfter) {
+                  newRegs = [
+                    ...nestedRegisters.slice(0, selIdx + 1),
+                    newReg,
+                    ...nestedRegisters.slice(selIdx + 1),
+                  ];
+                  newIdx = selIdx + 1;
+                } else {
+                  newRegs = [
+                    ...nestedRegisters.slice(0, selIdx),
+                    newReg,
+                    ...nestedRegisters.slice(selIdx),
+                  ];
+                  newIdx = selIdx;
+                }
+
+                onUpdate(['registers'], newRegs);
+                setSelectedRegIndex(newIdx);
+                setHoveredRegIndex(newIdx);
+                return;
+              }
+
+              // Delete register
+              if (isDelete) {
+                if (currentRow < 0 || currentRow >= nestedRegisters.length) return;
+                e.preventDefault();
+                e.stopPropagation();
+
+                const newRegs = nestedRegisters.filter((_: any, idx: number) => idx !== currentRow);
+                onUpdate(['registers'], newRegs);
+                const nextRow = currentRow > 0 ? currentRow - 1 : newRegs.length > 0 ? 0 : -1;
+                setSelectedRegIndex(nextRow);
+                setHoveredRegIndex(nextRow);
+                return;
+              }
+
+              // Navigation
+              if (isArrow) {
+                e.preventDefault();
+                const isVertical = normalizedKey === 'ArrowUp' || normalizedKey === 'ArrowDown';
+                const delta = normalizedKey === 'ArrowUp' || normalizedKey === 'ArrowLeft' ? -1 : 1;
+
+                if (isVertical) {
+                  const next = Math.max(0, Math.min(nestedRegisters.length - 1, currentRow + delta));
+                  setSelectedRegIndex(next);
+                  setHoveredRegIndex(next);
+                }
+              }
+            }}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-semibold vscode-muted uppercase tracking-wider">
+                Template Registers ({nestedRegisters.length})
+              </h3>
+              <span className="text-xs vscode-muted">
+                Press <kbd className="px-1 rounded vscode-surface-alt">o</kbd> to insert, <kbd className="px-1 rounded vscode-surface-alt">d</kbd> to delete
+              </span>
+            </div>
+
+            <div className="vscode-surface rounded-lg border vscode-border overflow-hidden">
+              <table className="vscode-table w-full text-sm">
+                <thead>
+                  <tr>
+                    <th className="px-4 py-2 text-left">Name</th>
+                    <th className="px-4 py-2 text-left">Offset</th>
+                    <th className="px-4 py-2 text-left">Access</th>
+                    <th className="px-6 py-2 text-left">Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {nestedRegisters.map((reg: any, idx: number) => {
+                    const regOffset = reg.address_offset ?? reg.offset ?? 0;
+                    const isSelected = selectedRegIndex === idx;
+                    return (
+                      <tr
+                        key={idx}
+                        data-reg-idx={idx}
+                        className={`vscode-table-row-hover border-t vscode-border cursor-pointer ${isSelected ? 'vscode-row-selected' : ''}`}
+                        onClick={() => {
+                          setSelectedRegIndex(idx);
+                          setHoveredRegIndex(idx);
+                        }}
+                      >
+                        <td className="px-4 py-2">
+                          <VSCodeTextField
+                            value={reg.name || ''}
+                            onInput={(e: any) => onUpdate(['registers', idx, 'name'], e.target.value)}
+                            className="w-full font-mono"
+                          />
+                        </td>
+                        <td className="px-4 py-2">
+                          <VSCodeTextField
+                            value={String(regOffset)}
+                            onInput={(e: any) => {
+                              const val = parseInt(e.target.value, 10);
+                              if (!isNaN(val) && val >= 0) {
+                                onUpdate(['registers', idx, 'offset'], val);
+                                onUpdate(['registers', idx, 'address_offset'], val);
+                              }
+                            }}
+                            className="w-20 font-mono text-xs"
+                          />
+                        </td>
+                        <td className="px-4 py-2">
+                          <VSCodeDropdown
+                            value={reg.access || 'read-write'}
+                            onInput={(e: any) => onUpdate(['registers', idx, 'access'], e.target.value)}
+                            className="w-full"
+                          >
+                            {ACCESS_OPTIONS.map((opt) => (
+                              <VSCodeOption key={opt} value={opt}>{opt}</VSCodeOption>
+                            ))}
+                          </VSCodeDropdown>
+                        </td>
+                        <td className="px-6 py-2">
+                          <VSCodeTextArea
+                            value={reg.description || ''}
+                            onInput={(e: any) => onUpdate(['registers', idx, 'description'], e.target.value)}
+                            className="w-full"
+                            rows={1}
+                          />
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {nestedRegisters.length === 0 && (
+                    <tr>
+                      <td colSpan={4} className="px-4 py-8 text-center vscode-muted">
+                        No nested registers. Press <kbd className="px-1 rounded vscode-surface-alt">o</kbd> to add one.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            <p className="mt-4 text-xs vscode-muted">
+              These registers are replicated {arr.count || 1} times at {arr.stride || 4}-byte intervals.
+            </p>
+          </div>
+          <KeyboardShortcutsButton context="array" />
         </div>
       );
     }
