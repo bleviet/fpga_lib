@@ -891,9 +891,6 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(
 
       const blocks =
         selectedObject?.address_blocks || selectedObject?.addressBlocks || [];
-      if (!Array.isArray(blocks) || blocks.length === 0) {
-        return;
-      }
 
       const getNextBlockName = () => {
         let maxN = 0;
@@ -1199,7 +1196,7 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(
           e.preventDefault();
           e.stopPropagation();
           // Remove the block at currentRow and ensure addressBlocks is a valid array
-          const newBlocks = blocks.filter((_, idx) => idx !== currentRow);
+          const newBlocks = blocks.filter((_: any, idx: number) => idx !== currentRow);
           onUpdate(["addressBlocks"], newBlocks);
           // Move selection to previous or next block
           const nextRow =
@@ -1212,6 +1209,11 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(
 
         e.preventDefault();
         e.stopPropagation();
+
+        // Can't navigate if there are no blocks yet
+        if (blocks.length === 0) {
+          return;
+        }
 
         const isVertical =
           normalizedKey === "ArrowUp" || normalizedKey === "ArrowDown";
@@ -1262,9 +1264,6 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(
       }
 
       const registers = selectedObject?.registers || [];
-      if (!Array.isArray(registers) || registers.length === 0) {
-        return;
-      }
 
       const getNextRegName = () => {
         let maxN = 0;
@@ -1548,7 +1547,7 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(
           e.preventDefault();
           e.stopPropagation();
           // Remove the register at currentRow and ensure registers is a valid array
-          const newRegs = registers.filter((_, idx) => idx !== currentRow);
+          const newRegs = registers.filter((_: any, idx: number) => idx !== currentRow);
           onUpdate(["registers"], newRegs);
           // Move selection to previous or next register
           const nextRow =
@@ -1600,6 +1599,11 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(
         // Plain arrows navigate cells.
         e.preventDefault();
         e.stopPropagation();
+
+        // Can't navigate if there are no registers yet
+        if (registers.length === 0) {
+          return;
+        }
 
         if (isVertical) {
           const nextRow = Math.max(
