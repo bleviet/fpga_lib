@@ -905,7 +905,6 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(
 
       const tryInsertBlock = (after: boolean) => {
         setBlocksInsertError(null);
-        const defaultBlockSize = 4096; // 4KB default
 
         // CASE 1: Empty memory map - place at base address 0
         if (blocks.length === 0) {
@@ -913,9 +912,26 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(
           const newBlock = {
             name,
             base_address: 0,
-            size: defaultBlockSize,
+            size: 4, // Size of 1 register (32-bit = 4 bytes)
             usage: "register",
             description: "",
+            registers: [
+              {
+                name: "reg0",
+                address_offset: 0,
+                offset: 0,
+                access: "read-write",
+                description: "",
+                fields: [
+                  {
+                    name: "data",
+                    bits: "[31:0]",
+                    access: "read-write",
+                    description: "",
+                  },
+                ],
+              },
+            ],
           };
           onUpdate(["addressBlocks"], [newBlock]);
           setSelectedBlockIndex(0);
@@ -933,19 +949,41 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(
           selectedBlockIndex >= 0 ? selectedBlockIndex : blocks.length - 1;
         const selected = blocks[selIdx];
         const selectedBase = selected.base_address ?? selected.offset ?? 0;
-        const selectedSize = selected.size ?? selected.range ?? 4096;
+
+        // Calculate size based on registers (4 bytes per register)
+        const selectedRegisters = selected.registers || [];
+        const selectedSize = selectedRegisters.length > 0
+          ? selectedRegisters.length * 4
+          : (selected.size ?? selected.range ?? 4);
 
         if (after) {
-          // INSERT AFTER: new block goes to higher address (base = selected.base + selected.size)
+          // INSERT AFTER: new block goes to higher address (base = selected.base + calculated size)
           const newBase = selectedBase + selectedSize;
 
           const name = getNextBlockName();
           const newBlock = {
             name,
             base_address: newBase,
-            size: defaultBlockSize,
+            size: 4, // Size of 1 register (32-bit = 4 bytes)
             usage: "register",
             description: "",
+            registers: [
+              {
+                name: "reg0",
+                address_offset: 0,
+                offset: 0,
+                access: "read-write",
+                description: "",
+                fields: [
+                  {
+                    name: "data",
+                    bits: "[31:0]",
+                    access: "read-write",
+                    description: "",
+                  },
+                ],
+              },
+            ],
           };
 
           // Insert after selected block in array
@@ -980,8 +1018,9 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(
           }, 100);
         } else {
           // INSERT BEFORE: new block goes to lower address (end = selected.base - 1)
+          const newSize = 4; // Size of 1 register (32-bit = 4 bytes)
           const newEnd = selectedBase - 1;
-          const newBase = Math.max(0, newEnd - defaultBlockSize + 1);
+          const newBase = Math.max(0, newEnd - newSize + 1);
 
           // Check if we have room
           if (newBase < 0) {
@@ -995,9 +1034,26 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(
           const newBlock = {
             name,
             base_address: newBase,
-            size: defaultBlockSize,
+            size: newSize,
             usage: "register",
             description: "",
+            registers: [
+              {
+                name: "reg0",
+                address_offset: 0,
+                offset: 0,
+                access: "read-write",
+                description: "",
+                fields: [
+                  {
+                    name: "data",
+                    bits: "[31:0]",
+                    access: "read-write",
+                    description: "",
+                  },
+                ],
+              },
+            ],
           };
 
           // Insert before selected block in array
@@ -1013,7 +1069,12 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(
           if (selIdx > 0) {
             const prevBlock = newBlocks[selIdx - 1];
             const prevBase = prevBlock.base_address ?? prevBlock.offset ?? 0;
-            const prevSize = prevBlock.size ?? prevBlock.range ?? 4096;
+
+            // Calculate previous block size based on registers
+            const prevRegisters = prevBlock.registers || [];
+            const prevSize = prevRegisters.length > 0
+              ? prevRegisters.length * 4
+              : (prevBlock.size ?? prevBlock.range ?? 4);
             const prevEnd = prevBase + prevSize - 1;
 
             // Check if previous block overlaps with new block
