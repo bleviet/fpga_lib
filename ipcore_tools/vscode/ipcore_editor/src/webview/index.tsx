@@ -31,6 +31,7 @@ const App = () => {
     selectionMeta,
     selectionRef,
     handleSelect,
+    goBack,
   } = useSelection();
 
   // VSCode sync hook
@@ -41,6 +42,20 @@ const App = () => {
   const didInitSelectionRef = useRef(false);
   const outlineRef = useRef<OutlineHandle | null>(null);
   const detailsRef = useRef<DetailsPanelHandle | null>(null);
+
+  // Mouse back button listener for navigation history
+  useEffect(() => {
+    const handleMouseDown = (e: MouseEvent) => {
+      // Mouse button 3 = back button, button 4 = forward button
+      if (e.button === 3) {
+        e.preventDefault();
+        goBack();
+      }
+    };
+
+    window.addEventListener('mousedown', handleMouseDown);
+    return () => window.removeEventListener('mousedown', handleMouseDown);
+  }, [goBack]);
 
   /**
    * Resolve selection from the current memory map after updates
@@ -478,6 +493,29 @@ const App = () => {
               selectedObject={selectedObject}
               selectionMeta={selectionMeta}
               onUpdate={handleUpdate}
+              onNavigateToRegister={(regIndex) => {
+                // Navigate to register in Outline when clicking on visualizer
+                if (!memoryMap || !selectionRef.current || selectionRef.current.type !== 'block') {
+                  return;
+                }
+                const currentPath = selectionRef.current.path || [];
+                const block = selectedObject;
+                const registers = block?.registers || [];
+                const reg = registers[regIndex];
+                if (!reg) return;
+
+                // Determine if it's an array or register
+                const isArray = reg.__kind === 'array';
+                const newPath = [...currentPath, 'registers', regIndex];
+
+                handleSelect({
+                  id: `${selectionRef.current.id}-reg-${regIndex}`,
+                  type: isArray ? 'array' : 'register',
+                  object: reg,
+                  breadcrumbs: [...(selectionRef.current.breadcrumbs || []), reg.name || `Register ${regIndex}`],
+                  path: newPath,
+                });
+              }}
             />
           </section>
         )}

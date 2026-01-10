@@ -7,6 +7,7 @@ interface RegisterMapVisualizerProps {
   setHoveredRegIndex?: (idx: number | null) => void;
   baseAddress?: number;
   onReorderRegisters?: (newRegisters: any[]) => void;
+  onRegisterClick?: (regIndex: number) => void;
 }
 
 function getRegColor(idx: number) {
@@ -36,6 +37,7 @@ const RegisterMapVisualizer: React.FC<RegisterMapVisualizerProps> = ({
   setHoveredRegIndex = () => {},
   baseAddress = 0,
   onReorderRegisters,
+  onRegisterClick,
 }) => {
   const [ctrlDrag, setCtrlDrag] = useState<CtrlDragState>(CTRL_DRAG_INITIAL);
 
@@ -173,12 +175,18 @@ const RegisterMapVisualizer: React.FC<RegisterMapVisualizerProps> = ({
                 style={{
                   cursor: ctrlDrag.active
                     ? "grabbing"
-                    : onReorderRegisters
-                      ? "grab"
+                    : onRegisterClick || onReorderRegisters
+                      ? "pointer"
                       : "default",
                 }}
                 onMouseEnter={() => setHoveredRegIndex(group.idx)}
                 onMouseLeave={() => setHoveredRegIndex(null)}
+                onClick={(e) => {
+                  if (!ctrlDrag.active && onRegisterClick) {
+                    e.stopPropagation();
+                    onRegisterClick(group.idx);
+                  }
+                }}
                 onPointerDown={(e) => handleCtrlPointerDown(group.idx, e)}
                 onPointerMove={() => handlePointerMove(displayIdx)}
                 onPointerEnter={() => {
