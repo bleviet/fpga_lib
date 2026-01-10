@@ -121,27 +121,31 @@ export function useVimTableNavigation<T>({
     });
   }, []);
 
-  // Auto-focus the active cell's editor when entering edit mode
+  // Auto-focus the active cell's editor when entering edit mode OR when adding a new item
   useEffect(() => {
-    if (editingIndex !== null) {
+    if (editingIndex !== null || isAdding) {
       // Use setTimeout to ensure React has rendered the edit row
       const timerId = setTimeout(() => {
         const container = containerRef.current;
         if (!container) {
           return;
         }
-        const row = container.querySelector(`tr[data-row-idx="${editingIndex}"]`);
+        // For adding, the new row is at the end (items.length)
+        const targetRowIdx = isAdding ? items.length : editingIndex;
+        const row = container.querySelector(`tr[data-row-idx="${targetRowIdx}"]`);
         if (!row) {
           return;
         }
-        const cell = row.querySelector(`[data-edit-key="${activeColumn}"]`) as HTMLElement;
+        // For adding, always focus the "name" field (first column); for editing, focus the active column
+        const targetColumn = isAdding ? columnKeys[0] : activeColumn;
+        const cell = row.querySelector(`[data-edit-key="${targetColumn}"]`) as HTMLElement;
         if (cell) {
           cell.focus();
         }
       }, 0);
       return () => clearTimeout(timerId);
     }
-  }, [editingIndex, activeColumn]);
+  }, [editingIndex, isAdding, activeColumn, columnKeys, items.length]);
 
   // Handle keyboard navigation at container level
   useEffect(() => {
