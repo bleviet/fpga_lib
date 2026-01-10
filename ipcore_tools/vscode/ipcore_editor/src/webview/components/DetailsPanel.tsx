@@ -20,6 +20,7 @@ import {
   FIELD_COLOR_KEYS,
   getFieldColor,
 } from "../shared/colors";
+import { KeyboardShortcutsButton } from "../shared/components";
 import {
   parseBitsRange,
   formatBits,
@@ -2464,6 +2465,7 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(
               </div>
             </div>
           </div>
+          <KeyboardShortcutsButton context="register" />
         </div>
       );
     }
@@ -2700,6 +2702,7 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(
               </div>
             </div>
           </div>
+          <KeyboardShortcutsButton context="memoryMap" />
         </div>
       );
     }
@@ -2929,6 +2932,7 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(
               </div>
             </div>
           </div>
+          <KeyboardShortcutsButton context="block" />
         </div>
       );
     }

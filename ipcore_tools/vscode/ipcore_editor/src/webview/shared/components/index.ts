@@ -5,6 +5,7 @@ export { NumberField } from './NumberField';
 export { CheckboxField } from './CheckboxField';
 export { TextAreaField } from './TextAreaField';
 export { ReferenceField } from './ReferenceField';
+export { KeyboardShortcutsButton } from './KeyboardShortcutsButton';
 
 export type { FormFieldProps } from './FormField';
 export type { SelectFieldProps } from './SelectField';
