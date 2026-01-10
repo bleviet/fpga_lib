@@ -1548,14 +1548,16 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(
         const isDelete = keyLower === "d" || e.key === "Delete";
         const isInsertAfter = keyLower === "o" && !e.shiftKey;
         const isInsertBefore = keyLower === "o" && e.shiftKey;
-        const isInsertArray = keyLower === "a" && e.shiftKey; // Shift+A to insert array
+        const isInsertArrayAfter = keyLower === "a" && e.shiftKey; // Shift+A to insert array after
+        const isInsertArrayBefore = keyLower === "i" && e.shiftKey; // Shift+I to insert array before
         if (
           !isArrow &&
           !isEdit &&
           !isDelete &&
           !isInsertAfter &&
           !isInsertBefore &&
-          !isInsertArray
+          !isInsertArrayAfter &&
+          !isInsertArrayBefore
         ) {
           return;
         }
@@ -1639,8 +1641,8 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(
           return;
         }
 
-        // Insert Register Array (Shift+A)
-        if (isInsertArray) {
+        // Insert Register Array (Shift+A after, Shift+I before)
+        if (isInsertArrayAfter || isInsertArrayBefore) {
           e.preventDefault();
           e.stopPropagation();
 
@@ -1654,10 +1656,21 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(
           }
           const arrayName = `ARRAY_${maxN + 1}`;
 
-          // Get offset for new array (after currently selected register)
+          // Get offset for new array
           const selIdx = selectedRegIndex >= 0 ? selectedRegIndex : registers.length - 1;
           const selected = registers[selIdx];
-          const baseOffset = (selected?.address_offset ?? selected?.offset ?? 0) + 4;
+          const selectedOffset = selected?.address_offset ?? selected?.offset ?? 0;
+
+          // Calculate size of selected item for "after" insertion
+          let selectedSize = 4;
+          if ((selected as any)?.__kind === 'array') {
+            selectedSize = ((selected as any).count || 1) * ((selected as any).stride || 4);
+          }
+
+          // Determine offset based on insert direction
+          const baseOffset = isInsertArrayAfter
+            ? selectedOffset + selectedSize
+            : Math.max(0, selectedOffset - 8); // Default array is 2*4=8 bytes
 
           // Create new register array with default nested register
           const newArray = {
@@ -1687,17 +1700,29 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(
             ],
           };
 
-          // Insert after selected
-          const newRegs = [
-            ...registers.slice(0, selIdx + 1),
-            newArray,
-            ...registers.slice(selIdx + 1),
-          ];
+          // Insert after or before selected
+          let newRegs;
+          let newIdx;
+          if (isInsertArrayAfter) {
+            newRegs = [
+              ...registers.slice(0, selIdx + 1),
+              newArray,
+              ...registers.slice(selIdx + 1),
+            ];
+            newIdx = selIdx + 1;
+          } else {
+            newRegs = [
+              ...registers.slice(0, selIdx),
+              newArray,
+              ...registers.slice(selIdx),
+            ];
+            newIdx = selIdx;
+          }
 
           onUpdate(["registers"], newRegs);
-          setSelectedRegIndex(selIdx + 1);
-          setHoveredRegIndex(selIdx + 1);
-          setRegActiveCell({ rowIndex: selIdx + 1, key: "name" });
+          setSelectedRegIndex(newIdx);
+          setHoveredRegIndex(newIdx);
+          setRegActiveCell({ rowIndex: newIdx, key: "name" });
           return;
         }
         if (isDelete) {

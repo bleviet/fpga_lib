@@ -68,7 +68,7 @@ const BLOCK_VIEW_SHORTCUTS: ShortcutGroup[] = [
       { keys: "← / → (or h / l)", description: "Navigate columns" },
       { keys: "Enter / e", description: "Edit cell" },
       { keys: "o / O", description: "Insert register below/above" },
-      { keys: "Shift + A", description: "Insert register array" },
+      { keys: "Shift + A / I", description: "Insert array below/above" },
       { keys: "d / Del", description: "Delete register" },
       { keys: "Alt + ↑/↓ (or j/k)", description: "Move register up/down" },
     ],
