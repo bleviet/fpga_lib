@@ -646,7 +646,22 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(
       };
 
       const onKeyDown = (e: KeyboardEvent) => {
-        const keyLower = (e.key || "").toLowerCase();
+        let keyLower = (e.key || "").toLowerCase();
+        // Fix for Mac Option+Vim keys producing special chars
+        if (e.altKey && e.code) {
+          if (e.code === "KeyH") {
+            keyLower = "h";
+          }
+          if (e.code === "KeyJ") {
+            keyLower = "j";
+          }
+          if (e.code === "KeyK") {
+            keyLower = "k";
+          }
+          if (e.code === "KeyL") {
+            keyLower = "l";
+          }
+        }
         const vimToArrow: Record<
           string,
           "ArrowLeft" | "ArrowDown" | "ArrowUp" | "ArrowRight"
@@ -1035,7 +1050,22 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(
       };
 
       const onKeyDown = (e: KeyboardEvent) => {
-        const keyLower = (e.key || "").toLowerCase();
+        let keyLower = (e.key || "").toLowerCase();
+        // Fix for Mac Option+Vim keys producing special chars
+        if (e.altKey && e.code) {
+          if (e.code === "KeyH") {
+            keyLower = "h";
+          }
+          if (e.code === "KeyJ") {
+            keyLower = "j";
+          }
+          if (e.code === "KeyK") {
+            keyLower = "k";
+          }
+          if (e.code === "KeyL") {
+            keyLower = "l";
+          }
+        }
         const vimToArrow: Record<
           string,
           "ArrowLeft" | "ArrowDown" | "ArrowUp" | "ArrowRight"
@@ -1369,7 +1399,22 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(
       };
 
       const onKeyDown = (e: KeyboardEvent) => {
-        const keyLower = (e.key || "").toLowerCase();
+        let keyLower = (e.key || "").toLowerCase();
+        // Fix for Mac Option+Vim keys producing special chars
+        if (e.altKey && e.code) {
+          if (e.code === "KeyH") {
+            keyLower = "h";
+          }
+          if (e.code === "KeyJ") {
+            keyLower = "j";
+          }
+          if (e.code === "KeyK") {
+            keyLower = "k";
+          }
+          if (e.code === "KeyL") {
+            keyLower = "l";
+          }
+        }
         const vimToArrow: Record<
           string,
           "ArrowLeft" | "ArrowDown" | "ArrowUp" | "ArrowRight"
