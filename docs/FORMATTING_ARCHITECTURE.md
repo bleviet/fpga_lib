@@ -3,7 +3,7 @@
 
 # Code Formatting Architecture
 
-> Technical architecture and implementation details for the fpga_lib formatting system
+> Technical architecture and implementation details for the ipcore formatting system
 
 ## System Overview
 
@@ -480,7 +480,7 @@ key:
 ### Root Level
 
 ```
-fpga_lib/
+ipcore/
 ├── .editorconfig                 # Baseline formatting rules
 ├── .pre-commit-config.yaml       # Pre-commit hooks
 ├── pyproject.toml                # Black, isort, pytest config

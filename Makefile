@@ -187,7 +187,7 @@ build:
 
 # Discovery and Navigation Commands
 discover:
-	@echo "=== FPGA_LIB WORKSPACE DISCOVERY ==="
+	@echo "=== IPCORE WORKSPACE DISCOVERY ==="
 	@echo ""
 	@echo "📁 DIRECTORY STRUCTURE:"
 	@echo "  Core Library:     ipcore_lib/"

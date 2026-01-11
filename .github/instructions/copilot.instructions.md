@@ -5,7 +5,7 @@
 Because these rules are modular, you must **actively read** the relevant file before answering complex queries.
 
 1. **Global Logic:** Always refer to `.agent/rules/global.md` for architecture decisions.
-2. **Python/FPGA Tasks:** If the user asks about `.py` files or `fpga_lib`, you MUST read `.agent/rules/python.md`.
+2. **Python/FPGA Tasks:** If the user asks about `.py` files or `ipcore`, you MUST read `.agent/rules/python.md`.
 3. **VS Code Tasks:** If the user asks about the extension, you MUST read `.agent/rules/vscode.md`.
 
 ## Quick Summary (Always Active)

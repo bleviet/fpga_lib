@@ -4,7 +4,7 @@ Command-line tool for IP core scaffolding and generation.
 
 ## Installation
 
-The tool requires `fpga_lib` to be installed. From the project root:
+The tool requires `ipcore` to be installed. From the project root:
 
 ```bash
 uv sync

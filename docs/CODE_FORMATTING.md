@@ -3,7 +3,7 @@
 
 # Code Formatting Guide
 
-> Developer guide for code formatting standards and tools in the fpga_lib project
+> Developer guide for code formatting standards and tools in the ipcore project
 
 ## Quick Start
 

@@ -15,7 +15,7 @@ trigger: always_on
 ## Workflow
 - **Build:** `npm run compile` is the source of truth.
 - **Test:** `npm test` runs the Extension Host tests.
-- **Template Sync:** `npm run sync-templates` copies Jinja2 templates from `fpga_lib/generator/hdl/templates/` to `src/generator/templates/`.
+- **Template Sync:** `npm run sync-templates` copies Jinja2 templates from `ipcore/generator/hdl/templates/` to `src/generator/templates/`.
 - **UI Rules:**
   - Use `vscode.window.showInformationMessage` for user feedback.
   - Do not use `console.log` for production; use an `OutputChannel`.

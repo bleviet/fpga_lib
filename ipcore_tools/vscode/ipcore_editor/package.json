@@ -3,7 +3,7 @@
   "publisher": "bleviet",
   "repository": {
     "type": "git",
-    "url": "https://github.com/bleviet/fpga_lib"
+    "url": "https://github.com/bleviet/ipcore"
   },
   "displayName": "FPGA Memory Map Visual Editor",
   "description": "Visual editor for FPGA memory map YAML files",
