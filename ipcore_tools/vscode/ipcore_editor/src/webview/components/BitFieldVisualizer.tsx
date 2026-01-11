@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { VSCodeTextField } from "@vscode/webview-ui-toolkit/react";
 import { FIELD_COLORS, getFieldColor } from "../shared/colors";
 
@@ -226,7 +226,8 @@ function getResizableEdges(
 
   const canShrink = fieldWidth > 1;
   const hasGapLeft = lsbBit > 0 && bitOwners[lsbBit - 1] === null;
-  const hasGapRight = msbBit < registerSize - 1 && bitOwners[msbBit + 1] === null;
+  const hasGapRight =
+    msbBit < registerSize - 1 && bitOwners[msbBit + 1] === null;
 
   return {
     left: { canShrink, canExpand: hasGapLeft },
@@ -265,16 +266,12 @@ const SHIFT_DRAG_INITIAL: ShiftDragState = {
 interface CtrlDragState {
   active: boolean;
   draggedFieldIndex: number | null;
-  startBit: number; // Where the user started dragging
-  originalRange: { lo: number; hi: number } | null; // Original field range
   previewSegments: ProSegment[] | null;
 }
 
 const CTRL_DRAG_INITIAL: CtrlDragState = {
   active: false,
   draggedFieldIndex: null,
-  startBit: 0,
-  originalRange: null,
   previewSegments: null,
 };
 
@@ -366,6 +363,12 @@ const BitFieldVisualizer: React.FC<BitFieldVisualizerProps> = ({
 
   // Ctrl-drag state for reordering fields
   const [ctrlDrag, setCtrlDrag] = useState<CtrlDragState>(CTRL_DRAG_INITIAL);
+
+  // Ref to track ctrlDrag state synchronously (avoids stale closures in event handlers)
+  const ctrlDragRef = useRef<CtrlDragState>(ctrlDrag);
+  useEffect(() => {
+    ctrlDragRef.current = ctrlDrag;
+  }, [ctrlDrag]);
 
   // Track Shift key held (for showing resize handles)
   const [shiftHeld, setShiftHeld] = useState(false);
@@ -519,13 +522,10 @@ const BitFieldVisualizer: React.FC<BitFieldVisualizerProps> = ({
 
     const fieldAtBit = bits[bit];
     if (fieldAtBit !== null) {
-      const fieldRange = getFieldRange(fields[fieldAtBit]);
-      // Start reorder drag with delta-based translation
+      // Start reorder drag
       setCtrlDrag({
         active: true,
         draggedFieldIndex: fieldAtBit,
-        startBit: bit,
-        originalRange: fieldRange,
         previewSegments: buildProLayoutSegments(fields, registerSize),
       });
     }
@@ -614,56 +614,136 @@ const BitFieldVisualizer: React.FC<BitFieldVisualizerProps> = ({
   };
 
   /**
-   * Handle pointer move during ctrl-drag (translation).
-   * Translates the field by the cursor delta from start position.
+   * Handle pointer move during ctrl-drag (reordering).
+   * Uses a repacking algorithm that allows field swapping.
    */
   const handleCtrlPointerMove = (bit: number) => {
     if (!ctrlDrag.active || ctrlDrag.draggedFieldIndex === null) return;
-    if (!ctrlDrag.originalRange) return;
 
-    // Calculate delta from start position
-    const delta = bit - ctrlDrag.startBit;
+    // 1. Get original segments (MSB -> LSB)
+    const originalSegments = buildProLayoutSegments(fields, registerSize);
 
-    // Calculate new field range
-    const fieldWidth = ctrlDrag.originalRange.hi - ctrlDrag.originalRange.lo + 1;
-    let newLo = ctrlDrag.originalRange.lo + delta;
-    let newHi = ctrlDrag.originalRange.hi + delta;
+    // 2. Find and remove dragged segment
+    const draggedSegIndex = originalSegments.findIndex(
+      (s) => s.type === "field" && s.idx === ctrlDrag.draggedFieldIndex,
+    );
+    if (draggedSegIndex === -1) return;
 
-    // Clamp to register bounds
-    if (newLo < 0) {
-      newLo = 0;
-      newHi = fieldWidth - 1;
-    }
-    if (newHi >= registerSize) {
-      newHi = registerSize - 1;
-      newLo = registerSize - fieldWidth;
-    }
+    const draggedSeg = originalSegments[draggedSegIndex];
+    if (draggedSeg.type !== "field") return; // Should not happen
 
-    // Check for collisions with other fields
-    for (let i = 0; i < fields.length; i++) {
-      if (i === ctrlDrag.draggedFieldIndex) continue;
-      const otherRange = getFieldRange(fields[i]);
-      if (!otherRange) continue;
+    // Remove it from the list for calculations
+    const cleanSegments = [...originalSegments];
+    cleanSegments.splice(draggedSegIndex, 1);
 
-      // Check if ranges overlap
-      if (newLo <= otherRange.hi && newHi >= otherRange.lo) {
-        // Collision detected - don't update preview
-        return;
+    // 3. Repack clean list to build coordinate space
+    let currentBit = 0;
+    const repackedClean = cleanSegments
+      .slice()
+      .reverse()
+      .map((seg) => {
+        const width = seg.end - seg.start + 1;
+        const newLo = currentBit;
+        const newHi = currentBit + width - 1;
+        currentBit += width;
+        return { ...seg, start: newLo, end: newHi, width };
+      })
+      .reverse(); // Restore MSB->LSB order
+
+    // 4. Find insertion target in repacked list
+    const effectiveCursor = Math.min(bit, currentBit);
+
+    // Find target segment covering effectiveCursor
+    const targetIdx = repackedClean.findIndex(
+      (s) => effectiveCursor >= s.start && effectiveCursor <= s.end,
+    );
+
+    const newSegments: ProSegment[] = [];
+
+    // Helper to insert dragged segment
+    const insertDragged = () => {
+      newSegments.push(draggedSeg);
+    };
+
+    if (targetIdx === -1) {
+      // Cursor is above all content (implicit top gap)
+      // Just append at MSB side (start of list since MSB->LSB)
+      insertDragged(); // Insert as MSB
+      newSegments.push(...cleanSegments);
+    } else {
+      // We hit a segment.
+      const target = repackedClean[targetIdx];
+      const originalTarget = cleanSegments[targetIdx]; // Corresponding logic segment
+
+      const offsetInTarget = effectiveCursor - target.start;
+
+      if (target.type === "field") {
+        // Insert Before or After based on center?
+        // Since list is MSB->LSB:
+        // "Before" in array = Higher Bits (MSB side).
+        // "After" in array = Lower Bits (LSB side).
+        const msbSide = offsetInTarget > (target as any).width / 2;
+
+        // Split list at target
+        const before = cleanSegments.slice(0, targetIdx);
+        const after = cleanSegments.slice(targetIdx + 1);
+
+        newSegments.push(...before);
+        if (msbSide) {
+          insertDragged();
+          newSegments.push(originalTarget);
+        } else {
+          newSegments.push(originalTarget);
+          insertDragged();
+        }
+        newSegments.push(...after);
+      } else {
+        // Target is GAP. Split it.
+        const botWidth = offsetInTarget;
+        const topWidth = (target as any).width - offsetInTarget;
+
+        const before = cleanSegments.slice(0, targetIdx);
+        const after = cleanSegments.slice(targetIdx + 1);
+
+        newSegments.push(...before);
+
+        if (topWidth > 0) {
+          newSegments.push({
+            type: "gap",
+            start: 0,
+            end: 0,
+          } as ProSegment);
+        }
+
+        insertDragged();
+
+        if (botWidth > 0) {
+          newSegments.push({
+            type: "gap",
+            start: 0,
+            end: 0,
+          } as ProSegment);
+        }
+
+        newSegments.push(...after);
       }
     }
 
-    // Build preview segments with the translated field
-    const previewSegments = buildProLayoutSegments(
-      fields.map((f, idx) => {
-        if (idx === ctrlDrag.draggedFieldIndex) {
-          return { ...f, bit_range: [newHi, newLo] };
-        }
-        return f;
-      }),
-      registerSize,
-    );
+    // 5. Final Repack for Preview
+    currentBit = 0;
+    const finalSegments = newSegments
+      .slice()
+      .reverse()
+      .map((seg) => {
+        const width = (seg as any).width || seg.end - seg.start + 1;
+        const lo = currentBit;
+        const hi = currentBit + width - 1;
+        currentBit += width;
+        return { ...seg, start: lo, end: hi };
+      })
+      .reverse();
 
-    setCtrlDrag((prev) => ({ ...prev, previewSegments }));
+    setCtrlDrag((prev) => ({ ...prev, previewSegments: finalSegments }));
   };
 
   const applyBit = (fieldIndex: number, localBit: number, desired: 0 | 1) => {
@@ -913,7 +993,8 @@ const BitFieldVisualizer: React.FC<BitFieldVisualizerProps> = ({
                             }}
                             onPointerEnter={() => {
                               if (shiftDrag.active) handleShiftPointerMove(bit);
-                              if (ctrlDrag.active) handleCtrlPointerMove(bit);
+                              if (ctrlDragRef.current.active)
+                                handleCtrlPointerMove(bit);
                             }}
                           >
                             <span className="text-sm font-mono vscode-muted select-none">
@@ -972,88 +1053,155 @@ const BitFieldVisualizer: React.FC<BitFieldVisualizerProps> = ({
                     }}
                   >
                     {/* Resize handles - show when Shift is held and hovering this field */}
-                    {shiftHeld && isHovered && !shiftDrag.active && (() => {
-                      const edges = getResizableEdges(
-                        group.start,
-                        group.end,
-                        bitOwners,
-                        registerSize,
-                      );
-                      // Visual left = MSB edge (edges.right), Visual right = LSB edge (edges.left)
-                      const showVisualLeft = edges.right.canShrink || edges.right.canExpand;
-                      const showVisualRight = edges.left.canShrink || edges.left.canExpand;
-                      const visualLeftBidirectional = edges.right.canShrink && edges.right.canExpand;
-                      const visualRightBidirectional = edges.left.canShrink && edges.left.canExpand;
+                    {shiftHeld &&
+                      isHovered &&
+                      !shiftDrag.active &&
+                      (() => {
+                        const edges = getResizableEdges(
+                          group.start,
+                          group.end,
+                          bitOwners,
+                          registerSize,
+                        );
+                        // Visual left = MSB edge (edges.right), Visual right = LSB edge (edges.left)
+                        const showVisualLeft =
+                          edges.right.canShrink || edges.right.canExpand;
+                        const showVisualRight =
+                          edges.left.canShrink || edges.left.canExpand;
+                        const visualLeftBidirectional =
+                          edges.right.canShrink && edges.right.canExpand;
+                        const visualRightBidirectional =
+                          edges.left.canShrink && edges.left.canExpand;
 
-                      return (
-                        <>
-                          {/* Left handle (MSB side - visual left) */}
-                          {showVisualLeft && (
-                            <div
-                              className="absolute left-0 top-0 bottom-0 w-6 flex items-center justify-center z-20 pointer-events-none"
-                              style={{
-                                background: 'linear-gradient(90deg, rgba(0,0,0,0.5) 0%, transparent 100%)',
-                              }}
-                            >
-                              <svg
-                                width="16"
-                                height="16"
-                                viewBox="0 0 16 16"
-                                fill="none"
-                                className="drop-shadow-lg"
+                        return (
+                          <>
+                            {/* Left handle (MSB side - visual left) */}
+                            {showVisualLeft && (
+                              <div
+                                className="absolute left-0 top-0 bottom-0 w-6 flex items-center justify-center z-20 pointer-events-none"
+                                style={{
+                                  background:
+                                    "linear-gradient(90deg, rgba(0,0,0,0.5) 0%, transparent 100%)",
+                                }}
                               >
-                                {visualLeftBidirectional ? (
-                                  /* Bidirectional arrow ↔ - cleaner, wider design */
-                                  <>
-                                    <path d="M2 8H14" stroke="white" strokeWidth="2" strokeLinecap="round" />
-                                    <path d="M5 5L2 8L5 11" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                    <path d="M11 5L14 8L11 11" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                  </>
-                                ) : edges.right.canExpand ? (
-                                  /* Outward arrow ← (expand) */
-                                  <path d="M10 4L6 8L10 12" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                                ) : (
-                                  /* Inward arrow → (shrink) */
-                                  <path d="M6 4L10 8L6 12" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                                )}
-                              </svg>
-                            </div>
-                          )}
-                          {/* Right handle (LSB side - visual right) */}
-                          {showVisualRight && (
-                            <div
-                              className="absolute right-0 top-0 bottom-0 w-6 flex items-center justify-center z-20 pointer-events-none"
-                              style={{
-                                background: 'linear-gradient(270deg, rgba(0,0,0,0.5) 0%, transparent 100%)',
-                              }}
-                            >
-                              <svg
-                                width="16"
-                                height="16"
-                                viewBox="0 0 16 16"
-                                fill="none"
-                                className="drop-shadow-lg"
+                                <svg
+                                  width="16"
+                                  height="16"
+                                  viewBox="0 0 16 16"
+                                  fill="none"
+                                  className="drop-shadow-lg"
+                                >
+                                  {visualLeftBidirectional ? (
+                                    /* Bidirectional arrow ↔ - cleaner, wider design */
+                                    <>
+                                      <path
+                                        d="M2 8H14"
+                                        stroke="white"
+                                        strokeWidth="2"
+                                        strokeLinecap="round"
+                                      />
+                                      <path
+                                        d="M5 5L2 8L5 11"
+                                        stroke="white"
+                                        strokeWidth="2"
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                      />
+                                      <path
+                                        d="M11 5L14 8L11 11"
+                                        stroke="white"
+                                        strokeWidth="2"
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                      />
+                                    </>
+                                  ) : edges.right.canExpand ? (
+                                    /* Outward arrow ← (expand) */
+                                    <path
+                                      d="M10 4L6 8L10 12"
+                                      stroke="white"
+                                      strokeWidth="2.5"
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                    />
+                                  ) : (
+                                    /* Inward arrow → (shrink) */
+                                    <path
+                                      d="M6 4L10 8L6 12"
+                                      stroke="white"
+                                      strokeWidth="2.5"
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                    />
+                                  )}
+                                </svg>
+                              </div>
+                            )}
+                            {/* Right handle (LSB side - visual right) */}
+                            {showVisualRight && (
+                              <div
+                                className="absolute right-0 top-0 bottom-0 w-6 flex items-center justify-center z-20 pointer-events-none"
+                                style={{
+                                  background:
+                                    "linear-gradient(270deg, rgba(0,0,0,0.5) 0%, transparent 100%)",
+                                }}
                               >
-                                {visualRightBidirectional ? (
-                                  /* Bidirectional arrow ↔ - cleaner, wider design */
-                                  <>
-                                    <path d="M2 8H14" stroke="white" strokeWidth="2" strokeLinecap="round" />
-                                    <path d="M5 5L2 8L5 11" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                    <path d="M11 5L14 8L11 11" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                  </>
-                                ) : edges.left.canExpand ? (
-                                  /* Outward arrow → (expand) */
-                                  <path d="M6 4L10 8L6 12" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                                ) : (
-                                  /* Inward arrow ← (shrink) */
-                                  <path d="M10 4L6 8L10 12" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                                )}
-                              </svg>
-                            </div>
-                          )}
-                        </>
-                      );
-                    })()}
+                                <svg
+                                  width="16"
+                                  height="16"
+                                  viewBox="0 0 16 16"
+                                  fill="none"
+                                  className="drop-shadow-lg"
+                                >
+                                  {visualRightBidirectional ? (
+                                    /* Bidirectional arrow ↔ - cleaner, wider design */
+                                    <>
+                                      <path
+                                        d="M2 8H14"
+                                        stroke="white"
+                                        strokeWidth="2"
+                                        strokeLinecap="round"
+                                      />
+                                      <path
+                                        d="M5 5L2 8L5 11"
+                                        stroke="white"
+                                        strokeWidth="2"
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                      />
+                                      <path
+                                        d="M11 5L14 8L11 11"
+                                        stroke="white"
+                                        strokeWidth="2"
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                      />
+                                    </>
+                                  ) : edges.left.canExpand ? (
+                                    /* Outward arrow → (expand) */
+                                    <path
+                                      d="M6 4L10 8L6 12"
+                                      stroke="white"
+                                      strokeWidth="2.5"
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                    />
+                                  ) : (
+                                    /* Inward arrow ← (shrink) */
+                                    <path
+                                      d="M10 4L6 8L10 12"
+                                      stroke="white"
+                                      strokeWidth="2.5"
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                    />
+                                  )}
+                                </svg>
+                              </div>
+                            )}
+                          </>
+                        );
+                      })()}
                     {Array.from({ length: width }).map((_, i) => {
                       const bit = group.end - i;
                       const localBit = bit - group.start;
@@ -1133,7 +1281,7 @@ const BitFieldVisualizer: React.FC<BitFieldVisualizerProps> = ({
                               handleShiftPointerMove(bit);
                               return;
                             }
-                            if (ctrlDrag.active) {
+                            if (ctrlDragRef.current.active) {
                               handleCtrlPointerMove(bit);
                               return;
                             }
