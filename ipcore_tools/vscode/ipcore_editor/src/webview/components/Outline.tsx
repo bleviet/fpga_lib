@@ -370,7 +370,14 @@ const Outline = React.forwardRef<OutlineHandle, OutlineProps>(
                             className="codicon codicon-symbol-variable"
                             style={{ marginRight: "6px" }}
                           ></span>
-                          {reg.name}{" "}
+                          {renderNameOrEdit(childId, reg.name, [
+                            "addressBlocks",
+                            blockIndex,
+                            "registers",
+                            regIndex,
+                            "registers",
+                            childIndex,
+                          ])}{" "}
                           <span className="opacity-50">
                             @ {toHex(absolute)}
                           </span>
