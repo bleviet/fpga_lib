@@ -264,3 +264,60 @@ onBatchUpdateFields: (updates: { idx: number; range: [number, number] }[]) => vo
 2.  Apply all updates locally to the clone.
 3.  **Sort**: Re-sort the array by LSB to ensure logical table order.
 4.  **Single Commit**: Call `onUpdate(['fields'], newFields)` once.
+
+---
+
+## 4. Live Table Preview (`onDragPreview`)
+
+During Ctrl-Drag, the BIT(s) column in the details panel updates in real-time to show the preview bit ranges.
+
+### Callback Interface
+
+```typescript
+onDragPreview?: (
+  preview: { idx: number; range: [number, number] }[] | null,
+) => void;
+```
+
+### Flow
+
+1. **During Drag**: `handleCtrlPointerMove` extracts field ranges from `previewSegments` and calls `onDragPreview(updates)`.
+2. **On Commit/Cancel**: `onDragPreview(null)` is called to clear the preview state.
+
+### Implementation in `DetailsPanel`
+
+```typescript
+const [dragPreviewRanges, setDragPreviewRanges] = useState<
+  Record<number, [number, number]>
+>({});
+
+// In bits column display:
+const previewRange = dragPreviewRanges[idx];
+const bitsValue = previewRange
+  ? `[${previewRange[0]}:${previewRange[1]}]`
+  : (bitsDrafts[idx] ?? bits);
+```
+
+---
+
+## 5. Gap Segment Width Preservation
+
+When splitting gaps during drag (e.g., dropping a field into a gap), the split gap segments must preserve their correct widths.
+
+### The Bug (Fixed)
+
+Previously, split gaps were created with `{ start: 0, end: 0 }`, causing width to default to 1 bit regardless of actual gap size. This caused segments beyond the split to disappear from the visualizer.
+
+### The Fix
+
+Split gaps now set `end = width - 1` to preserve correct dimensions:
+
+```typescript
+if (topWidth > 0) {
+  newSegments.push({
+    type: "gap",
+    start: 0,
+    end: topWidth - 1, // Correct width calculation
+  });
+}
+```

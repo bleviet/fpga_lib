@@ -17,6 +17,10 @@ interface BitFieldVisualizerProps {
     bit_range: [number, number];
     name: string;
   }) => void;
+  /** Called during Ctrl+drag to report preview ranges. Pass null to clear preview. */
+  onDragPreview?: (
+    preview: { idx: number; range: [number, number] }[] | null,
+  ) => void;
 }
 
 function toBits(field: any) {
@@ -348,6 +352,7 @@ const BitFieldVisualizer: React.FC<BitFieldVisualizerProps> = ({
   onUpdateFieldRange,
   onBatchUpdateFields,
   onCreateField,
+  onDragPreview,
 }) => {
   const [valueView, setValueView] = useState<"hex" | "dec">("hex");
   const [valueDraft, setValueDraft] = useState<string>("");
@@ -491,24 +496,26 @@ const BitFieldVisualizer: React.FC<BitFieldVisualizerProps> = ({
           });
         }
       }
+      // Clear preview in parent
+      onDragPreview?.(null);
       // Delay clearing preview to next frame to avoid flash back to original position
       requestAnimationFrame(() => {
         setCtrlDrag(CTRL_DRAG_INITIAL);
       });
     };
+    const cancelCtrlDrag = () => {
+      onDragPreview?.(null);
+      setCtrlDrag(CTRL_DRAG_INITIAL);
+    };
     window.addEventListener("pointerup", commitCtrlDrag);
-    window.addEventListener("pointercancel", () =>
-      setCtrlDrag(CTRL_DRAG_INITIAL),
-    );
-    window.addEventListener("blur", () => setCtrlDrag(CTRL_DRAG_INITIAL));
+    window.addEventListener("pointercancel", cancelCtrlDrag);
+    window.addEventListener("blur", cancelCtrlDrag);
     return () => {
       window.removeEventListener("pointerup", commitCtrlDrag);
-      window.removeEventListener("pointercancel", () =>
-        setCtrlDrag(CTRL_DRAG_INITIAL),
-      );
-      window.removeEventListener("blur", () => setCtrlDrag(CTRL_DRAG_INITIAL));
+      window.removeEventListener("pointercancel", cancelCtrlDrag);
+      window.removeEventListener("blur", cancelCtrlDrag);
     };
-  }, [ctrlDrag, onUpdateFieldRange, onBatchUpdateFields]);
+  }, [ctrlDrag, onUpdateFieldRange, onBatchUpdateFields, onDragPreview]);
 
   /**
    * Handle Ctrl+PointerDown to start reorder mode.
@@ -711,7 +718,7 @@ const BitFieldVisualizer: React.FC<BitFieldVisualizerProps> = ({
           newSegments.push({
             type: "gap",
             start: 0,
-            end: 0,
+            end: topWidth - 1, // Set end so width calculation works: end - start + 1 = topWidth
           } as ProSegment);
         }
 
@@ -721,7 +728,7 @@ const BitFieldVisualizer: React.FC<BitFieldVisualizerProps> = ({
           newSegments.push({
             type: "gap",
             start: 0,
-            end: 0,
+            end: botWidth - 1, // Set end so width calculation works: end - start + 1 = botWidth
           } as ProSegment);
         }
 
@@ -744,6 +751,19 @@ const BitFieldVisualizer: React.FC<BitFieldVisualizerProps> = ({
       .reverse();
 
     setCtrlDrag((prev) => ({ ...prev, previewSegments: finalSegments }));
+
+    // Report preview to parent for live table updates
+    if (onDragPreview) {
+      const previewUpdates = finalSegments
+        .filter(
+          (seg): seg is typeof seg & { type: "field" } => seg.type === "field",
+        )
+        .map((seg) => ({
+          idx: seg.idx,
+          range: [seg.end, seg.start] as [number, number],
+        }));
+      onDragPreview(previewUpdates);
+    }
   };
 
   const applyBit = (fieldIndex: number, localBit: number, desired: 0 | 1) => {

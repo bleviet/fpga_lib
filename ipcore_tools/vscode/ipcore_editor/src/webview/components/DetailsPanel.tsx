@@ -51,7 +51,7 @@ function calculateBlockSize(block: any): number {
 
   let totalSize = 0;
   for (const reg of registers) {
-    if (reg.__kind === 'array') {
+    if (reg.__kind === "array") {
       // Register array: size = count * stride
       const count = reg.count || 1;
       const stride = reg.stride || 4;
@@ -138,7 +138,10 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(
     let selectionMeta = rawSelectionMeta;
     let onUpdate = rawOnUpdate;
 
-    if (rawSelectedType === "array" && (rawSelectedObject as any)?.__element_index !== undefined) {
+    if (
+      rawSelectedType === "array" &&
+      (rawSelectedObject as any)?.__element_index !== undefined
+    ) {
       const arr = rawSelectedObject as any;
       const registers = arr.registers || [];
 
@@ -146,13 +149,13 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(
         // Single Register: Masquerade as a single Register View
         selectedType = "register";
         selectedObject = registers[0]; // The template register
-        
+
         // Adjust absolute address base to the element's base address
         if (arr.__element_base !== undefined) {
-            selectionMeta = {
-                ...(rawSelectionMeta || {}),
-                absoluteAddress: arr.__element_base
-            };
+          selectionMeta = {
+            ...(rawSelectionMeta || {}),
+            absoluteAddress: arr.__element_base,
+          };
         }
 
         // Redirect updates: The view will update 'name', 'description' of selectedObject.
@@ -164,16 +167,16 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(
         // Multiple Registers: Masquerade as a Block View
         selectedType = "block";
         selectedObject = arr; // Default to array
-        
+
         if (arr.__element_base !== undefined) {
-             // Inject base_address for correct visualizer/header display
-             selectedObject = { ...arr, base_address: arr.__element_base };
-             selectionMeta = {
-                ...(rawSelectionMeta || {}),
-                absoluteAddress: arr.__element_base
-            };
+          // Inject base_address for correct visualizer/header display
+          selectedObject = { ...arr, base_address: arr.__element_base };
+          selectionMeta = {
+            ...(rawSelectionMeta || {}),
+            absoluteAddress: arr.__element_base,
+          };
         }
-        
+
         // Updates to ['registers', idx, prop] work natively on the Array object
       }
     }
@@ -204,6 +207,10 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(
     const [bitsErrors, setBitsErrors] = useState<Record<number, string | null>>(
       {},
     );
+    // Track preview bit ranges during Ctrl+drag operations
+    const [dragPreviewRanges, setDragPreviewRanges] = useState<
+      Record<number, [number, number]>
+    >({});
 
     // Helper: get bit width from [N:M] or [N]
     const parseBitsWidth = (bits: string): number | null => {
@@ -1036,9 +1043,10 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(
 
         // Calculate size based on registers (4 bytes per register)
         const selectedRegisters = selected.registers || [];
-        const selectedSize = selectedRegisters.length > 0
-          ? selectedRegisters.length * 4
-          : (selected.size ?? selected.range ?? 4);
+        const selectedSize =
+          selectedRegisters.length > 0
+            ? selectedRegisters.length * 4
+            : (selected.size ?? selected.range ?? 4);
 
         if (after) {
           // INSERT AFTER: new block goes to higher address (base = selected.base + calculated size)
@@ -1156,9 +1164,10 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(
 
             // Calculate previous block size based on registers
             const prevRegisters = prevBlock.registers || [];
-            const prevSize = prevRegisters.length > 0
-              ? prevRegisters.length * 4
-              : (prevBlock.size ?? prevBlock.range ?? 4);
+            const prevSize =
+              prevRegisters.length > 0
+                ? prevRegisters.length * 4
+                : (prevBlock.size ?? prevBlock.range ?? 4);
             const prevEnd = prevBase + prevSize - 1;
 
             // Check if previous block overlaps with new block
@@ -1341,7 +1350,9 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(
           e.preventDefault();
           e.stopPropagation();
           // Remove the block at currentRow and ensure addressBlocks is a valid array
-          const newBlocks = blocks.filter((_: any, idx: number) => idx !== currentRow);
+          const newBlocks = blocks.filter(
+            (_: any, idx: number) => idx !== currentRow,
+          );
           onUpdate(["addressBlocks"], newBlocks);
           // Move selection to previous or next block
           const nextRow =
@@ -1456,7 +1467,7 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(
           // If selected is an array, offset = array.offset + (count * stride)
           // If selected is a register, offset = reg.offset + 4
           let selectedSize = 4; // Default register size
-          if ((selected as any).__kind === 'array') {
+          if ((selected as any).__kind === "array") {
             const arrCount = (selected as any).count || 1;
             const arrStride = (selected as any).stride || 4;
             selectedSize = arrCount * arrStride;
@@ -1714,14 +1725,17 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(
           const arrayName = `ARRAY_${maxN + 1}`;
 
           // Get offset for new array
-          const selIdx = selectedRegIndex >= 0 ? selectedRegIndex : registers.length - 1;
+          const selIdx =
+            selectedRegIndex >= 0 ? selectedRegIndex : registers.length - 1;
           const selected = registers[selIdx];
-          const selectedOffset = selected?.address_offset ?? selected?.offset ?? 0;
+          const selectedOffset =
+            selected?.address_offset ?? selected?.offset ?? 0;
 
           // Calculate size of selected item for "after" insertion
           let selectedSize = 4;
-          if ((selected as any)?.__kind === 'array') {
-            selectedSize = ((selected as any).count || 1) * ((selected as any).stride || 4);
+          if ((selected as any)?.__kind === "array") {
+            selectedSize =
+              ((selected as any).count || 1) * ((selected as any).stride || 4);
           }
 
           // New array size (2 registers * 4 bytes stride = 8 bytes)
@@ -1736,26 +1750,26 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(
 
           // Create new register array with default nested register
           const newArray = {
-            __kind: 'array',
+            __kind: "array",
             name: arrayName,
             address_offset: baseOffset,
             offset: baseOffset,
             count: 2,
             stride: 4,
-            description: '',
+            description: "",
             registers: [
               {
-                name: 'reg0',
+                name: "reg0",
                 offset: 0,
                 address_offset: 0,
-                access: 'read-write',
-                description: '',
+                access: "read-write",
+                description: "",
                 fields: [
                   {
-                    name: 'data',
-                    bits: '[31:0]',
-                    access: 'read-write',
-                    description: '',
+                    name: "data",
+                    bits: "[31:0]",
+                    access: "read-write",
+                    description: "",
                   },
                 ],
               },
@@ -1780,7 +1794,8 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(
               ...registers.slice(selIdx).map((r: any) => ({
                 ...r,
                 offset: (r.offset ?? r.address_offset ?? 0) + newArraySize,
-                address_offset: (r.address_offset ?? r.offset ?? 0) + newArraySize,
+                address_offset:
+                  (r.address_offset ?? r.offset ?? 0) + newArraySize,
               })),
             ];
             newIdx = selIdx;
@@ -1799,7 +1814,9 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(
           e.preventDefault();
           e.stopPropagation();
           // Remove the register at currentRow and ensure registers is a valid array
-          const newRegs = registers.filter((_: any, idx: number) => idx !== currentRow);
+          const newRegs = registers.filter(
+            (_: any, idx: number) => idx !== currentRow,
+          );
           onUpdate(["registers"], newRegs);
           // Move selection to previous or next register
           const nextRow =
@@ -2288,6 +2305,17 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(
                   });
                   onUpdate(["fields"], newFields);
                 }}
+                onDragPreview={(preview) => {
+                  if (preview === null) {
+                    setDragPreviewRanges({});
+                  } else {
+                    const newRanges: Record<number, [number, number]> = {};
+                    preview.forEach(({ idx, range }) => {
+                      newRanges[idx] = range;
+                    });
+                    setDragPreviewRanges(newRanges);
+                  }
+                }}
               />
             </div>
           </div>
@@ -2378,7 +2406,11 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(
                       const nameValue =
                         nameDrafts[fieldKey] ?? String(field.name ?? "");
                       const nameErr = nameErrors[fieldKey] ?? null;
-                      const bitsValue = bitsDrafts[idx] ?? bits;
+                      // Use preview range if available (during Ctrl+drag), otherwise use draft or computed
+                      const previewRange = dragPreviewRanges[idx];
+                      const bitsValue = previewRange
+                        ? `[${previewRange[0]}:${previewRange[1]}]`
+                        : (bitsDrafts[idx] ?? bits);
                       const bitsErr = bitsErrors[idx] ?? null;
                       const resetValue =
                         resetDrafts[idx] ?? (resetDisplay || "0x0");
@@ -3277,7 +3309,8 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(
                   {arr.name || "Register Array"}
                 </h2>
                 <p className="vscode-muted text-sm mt-1 max-w-2xl">
-                  {arr.description || "Register array"} • {arr.count || 1} instances × {arr.stride || 4} bytes
+                  {arr.description || "Register array"} • {arr.count || 1}{" "}
+                  instances × {arr.stride || 4} bytes
                 </p>
               </div>
             </div>
@@ -3293,7 +3326,9 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(
                 />
               </div>
               <div>
-                <label className="text-xs vscode-muted block mb-1">Base Offset</label>
+                <label className="text-xs vscode-muted block mb-1">
+                  Base Offset
+                </label>
                 <span className="font-mono text-sm">{toHex(baseOffset)}</span>
               </div>
               <div>
@@ -3310,7 +3345,9 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(
                 />
               </div>
               <div>
-                <label className="text-xs vscode-muted block mb-1">Stride (bytes)</label>
+                <label className="text-xs vscode-muted block mb-1">
+                  Stride (bytes)
+                </label>
                 <VSCodeTextField
                   value={String(arr.stride || 4)}
                   onInput={(e: any) => {
@@ -3327,7 +3364,8 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(
             {/* Array Address Summary */}
             <div className="text-sm vscode-muted">
               <span className="font-mono">
-                {toHex(baseOffset)} → {toHex(baseOffset + (arr.count || 1) * (arr.stride || 4) - 1)}
+                {toHex(baseOffset)} →{" "}
+                {toHex(baseOffset + (arr.count || 1) * (arr.stride || 4) - 1)}
               </span>
               <span className="ml-2">
                 ({(arr.count || 1) * (arr.stride || 4)} bytes total)
@@ -3361,101 +3399,205 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(
                 className="flex-1 overflow-auto min-h-0 outline-none focus:outline-none"
                 onKeyDown={(e) => {
                   const scrollToCell = (rowIndex: number, key: string) => {
-                     window.setTimeout(() => {
-                        const row = document.querySelector(`tr[data-reg-idx="${rowIndex}"]`);
-                        row?.scrollIntoView({ block: "nearest" });
-                        const cell = row?.querySelector(`td[data-col-key="${key}"]`);
-                        cell?.scrollIntoView({ block: "nearest", inline: "nearest" });
-                     }, 0);
+                    window.setTimeout(() => {
+                      const row = document.querySelector(
+                        `tr[data-reg-idx="${rowIndex}"]`,
+                      );
+                      row?.scrollIntoView({ block: "nearest" });
+                      const cell = row?.querySelector(
+                        `td[data-col-key="${key}"]`,
+                      );
+                      cell?.scrollIntoView({
+                        block: "nearest",
+                        inline: "nearest",
+                      });
+                    }, 0);
                   };
 
                   const keyLower = e.key.toLowerCase();
-                  if (e.altKey) { /* ... same ... */ }
-                  
-                  const vimToArrow: Record<string, string> = { h: 'ArrowLeft', j: 'ArrowDown', k: 'ArrowUp', l: 'ArrowRight' };
-                  const normalizedKey = vimToArrow[keyLower] ?? e.key;
-                  const isArrow = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(normalizedKey);
-                  const isEdit = normalizedKey === 'F2' || keyLower === 'e' || keyLower === 'enter';
-                  const isDelete = keyLower === 'd' || e.key === 'Delete';
-                  const isInsertAfter = keyLower === 'o' && !e.shiftKey;
-                  const isInsertBefore = keyLower === 'o' && e.shiftKey;
+                  if (e.altKey) {
+                    /* ... same ... */
+                  }
 
-                  if (!isArrow && !isEdit && !isDelete && !isInsertAfter && !isInsertBefore) return;
+                  const vimToArrow: Record<string, string> = {
+                    h: "ArrowLeft",
+                    j: "ArrowDown",
+                    k: "ArrowUp",
+                    l: "ArrowRight",
+                  };
+                  const normalizedKey = vimToArrow[keyLower] ?? e.key;
+                  const isArrow = [
+                    "ArrowUp",
+                    "ArrowDown",
+                    "ArrowLeft",
+                    "ArrowRight",
+                  ].includes(normalizedKey);
+                  const isEdit =
+                    normalizedKey === "F2" ||
+                    keyLower === "e" ||
+                    keyLower === "enter";
+                  const isDelete = keyLower === "d" || e.key === "Delete";
+                  const isInsertAfter = keyLower === "o" && !e.shiftKey;
+                  const isInsertBefore = keyLower === "o" && e.shiftKey;
+
+                  if (
+                    !isArrow &&
+                    !isEdit &&
+                    !isDelete &&
+                    !isInsertAfter &&
+                    !isInsertBefore
+                  )
+                    return;
                   if (e.ctrlKey || e.metaKey) return;
-                  
+
                   const target = e.target as HTMLElement | null;
-                  const isTypingTarget = !!target?.closest('input, textarea, select, [contenteditable="true"], vscode-text-field, vscode-text-area, vscode-dropdown');
+                  const isTypingTarget = !!target?.closest(
+                    'input, textarea, select, [contenteditable="true"], vscode-text-field, vscode-text-area, vscode-dropdown',
+                  );
                   if (isTypingTarget) return;
 
-                  const currentRow = selectedRegIndex >= 0 ? selectedRegIndex : 0;
-                  
+                  const currentRow =
+                    selectedRegIndex >= 0 ? selectedRegIndex : 0;
+
                   if (isInsertAfter || isInsertBefore) {
-                    e.preventDefault(); e.stopPropagation();
+                    e.preventDefault();
+                    e.stopPropagation();
                     let maxN = 0;
                     for (const r of nestedRegisters) {
                       const match = r.name?.match(/^reg(\d+)$/i);
                       if (match) maxN = Math.max(maxN, parseInt(match[1], 10));
                     }
                     const newName = `reg${maxN + 1}`;
-                    const selIdx = selectedRegIndex >= 0 ? selectedRegIndex : nestedRegisters.length - 1;
+                    const selIdx =
+                      selectedRegIndex >= 0
+                        ? selectedRegIndex
+                        : nestedRegisters.length - 1;
                     const selected = nestedRegisters[selIdx];
-                    const selectedOffset = selected?.address_offset ?? selected?.offset ?? 0;
-                    const newOffset = isInsertAfter ? selectedOffset + 4 : Math.max(0, selectedOffset - 4);
-                    
+                    const selectedOffset =
+                      selected?.address_offset ?? selected?.offset ?? 0;
+                    const newOffset = isInsertAfter
+                      ? selectedOffset + 4
+                      : Math.max(0, selectedOffset - 4);
+
                     const newReg = {
-                      name: newName, offset: newOffset, address_offset: newOffset,
-                      access: 'read-write', description: '',
-                      fields: [{ name: 'data', bits: '[31:0]', access: 'read-write', description: '' }]
+                      name: newName,
+                      offset: newOffset,
+                      address_offset: newOffset,
+                      access: "read-write",
+                      description: "",
+                      fields: [
+                        {
+                          name: "data",
+                          bits: "[31:0]",
+                          access: "read-write",
+                          description: "",
+                        },
+                      ],
                     };
-                    
+
                     let newRegs;
                     let newIdx;
                     if (isInsertAfter) {
-                      newRegs = [...nestedRegisters.slice(0, selIdx + 1), newReg, ...nestedRegisters.slice(selIdx + 1)];
+                      newRegs = [
+                        ...nestedRegisters.slice(0, selIdx + 1),
+                        newReg,
+                        ...nestedRegisters.slice(selIdx + 1),
+                      ];
                       newIdx = selIdx + 1;
                     } else {
-                      newRegs = [...nestedRegisters.slice(0, selIdx), newReg, ...nestedRegisters.slice(selIdx)];
+                      newRegs = [
+                        ...nestedRegisters.slice(0, selIdx),
+                        newReg,
+                        ...nestedRegisters.slice(selIdx),
+                      ];
                       newIdx = selIdx;
                     }
-                    onUpdate(['registers'], newRegs);
-                    setSelectedRegIndex(newIdx); setHoveredRegIndex(newIdx); setRegActiveCell({ rowIndex: newIdx, key: "name" });
+                    onUpdate(["registers"], newRegs);
+                    setSelectedRegIndex(newIdx);
+                    setHoveredRegIndex(newIdx);
+                    setRegActiveCell({ rowIndex: newIdx, key: "name" });
                     scrollToCell(newIdx, "name");
                     return;
                   }
 
                   if (isDelete) {
-                    if (currentRow < 0 || currentRow >= nestedRegisters.length) return;
-                    e.preventDefault(); e.stopPropagation();
-                    const newRegs = nestedRegisters.filter((_: any, idx: number) => idx !== currentRow);
-                    onUpdate(['registers'], newRegs);
-                    const nextRow = currentRow > 0 ? currentRow - 1 : newRegs.length > 0 ? 0 : -1;
-                    setSelectedRegIndex(nextRow); setHoveredRegIndex(nextRow);
+                    if (currentRow < 0 || currentRow >= nestedRegisters.length)
+                      return;
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const newRegs = nestedRegisters.filter(
+                      (_: any, idx: number) => idx !== currentRow,
+                    );
+                    onUpdate(["registers"], newRegs);
+                    const nextRow =
+                      currentRow > 0
+                        ? currentRow - 1
+                        : newRegs.length > 0
+                          ? 0
+                          : -1;
+                    setSelectedRegIndex(nextRow);
+                    setHoveredRegIndex(nextRow);
                     return;
                   }
-                  
-                   if (isArrow) {
+
+                  if (isArrow) {
                     e.preventDefault();
-                    const isVertical = normalizedKey === 'ArrowUp' || normalizedKey === 'ArrowDown';
-                    const delta = normalizedKey === 'ArrowUp' || normalizedKey === 'ArrowLeft' ? -1 : 1;
-                     if (isVertical) {
-                       const next = Math.max(0, Math.min(nestedRegisters.length - 1, currentRow + delta));
-                       setSelectedRegIndex(next); setHoveredRegIndex(next); setRegActiveCell({ rowIndex: next, key: regActiveCell.key });
-                       scrollToCell(next, regActiveCell.key);
-                     } else {
-                        // Horizontal nav
-                        const REG_COLUMN_ORDER = ["name", "offset", "access", "description"];
-                        const currentKey = regActiveCell.key;
-                        const currentCol = Math.max(0, REG_COLUMN_ORDER.indexOf(currentKey));
-                        const nextCol = Math.max(0, Math.min(REG_COLUMN_ORDER.length - 1, currentCol + delta));
-                        const nextKey = REG_COLUMN_ORDER[nextCol] as any;
-                        setRegActiveCell({ rowIndex: currentRow, key: nextKey });
-                        scrollToCell(currentRow, nextKey);
-                     }
+                    const isVertical =
+                      normalizedKey === "ArrowUp" ||
+                      normalizedKey === "ArrowDown";
+                    const delta =
+                      normalizedKey === "ArrowUp" ||
+                      normalizedKey === "ArrowLeft"
+                        ? -1
+                        : 1;
+                    if (isVertical) {
+                      const next = Math.max(
+                        0,
+                        Math.min(
+                          nestedRegisters.length - 1,
+                          currentRow + delta,
+                        ),
+                      );
+                      setSelectedRegIndex(next);
+                      setHoveredRegIndex(next);
+                      setRegActiveCell({
+                        rowIndex: next,
+                        key: regActiveCell.key,
+                      });
+                      scrollToCell(next, regActiveCell.key);
+                    } else {
+                      // Horizontal nav
+                      const REG_COLUMN_ORDER = [
+                        "name",
+                        "offset",
+                        "access",
+                        "description",
+                      ];
+                      const currentKey = regActiveCell.key;
+                      const currentCol = Math.max(
+                        0,
+                        REG_COLUMN_ORDER.indexOf(currentKey),
+                      );
+                      const nextCol = Math.max(
+                        0,
+                        Math.min(
+                          REG_COLUMN_ORDER.length - 1,
+                          currentCol + delta,
+                        ),
+                      );
+                      const nextKey = REG_COLUMN_ORDER[nextCol] as any;
+                      setRegActiveCell({ rowIndex: currentRow, key: nextKey });
+                      scrollToCell(currentRow, nextKey);
+                    }
                   }
-                  
+
                   if (isEdit) {
-                    e.preventDefault(); e.stopPropagation();
-                    setRegActiveCell({ rowIndex: currentRow, key: regActiveCell.key });
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setRegActiveCell({
+                      rowIndex: currentRow,
+                      key: regActiveCell.key,
+                    });
                   }
                 }}
               >
@@ -3468,10 +3610,18 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(
                   </colgroup>
                   <thead className="vscode-surface-alt text-xs font-semibold vscode-muted uppercase tracking-wider sticky top-0 z-10 shadow-sm">
                     <tr className="h-12">
-                      <th className="px-6 py-3 border-b vscode-border align-middle">Name</th>
-                      <th className="px-4 py-3 border-b vscode-border align-middle">Offset</th>
-                      <th className="px-4 py-3 border-b vscode-border align-middle">Access</th>
-                      <th className="px-6 py-3 border-b vscode-border align-middle">Description</th>
+                      <th className="px-6 py-3 border-b vscode-border align-middle">
+                        Name
+                      </th>
+                      <th className="px-4 py-3 border-b vscode-border align-middle">
+                        Offset
+                      </th>
+                      <th className="px-4 py-3 border-b vscode-border align-middle">
+                        Access
+                      </th>
+                      <th className="px-6 py-3 border-b vscode-border align-middle">
+                        Description
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y vscode-border text-sm">
@@ -3479,128 +3629,200 @@ const DetailsPanel = React.forwardRef<DetailsPanelHandle, DetailsPanelProps>(
                       const regOffset = reg.address_offset ?? reg.offset ?? 0;
                       const isSelected = selectedRegIndex === idx;
                       const isHovered = hoveredRegIndex === idx;
-                      
+
                       return (
                         <tr
                           key={idx}
                           data-reg-idx={idx}
                           className={`group transition-colors border-l-4 border-transparent h-12 ${
-                            isSelected ? "vscode-focus-border vscode-row-selected" : isHovered ? "vscode-focus-border vscode-row-hover" : ""
+                            isSelected
+                              ? "vscode-focus-border vscode-row-selected"
+                              : isHovered
+                                ? "vscode-focus-border vscode-row-hover"
+                                : ""
                           }`}
                           onMouseEnter={() => setHoveredRegIndex(idx)}
                           onMouseLeave={() => setHoveredRegIndex(null)}
                           onClick={() => {
                             setSelectedRegIndex(idx);
                             setHoveredRegIndex(idx);
-                            setRegActiveCell(prev => ({ rowIndex: idx, key: prev.key }));
+                            setRegActiveCell((prev) => ({
+                              rowIndex: idx,
+                              key: prev.key,
+                            }));
                           }}
                         >
                           {/* NAME */}
-                          <td 
+                          <td
                             data-col-key="name"
-                            className={`px-6 py-2 font-medium align-middle ${regActiveCell.rowIndex === idx && regActiveCell.key === 'name' ? 'vscode-cell-active' : ''}`}
-                            onClick={(e) => { e.stopPropagation(); setSelectedRegIndex(idx); setRegActiveCell({ rowIndex: idx, key: 'name' }); }}
+                            className={`px-6 py-2 font-medium align-middle ${regActiveCell.rowIndex === idx && regActiveCell.key === "name" ? "vscode-cell-active" : ""}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedRegIndex(idx);
+                              setRegActiveCell({ rowIndex: idx, key: "name" });
+                            }}
                           >
-                            {regActiveCell.rowIndex === idx && regActiveCell.key === 'name' ? (
+                            {regActiveCell.rowIndex === idx &&
+                            regActiveCell.key === "name" ? (
                               <VSCodeTextField
-                                value={reg.name || ''}
-                                onInput={(e: any) => onUpdate(['registers', idx, 'name'], e.target.value)}
+                                value={reg.name || ""}
+                                onInput={(e: any) =>
+                                  onUpdate(
+                                    ["registers", idx, "name"],
+                                    e.target.value,
+                                  )
+                                }
                                 className="w-full font-mono"
                                 autoFocus
                               />
                             ) : (
-                               <span className="font-mono">{reg.name}</span>
+                              <span className="font-mono">{reg.name}</span>
                             )}
                           </td>
-                          
+
                           {/* OFFSET */}
-                          <td 
-                             data-col-key="offset"
-                             className={`px-4 py-2 font-mono text-xs align-middle ${regActiveCell.rowIndex === idx && regActiveCell.key === 'offset' ? 'vscode-cell-active' : ''}`}
-                             onClick={(e) => { e.stopPropagation(); setSelectedRegIndex(idx); setRegActiveCell({ rowIndex: idx, key: 'offset' }); }}
+                          <td
+                            data-col-key="offset"
+                            className={`px-4 py-2 font-mono text-xs align-middle ${regActiveCell.rowIndex === idx && regActiveCell.key === "offset" ? "vscode-cell-active" : ""}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedRegIndex(idx);
+                              setRegActiveCell({
+                                rowIndex: idx,
+                                key: "offset",
+                              });
+                            }}
                           >
-                             {regActiveCell.rowIndex === idx && regActiveCell.key === 'offset' ? (
+                            {regActiveCell.rowIndex === idx &&
+                            regActiveCell.key === "offset" ? (
                               <VSCodeTextField
                                 value={String(regOffset)}
                                 onInput={(e: any) => {
                                   const val = parseInt(e.target.value, 10);
                                   if (!isNaN(val) && val >= 0) {
-                                    onUpdate(['registers', idx, 'offset'], val);
-                                    onUpdate(['registers', idx, 'address_offset'], val);
+                                    onUpdate(["registers", idx, "offset"], val);
+                                    onUpdate(
+                                      ["registers", idx, "address_offset"],
+                                      val,
+                                    );
                                   }
                                 }}
                                 className="w-full font-mono text-xs"
                                 autoFocus
                               />
                             ) : (
-                               <span>{`0x${Number(regOffset).toString(16).toUpperCase()}`}</span>
+                              <span>{`0x${Number(regOffset).toString(16).toUpperCase()}`}</span>
                             )}
                           </td>
-                          
+
                           {/* ACCESS */}
                           <td
                             data-col-key="access"
-                            className={`px-4 py-2 text-xs align-middle ${regActiveCell.rowIndex === idx && regActiveCell.key === 'access' ? 'vscode-cell-active' : ''}`}
-                            onClick={(e) => { e.stopPropagation(); setSelectedRegIndex(idx); setRegActiveCell({ rowIndex: idx, key: 'access' }); }}
+                            className={`px-4 py-2 text-xs align-middle ${regActiveCell.rowIndex === idx && regActiveCell.key === "access" ? "vscode-cell-active" : ""}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedRegIndex(idx);
+                              setRegActiveCell({
+                                rowIndex: idx,
+                                key: "access",
+                              });
+                            }}
                           >
-                            {regActiveCell.rowIndex === idx && regActiveCell.key === 'access' ? (
+                            {regActiveCell.rowIndex === idx &&
+                            regActiveCell.key === "access" ? (
                               <VSCodeDropdown
-                                value={reg.access || 'read-write'}
-                                onInput={(e: any) => onUpdate(['registers', idx, 'access'], e.target.value)}
+                                value={reg.access || "read-write"}
+                                onInput={(e: any) =>
+                                  onUpdate(
+                                    ["registers", idx, "access"],
+                                    e.target.value,
+                                  )
+                                }
                                 className="w-full"
                               >
-                                {['read-write', 'read-only', 'write-only'].map(opt => (
-                                  <option key={opt} value={opt}>{opt}</option>
-                                ))}
+                                {["read-write", "read-only", "write-only"].map(
+                                  (opt) => (
+                                    <option key={opt} value={opt}>
+                                      {opt}
+                                    </option>
+                                  ),
+                                )}
                               </VSCodeDropdown>
                             ) : (
-                               <span className={`px-2 py-0.5 rounded-full text-[10px] uppercase font-semibold bg-opacity-20 ${
-                                  reg.access === 'read-only' ? 'bg-blue-500 text-blue-500' :
-                                  reg.access === 'write-only' ? 'bg-orange-500 text-orange-500' :
-                                  'bg-green-500 text-green-500'
-                                }`}>
-                                  {reg.access || 'RW'}
-                                </span>
+                              <span
+                                className={`px-2 py-0.5 rounded-full text-[10px] uppercase font-semibold bg-opacity-20 ${
+                                  reg.access === "read-only"
+                                    ? "bg-blue-500 text-blue-500"
+                                    : reg.access === "write-only"
+                                      ? "bg-orange-500 text-orange-500"
+                                      : "bg-green-500 text-green-500"
+                                }`}
+                              >
+                                {reg.access || "RW"}
+                              </span>
                             )}
                           </td>
-                          
+
                           {/* DESCRIPTION */}
-                           <td 
-                             data-col-key="description"
-                             className={`px-6 py-2 align-middle ${regActiveCell.rowIndex === idx && regActiveCell.key === 'description' ? 'vscode-cell-active' : ''}`}
-                             onClick={(e) => { e.stopPropagation(); setSelectedRegIndex(idx); setRegActiveCell({ rowIndex: idx, key: 'description' }); }}
-                           >
-                            {regActiveCell.rowIndex === idx && regActiveCell.key === 'description' ? (
+                          <td
+                            data-col-key="description"
+                            className={`px-6 py-2 align-middle ${regActiveCell.rowIndex === idx && regActiveCell.key === "description" ? "vscode-cell-active" : ""}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedRegIndex(idx);
+                              setRegActiveCell({
+                                rowIndex: idx,
+                                key: "description",
+                              });
+                            }}
+                          >
+                            {regActiveCell.rowIndex === idx &&
+                            regActiveCell.key === "description" ? (
                               <VSCodeTextField
-                                value={reg.description || ''}
-                                onInput={(e: any) => onUpdate(['registers', idx, 'description'], e.target.value)}
+                                value={reg.description || ""}
+                                onInput={(e: any) =>
+                                  onUpdate(
+                                    ["registers", idx, "description"],
+                                    e.target.value,
+                                  )
+                                }
                                 className="w-full"
                                 autoFocus
                               />
                             ) : (
-                               <span className="truncate block max-w-[300px] opacity-70">{reg.description}</span>
+                              <span className="truncate block max-w-[300px] opacity-70">
+                                {reg.description}
+                              </span>
                             )}
                           </td>
                         </tr>
                       );
                     })}
                     {nestedRegisters.length === 0 && (
-                        <tr>
-                            <td colSpan={4} className="px-4 py-8 text-center vscode-muted">
-                                No nested registers. Press <kbd className="px-1 rounded vscode-surface-alt">o</kbd> to add one.
-                            </td>
-                        </tr>
+                      <tr>
+                        <td
+                          colSpan={4}
+                          className="px-4 py-8 text-center vscode-muted"
+                        >
+                          No nested registers. Press{" "}
+                          <kbd className="px-1 rounded vscode-surface-alt">
+                            o
+                          </kbd>{" "}
+                          to add one.
+                        </td>
+                      </tr>
                     )}
                   </tbody>
                 </table>
               </div>
             </div>
-            
+
             <div className="flex-none p-4 bg-vscode-editor-background border-t vscode-border flex justify-between items-center">
-                 <p className="text-xs vscode-muted">
-                  These registers are replicated {arr.count || 1} times at {arr.stride || 4}-byte intervals.
-                </p>
-                <KeyboardShortcutsButton context="array" />
+              <p className="text-xs vscode-muted">
+                These registers are replicated {arr.count || 1} times at{" "}
+                {arr.stride || 4}-byte intervals.
+              </p>
+              <KeyboardShortcutsButton context="array" />
             </div>
           </div>
         </div>
