@@ -1,17 +1,22 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
-import type { ReactNode, ErrorInfo } from 'react';
-import { createRoot } from 'react-dom/client';
-import Outline, { type OutlineHandle } from './components/Outline';
-import DetailsPanel, { type DetailsPanelHandle } from './components/DetailsPanel';
-import { vscode } from './vscode';
-import { useMemoryMapState } from './hooks/useMemoryMapState';
-import { useSelection, type Selection } from './hooks/useSelection';
-import { useYamlSync } from './hooks/useYamlSync';
-import { YamlPathResolver, type YamlPath } from './services/YamlPathResolver';
-import { YamlService } from './services/YamlService';
-import type { NormalizedRegister, NormalizedRegisterArray } from './services/DataNormalizer';
-import { BitFieldUtils } from './utils/BitFieldUtils';
-import './index.css';
+import React, { useEffect, useRef, useState, useCallback } from "react";
+import type { ReactNode, ErrorInfo } from "react";
+import { createRoot } from "react-dom/client";
+import Outline, { type OutlineHandle } from "./components/Outline";
+import DetailsPanel, {
+  type DetailsPanelHandle,
+} from "./components/DetailsPanel";
+import { vscode } from "./vscode";
+import { useMemoryMapState } from "./hooks/useMemoryMapState";
+import { useSelection, type Selection } from "./hooks/useSelection";
+import { useYamlSync } from "./hooks/useYamlSync";
+import { YamlPathResolver, type YamlPath } from "./services/YamlPathResolver";
+import { YamlService } from "./services/YamlService";
+import type {
+  NormalizedRegister,
+  NormalizedRegisterArray,
+} from "./services/DataNormalizer";
+import { BitFieldUtils } from "./utils/BitFieldUtils";
+import "./index.css";
 
 /**
  * Main application component
@@ -21,8 +26,15 @@ const App = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // State management hooks
-  const { memoryMap, rawText, rawTextRef, parseError, fileName, updateFromYaml, updateRawText } =
-    useMemoryMapState();
+  const {
+    memoryMap,
+    rawText,
+    rawTextRef,
+    parseError,
+    fileName,
+    updateFromYaml,
+    updateRawText,
+  } = useMemoryMapState();
   const {
     selectedId,
     selectedType,
@@ -38,7 +50,9 @@ const App = () => {
   const { sendUpdate, sendCommand } = useYamlSync(vscode, updateFromYaml);
 
   // Local state
-  const [activeTab, setActiveTab] = useState<'properties' | 'yaml'>('properties');
+  const [activeTab, setActiveTab] = useState<"properties" | "yaml">(
+    "properties",
+  );
   const didInitSelectionRef = useRef(false);
   const outlineRef = useRef<OutlineHandle | null>(null);
   const detailsRef = useRef<DetailsPanelHandle | null>(null);
@@ -53,8 +67,8 @@ const App = () => {
       }
     };
 
-    window.addEventListener('mousedown', handleMouseDown);
-    return () => window.removeEventListener('mousedown', handleMouseDown);
+    window.addEventListener("mousedown", handleMouseDown);
+    return () => window.removeEventListener("mousedown", handleMouseDown);
   }, [goBack]);
 
   /**
@@ -62,22 +76,26 @@ const App = () => {
    */
   const resolveFromSelection = useCallback(
     (
-      sel: Selection | null
-    ): { type: Selection['type']; object: any; breadcrumbs: string[] } | null => {
+      sel: Selection | null,
+    ): {
+      type: Selection["type"];
+      object: any;
+      breadcrumbs: string[];
+    } | null => {
       if (!sel || !memoryMap) {
         return null;
       }
 
-      if (sel.type === 'memoryMap') {
+      if (sel.type === "memoryMap") {
         return {
-          type: 'memoryMap',
+          type: "memoryMap",
           object: memoryMap,
-          breadcrumbs: [memoryMap.name || 'Memory Map'],
+          breadcrumbs: [memoryMap.name || "Memory Map"],
         };
       }
 
       // Selection paths are YAML-style: ['addressBlocks', blockIndex, ...]
-      const blockIndex = typeof sel.path[1] === 'number' ? sel.path[1] : null;
+      const blockIndex = typeof sel.path[1] === "number" ? sel.path[1] : null;
       if (blockIndex === null) {
         return null;
       }
@@ -86,11 +104,11 @@ const App = () => {
         return null;
       }
 
-      if (sel.type === 'block') {
+      if (sel.type === "block") {
         return {
-          type: 'block',
+          type: "block",
           object: block,
-          breadcrumbs: [memoryMap.name || 'Memory Map', block.name],
+          breadcrumbs: [memoryMap.name || "Memory Map", block.name],
         };
       }
 
@@ -98,51 +116,52 @@ const App = () => {
         NormalizedRegister | NormalizedRegisterArray
       >;
 
-      if (sel.type === 'array') {
-        const regIndex = typeof sel.path[3] === 'number' ? sel.path[3] : null;
+      if (sel.type === "array") {
+        const regIndex = typeof sel.path[3] === "number" ? sel.path[3] : null;
         if (regIndex === null) {
           return null;
         }
         const node = blockRegs[regIndex];
-        if (node && (node as any).__kind === 'array') {
+        if (node && (node as any).__kind === "array") {
           const arr = node as NormalizedRegisterArray;
           return {
-            type: 'array',
+            type: "array",
             object: arr,
-            breadcrumbs: [memoryMap.name || 'Memory Map', block.name, arr.name],
+            breadcrumbs: [memoryMap.name || "Memory Map", block.name, arr.name],
           };
         }
         return null;
       }
 
-      if (sel.type === 'register') {
+      if (sel.type === "register") {
         // Direct register: ['addressBlocks', b, 'registers', r]
         if (sel.path.length === 4) {
-          const regIndex = typeof sel.path[3] === 'number' ? sel.path[3] : null;
+          const regIndex = typeof sel.path[3] === "number" ? sel.path[3] : null;
           if (regIndex === null) {
             return null;
           }
           const node = blockRegs[regIndex];
-          if (!node || (node as any).__kind === 'array') {
+          if (!node || (node as any).__kind === "array") {
             return null;
           }
           const reg = node as NormalizedRegister;
           return {
-            type: 'register',
+            type: "register",
             object: reg,
-            breadcrumbs: [memoryMap.name || 'Memory Map', block.name, reg.name],
+            breadcrumbs: [memoryMap.name || "Memory Map", block.name, reg.name],
           };
         }
 
         // Nested register inside array: ['addressBlocks', b, 'registers', r, 'registers', rr]
         if (sel.path.length === 6) {
-          const arrIndex = typeof sel.path[3] === 'number' ? sel.path[3] : null;
-          const nestedIndex = typeof sel.path[5] === 'number' ? sel.path[5] : null;
+          const arrIndex = typeof sel.path[3] === "number" ? sel.path[3] : null;
+          const nestedIndex =
+            typeof sel.path[5] === "number" ? sel.path[5] : null;
           if (arrIndex === null || nestedIndex === null) {
             return null;
           }
           const node = blockRegs[arrIndex];
-          if (!node || (node as any).__kind !== 'array') {
+          if (!node || (node as any).__kind !== "array") {
             return null;
           }
           const arr = node as NormalizedRegisterArray;
@@ -151,9 +170,14 @@ const App = () => {
             return null;
           }
           return {
-            type: 'register',
+            type: "register",
             object: reg,
-            breadcrumbs: [memoryMap.name || 'Memory Map', block.name, arr.name, reg.name],
+            breadcrumbs: [
+              memoryMap.name || "Memory Map",
+              block.name,
+              arr.name,
+              reg.name,
+            ],
           };
         }
 
@@ -162,7 +186,7 @@ const App = () => {
 
       return null;
     },
-    [memoryMap]
+    [memoryMap],
   );
 
   /**
@@ -178,14 +202,14 @@ const App = () => {
       const currentText = rawTextRef.current;
       const rootObj = YamlService.safeParse(currentText);
       if (!rootObj) {
-        console.warn('Cannot apply update: YAML parse failed');
+        console.warn("Cannot apply update: YAML parse failed");
         return;
       }
 
       const { root, mapPrefix } = YamlPathResolver.getMapRootInfo(rootObj);
 
       // Handle field operations
-      if (path[0] === '__op' && sel.type === 'register') {
+      if (path[0] === "__op" && sel.type === "register") {
         handleFieldOperations(path, value, root, mapPrefix, sel);
         const newText = YamlService.dump(root);
         updateRawText(newText);
@@ -201,10 +225,10 @@ const App = () => {
         updateRawText(newText);
         sendUpdate(newText);
       } catch (err) {
-        console.warn('Failed to apply update:', err);
+        console.warn("Failed to apply update:", err);
       }
     },
-    [sendUpdate, updateRawText]
+    [sendUpdate, updateRawText],
   );
 
   /**
@@ -216,24 +240,29 @@ const App = () => {
     value: any,
     root: any,
     mapPrefix: YamlPath,
-    sel: Selection
+    sel: Selection,
   ) => {
-    const op = String(path[1] ?? '');
+    const op = String(path[1] ?? "");
     const payload = value ?? {};
     const registerYamlPath: YamlPath = [...mapPrefix, ...sel.path];
-    const fieldsPath: YamlPath = [...registerYamlPath, 'fields'];
+    const fieldsPath: YamlPath = [...registerYamlPath, "fields"];
     const current = YamlPathResolver.getAtPath(root, fieldsPath);
     if (!Array.isArray(current)) {
       YamlPathResolver.setAtPath(root, fieldsPath, []);
     }
-    const fieldsArr = (YamlPathResolver.getAtPath(root, fieldsPath) ?? []) as any[];
+    const fieldsArr = (YamlPathResolver.getAtPath(root, fieldsPath) ??
+      []) as any[];
     if (!Array.isArray(fieldsArr)) {
       return;
     }
 
-    if (op === 'field-add') {
-      const afterIndex = typeof payload.afterIndex === 'number' ? payload.afterIndex : -1;
-      const insertIndex = Math.max(0, Math.min(fieldsArr.length, afterIndex + 1));
+    if (op === "field-add") {
+      const afterIndex =
+        typeof payload.afterIndex === "number" ? payload.afterIndex : -1;
+      const insertIndex = Math.max(
+        0,
+        Math.min(fieldsArr.length, afterIndex + 1),
+      );
       const currentFields = (sel.object?.fields ?? []) as any[];
       const used = new Set<number>();
       for (const f of currentFields) {
@@ -250,25 +279,30 @@ const App = () => {
       const bits = `[${lsb}:${lsb}]`;
 
       fieldsArr.splice(insertIndex, 0, {
-        name: payload.name ?? 'NEW_FIELD',
+        name: payload.name ?? "NEW_FIELD",
         bits,
-        access: payload.access ?? 'read-write',
-        description: payload.description ?? '',
+        access: payload.access ?? "read-write",
+        description: payload.description ?? "",
       });
     }
 
-    if (op === 'field-delete') {
-      const index = typeof payload.index === 'number' ? payload.index : -1;
+    if (op === "field-delete") {
+      const index = typeof payload.index === "number" ? payload.index : -1;
       if (index >= 0 && index < fieldsArr.length) {
         fieldsArr.splice(index, 1);
       }
     }
 
-    if (op === 'field-move') {
-      const index = typeof payload.index === 'number' ? payload.index : -1;
-      const delta = typeof payload.delta === 'number' ? payload.delta : 0;
+    if (op === "field-move") {
+      const index = typeof payload.index === "number" ? payload.index : -1;
+      const delta = typeof payload.delta === "number" ? payload.delta : 0;
       const next = index + delta;
-      if (index >= 0 && next >= 0 && index < fieldsArr.length && next < fieldsArr.length) {
+      if (
+        index >= 0 &&
+        next >= 0 &&
+        index < fieldsArr.length &&
+        next < fieldsArr.length
+      ) {
         // Swap fields in array
         const tmp = fieldsArr[index];
         fieldsArr[index] = fieldsArr[next];
@@ -282,7 +316,7 @@ const App = () => {
 
           // Parse width from bits string (primary source of truth in YAML)
           let width = 1; // default
-          if (typeof f?.bits === 'string') {
+          if (typeof f?.bits === "string") {
             const parsed = BitFieldUtils.parseBitsLike(f.bits);
             if (parsed && parsed.bit_width > 0) {
               width = parsed.bit_width;
@@ -320,10 +354,10 @@ const App = () => {
 
     if (!didInitSelectionRef.current) {
       handleSelect({
-        id: 'root',
-        type: 'memoryMap',
+        id: "root",
+        type: "memoryMap",
         object: memoryMap,
-        breadcrumbs: [memoryMap.name || 'Memory Map'],
+        breadcrumbs: [memoryMap.name || "Memory Map"],
         path: [],
       });
       didInitSelectionRef.current = true;
@@ -345,28 +379,28 @@ const App = () => {
    */
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      const keyLower = (e.key || '').toLowerCase();
+      const keyLower = (e.key || "").toLowerCase();
       if (!e.ctrlKey || e.metaKey || e.altKey) {
         return;
       }
-      if (keyLower !== 'h' && keyLower !== 'l') {
+      if (keyLower !== "h" && keyLower !== "l") {
         return;
       }
 
       e.preventDefault();
       e.stopPropagation();
 
-      if (keyLower === 'h') {
+      if (keyLower === "h") {
         outlineRef.current?.focus();
         return;
       }
-      if (keyLower === 'l') {
+      if (keyLower === "l") {
         detailsRef.current?.focus();
         return;
       }
     };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
   /**
@@ -405,7 +439,7 @@ const App = () => {
     <>
       <header
         className="flex items-center justify-between px-6 py-3 shrink-0"
-        style={{ borderBottom: '1px solid var(--vscode-panel-border)' }}
+        style={{ borderBottom: "1px solid var(--vscode-panel-border)" }}
       >
         <div className="flex items-center gap-4 flex-1 overflow-hidden">
           {/* Mobile sidebar toggle */}
@@ -416,16 +450,18 @@ const App = () => {
           >
             <span className="codicon codicon-menu"></span>
           </button>
-          <h1 className="text-lg font-semibold shrink-0">FPGA Memory Map Editor</h1>
+          <h1 className="text-lg font-semibold shrink-0">
+            FPGA Memory Map Editor
+          </h1>
           <div className="flex items-center gap-1 text-sm opacity-75 overflow-hidden">
             <span className="codicon codicon-file text-[16px]"></span>
-            <span className="truncate">{fileName || 'Untitled'}</span>
+            <span className="truncate">{fileName || "Untitled"}</span>
             {breadcrumbs.length > 1 && (
               <>
                 <span className="codicon codicon-chevron-right text-[16px]"></span>
                 <span
                   className="font-medium px-2 py-0.5 rounded vscode-surface-alt"
-                  style={{ border: '1px solid var(--vscode-panel-border)' }}
+                  style={{ border: "1px solid var(--vscode-panel-border)" }}
                 >
                   {breadcrumbs[breadcrumbs.length - 1]}
                 </span>
@@ -436,19 +472,22 @@ const App = () => {
         <div className="flex items-center gap-2">
           <button
             className="p-2 rounded-md transition-colors vscode-icon-button"
-            onClick={() => sendCommand('save')}
+            onClick={() => sendCommand("save")}
             title="Save"
           >
             <span className="codicon codicon-save"></span>
           </button>
           <button
             className="p-2 rounded-md transition-colors vscode-icon-button"
-            onClick={() => sendCommand('validate')}
+            onClick={() => sendCommand("validate")}
             title="Validate"
           >
             <span className="codicon codicon-check"></span>
           </button>
-          <div className="h-6 w-px mx-1" style={{ background: 'var(--vscode-panel-border)' }}></div>
+          <div
+            className="h-6 w-px mx-1"
+            style={{ background: "var(--vscode-panel-border)" }}
+          ></div>
           <button
             className="p-2 rounded-md transition-colors vscode-icon-button"
             title="Export Header"
@@ -471,15 +510,38 @@ const App = () => {
             onClick={() => setSidebarOpen(false)}
           />
         )}
-        <aside className={`sidebar flex flex-col shrink-0 overflow-y-auto ${sidebarOpen ? 'sidebar-open' : ''}`}>
+        <aside
+          className={`sidebar flex flex-col shrink-0 overflow-y-auto ${sidebarOpen ? "sidebar-open" : ""}`}
+        >
           <Outline
             ref={outlineRef}
             memoryMap={memoryMap}
             selectedId={selectedId}
             onSelect={handleSelect}
+            onRename={(path, newName) => {
+              // path is already the full path to the 'name' property
+              // e.g., ['addressBlocks', 0, 'name'] for a block
+              const currentText = rawTextRef.current;
+              const rootObj = YamlService.safeParse(currentText);
+              if (!rootObj) {
+                console.warn("Cannot apply rename: YAML parse failed");
+                return;
+              }
+              const { root, mapPrefix } =
+                YamlPathResolver.getMapRootInfo(rootObj);
+              const fullPath = [...mapPrefix, ...path];
+              try {
+                YamlPathResolver.setAtPath(root, fullPath, newName);
+                const newText = YamlService.dump(root);
+                updateRawText(newText);
+                sendUpdate(newText);
+              } catch (err) {
+                console.warn("Failed to apply rename:", err);
+              }
+            }}
           />
         </aside>
-        {activeTab === 'yaml' ? (
+        {activeTab === "yaml" ? (
           <section className="flex-1 vscode-surface overflow-auto min-w-0">
             <div className="p-6">
               <pre className="font-mono text-sm">{rawText}</pre>
@@ -500,25 +562,30 @@ const App = () => {
                 }
 
                 // CASE 1: Block View (Direct registers/arrays)
-                if (selectionRef.current.type === 'block') {
+                if (selectionRef.current.type === "block") {
                   const currentPath = selectionRef.current.path || [];
                   const block = selectedObject;
                   const registers = block?.registers || [];
                   const reg = registers[regIndex];
                   if (!reg) return;
-  
+
                   // Determine if it's an array or register
-                  const isArray = reg.__kind === 'array';
-                  const newPath = [...currentPath, 'registers', regIndex];
-                  
+                  const isArray = reg.__kind === "array";
+                  const newPath = [...currentPath, "registers", regIndex];
+
                   // Outline uses different ID schemes for arrays vs registers
-                  const idSuffix = isArray ? `-arrreg-${regIndex}` : `-reg-${regIndex}`;
-  
+                  const idSuffix = isArray
+                    ? `-arrreg-${regIndex}`
+                    : `-reg-${regIndex}`;
+
                   handleSelect({
                     id: `${selectionRef.current.id}${idSuffix}`,
-                    type: isArray ? 'array' : 'register',
+                    type: isArray ? "array" : "register",
                     object: reg,
-                    breadcrumbs: [...(selectionRef.current.breadcrumbs || []), reg.name || `Register ${regIndex}`],
+                    breadcrumbs: [
+                      ...(selectionRef.current.breadcrumbs || []),
+                      reg.name || `Register ${regIndex}`,
+                    ],
                     path: newPath,
                     // Block children (top-level) absolute address is calculated in Outline, but we can approximate or omit if Outline recalculates?
                     // Usually safe to omit if DetailsPanel Recalcs or if Outline pass provides it.
@@ -529,32 +596,39 @@ const App = () => {
 
                 // CASE 2: Array Element View (Nested registers)
                 // When masquerading as a Block for an Array Element, clicking a register should select the template register in the Outline under that element.
-                if (selectionRef.current.type === 'array') {          
+                if (selectionRef.current.type === "array") {
                   const arr = selectedObject as any; // NormalizedRegisterArray with meta
                   const registers = arr.registers || [];
                   const reg = registers[regIndex];
                   if (!reg) return;
 
                   // Path logic verified from Outline.tsx: [...arrayPath, 'registers', childIndex]
-                  const newPath = [...(selectionRef.current.path || []), 'registers', regIndex];
-                  
+                  const newPath = [
+                    ...(selectionRef.current.path || []),
+                    "registers",
+                    regIndex,
+                  ];
+
                   // ID suffix logic verified from Outline.tsx: `${elementId}-reg-${childIndex}`
                   const id = `${selectionRef.current.id}-reg-${regIndex}`;
-                  
+
                   // Calculate absolute address for the specific child
                   const elementBase = arr.__element_base ?? 0;
                   const absoluteAddr = elementBase + (reg.address_offset ?? 0);
 
                   handleSelect({
                     id,
-                    type: 'register',
+                    type: "register",
                     object: reg,
-                    breadcrumbs: [...(selectionRef.current.breadcrumbs || []), reg.name || `Register ${regIndex}`],
+                    breadcrumbs: [
+                      ...(selectionRef.current.breadcrumbs || []),
+                      reg.name || `Register ${regIndex}`,
+                    ],
                     path: newPath,
                     meta: {
-                        absoluteAddress: absoluteAddr,
-                        relativeOffset: reg.address_offset ?? 0
-                    }
+                      absoluteAddress: absoluteAddr,
+                      relativeOffset: reg.address_offset ?? 0,
+                    },
                   });
                   return;
                 }
@@ -567,10 +641,13 @@ const App = () => {
 
                 handleSelect({
                   id: `block-${blockIndex}`,
-                  type: 'block',
+                  type: "block",
                   object: block,
-                  breadcrumbs: [memoryMap.name || 'Memory Map', block.name || `Block ${blockIndex}`],
-                  path: ['addressBlocks', blockIndex],
+                  breadcrumbs: [
+                    memoryMap.name || "Memory Map",
+                    block.name || `Block ${blockIndex}`,
+                  ],
+                  path: ["addressBlocks", blockIndex],
                 });
               }}
             />
@@ -584,7 +661,10 @@ const App = () => {
 /**
  * Error boundary for catching React errors
  */
-class ErrorBoundary extends React.Component<{ children: ReactNode }, { error: any; info: any }> {
+class ErrorBoundary extends React.Component<
+  { children: ReactNode },
+  { error: any; info: any }
+> {
   constructor(props: any) {
     super(props);
     this.state = { error: null, info: null };
@@ -600,16 +680,18 @@ class ErrorBoundary extends React.Component<{ children: ReactNode }, { error: an
       return (
         <div
           style={{
-            background: '#fff0f0',
-            color: '#b91c1c',
+            background: "#fff0f0",
+            color: "#b91c1c",
             padding: 32,
-            fontFamily: 'monospace',
+            fontFamily: "monospace",
           }}
         >
-          <h2 style={{ fontWeight: 'bold' }}>UI Error</h2>
+          <h2 style={{ fontWeight: "bold" }}>UI Error</h2>
           <div>{this.state.error?.message || String(this.state.error)}</div>
           {this.state.info && (
-            <pre style={{ marginTop: 16, fontSize: 12 }}>{this.state.info.componentStack}</pre>
+            <pre style={{ marginTop: 16, fontSize: 12 }}>
+              {this.state.info.componentStack}
+            </pre>
           )}
         </div>
       );
@@ -621,12 +703,12 @@ class ErrorBoundary extends React.Component<{ children: ReactNode }, { error: an
 /**
  * Application bootstrap
  */
-const rootElement = document.getElementById('root');
+const rootElement = document.getElementById("root");
 if (rootElement) {
   const root = createRoot(rootElement);
   root.render(
     <ErrorBoundary>
       <App />
-    </ErrorBoundary>
+    </ErrorBoundary>,
   );
 }

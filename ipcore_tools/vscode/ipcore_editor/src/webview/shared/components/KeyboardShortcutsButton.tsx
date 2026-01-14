@@ -36,9 +36,7 @@ const REGISTER_SHORTCUTS: ShortcutGroup[] = [
 const MEMORY_MAP_SHORTCUTS: ShortcutGroup[] = [
   {
     title: "Address Map Visualizer",
-    shortcuts: [
-      { keys: "Click block", description: "Select block" },
-    ],
+    shortcuts: [{ keys: "Click block", description: "Select block" }],
   },
   {
     title: "Blocks Table",
@@ -99,6 +97,7 @@ const OUTLINE_SHORTCUTS: ShortcutGroup[] = [
       { keys: "↑ / ↓ (or j / k)", description: "Navigate item" },
       { keys: "Enter / Space", description: "Toggle expand/collapse" },
       { keys: "→ (or l)", description: "Focus Details Panel" },
+      { keys: "F2 / e", description: "Rename item" },
     ],
   },
 ];
@@ -107,9 +106,9 @@ interface KeyboardShortcutsButtonProps {
   context: "register" | "block" | "memoryMap" | "outline" | "array";
 }
 
-export const KeyboardShortcutsButton: React.FC<KeyboardShortcutsButtonProps> = ({
-  context,
-}) => {
+export const KeyboardShortcutsButton: React.FC<
+  KeyboardShortcutsButtonProps
+> = ({ context }) => {
   const [isOpen, setIsOpen] = useState(false);
 
   // Get shortcuts based on context
@@ -272,7 +271,14 @@ export const KeyboardShortcutsButton: React.FC<KeyboardShortcutsButtonProps> = (
                 borderColor: "var(--vscode-widget-border)",
               }}
             >
-              Press <kbd className="px-1 rounded" style={{ background: "var(--vscode-badge-background)" }}>?</kbd> to toggle this dialog
+              Press{" "}
+              <kbd
+                className="px-1 rounded"
+                style={{ background: "var(--vscode-badge-background)" }}
+              >
+                ?
+              </kbd>{" "}
+              to toggle this dialog
             </div>
           </div>
         </div>
